@@ -43,7 +43,7 @@ const AVATARS = [
   { id: "planet",   e: "🪐", name: "Ringed planet",  elo: 1425 },
   { id: "star",     e: "⭐", name: "Star",           elo: 1500 },
   { id: "sun",      e: "🌞", name: "Sun",            elo: 1600 },
-  { id: "galaxy",   e: "🌌", name: "Galaxy",         elo: 1750 },
+  { id: "galaxy",   e: "🌌", name: "Nebula",         elo: 1750 },
   { id: "hole",     e: "🕳️", name: "Black hole",     elo: 1900 },
   // Attillion trophies: unlocked by how many 1 in an Attillions you have found.
   { id: "k10",      e: "☄️", name: "Comet",           krill: 10 },
@@ -56,9 +56,11 @@ const AVATARS = [
   { id: "ufo",      e: "🛸", name: "Flying saucer",  code: 477561382 },
   { id: "spacedog", e: "🐕", name: "Space dog",      code: 1213739381 },
   { id: "cheese",   e: "🧀", name: "Moon cheese",    code: 190172967 },
+  { id: "saturn",   e: "🪐", name: "Saturn",         code: 812187123 },
+  // the Developer avatars always sit last, in this order
   { id: "dev",      e: "👾", name: "Developer",      code: 3929745284, dev: true },
-  { id: "rdev",     e: "👾", name: "Rainbow Developer", code: 3751850430, dev: true },
-  { id: "gdev",     e: "👾", name: "Gold Developer", code: 762634016, dev: true }
+  { id: "gdev",     e: "👾", name: "Gold Developer", code: 762634016, dev: true },
+  { id: "rdev",     e: "👾", name: "Rainbow Developer", code: 3751850430, dev: true }
 ];
 // Bundle codes unlock a whole group at once.
 const BUNDLES = [

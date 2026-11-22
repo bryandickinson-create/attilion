@@ -447,3 +447,6 @@ body.krillion-hit::after { background: radial-gradient(ellipse at center, rgba(4
 .what a { color: var(--kelp); font-size: 12px; }
 .what.loading { color: var(--kelp); font-style: italic; }
 .what.small { font-size: 12px; margin-top: 8px; padding-top: 8px; }
+/* secret Saturn: warm butterscotch bands, set apart from the Elo planet */
+.av-saturn { filter: sepia(.9) saturate(2.2) hue-rotate(-8deg) brightness(1.08) drop-shadow(0 0 5px rgba(255,214,150,.6)); }
+h2 + .layout-bar { justify-content: flex-start; margin-top: 10px; }
