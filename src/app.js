@@ -693,8 +693,11 @@ function startMatch(opts) {
   beginRound();
 }
 function fixedRarity() { return S.mode === "endless" || S.mode === "live" || S.mode === "daily" || S.mode === "solo" || S.mode === "subject" || S.mode === "challenge-host" || S.mode === "challenge-guest"; }
+// Settings switch: Endless and Free Launch can be played with no timer (neither mode changes Elo).
+function untimedOk() { return S.mode === "endless" || S.mode === "solo"; }
+function isUntimed() { return untimedOk() && store.get("untimed", false); }
 function beginRound() {
-  S.phase = "answer"; S.deadline = Date.now() + ROUND_SECONDS * 1000; S.draft = "";
+  S.phase = "answer"; S.deadline = isUntimed() ? Infinity : Date.now() + ROUND_SECONDS * 1000; S.draft = "";
   S.botLockAt = S.mode === "bot" ? Date.now() + (3 + Math.random() * 19) * 1000 : null;
   S.submittedAt = null; S.lastTick = null;
   if (S.live) { S.live.at = S.round; livePresence(); }
@@ -707,6 +710,7 @@ function tick() {
   if (S.view !== "play") { clearInterval(timer); return; }
   const now = Date.now();
   if (S.phase === "answer") {
+    if (S.deadline === Infinity) return;
     const left = Math.max(0, S.deadline - now);
     const secs = Math.ceil(left / 1000);
     const t = document.getElementById("clock"); if (t) t.textContent = secs;
@@ -1362,7 +1366,7 @@ function viewPlay() {
   if (S.phase === "answer" || S.phase === "waiting") {
     body = `
       <div class="prompt-card">
-        <div class="ring" id="ring" style="--p:1"><span id="clock">${ROUND_SECONDS}</span></div>
+        <div class="ring ${isUntimed() ? "untimed" : ""}" id="ring" style="--p:1"><span id="clock">${isUntimed() ? "∞" : ROUND_SECONDS}</span></div>
         <p class="round-label">${roundLabel()}${prompt.twist ? ` · <span class="twist-warn">twist round, read the rule!</span>` : ""}</p>
         <h2 class="prompt">${promptTitle(prompt)}</h2>
         ${S.phase === "answer" ? `
@@ -1661,6 +1665,13 @@ function viewSettings() {
     ${layoutBar()}
     <p class="hint">Auto fits whatever screen you're on. Pick one to use that layout anywhere. Saved on this device.</p>
 
+    <h2>Timer</h2>
+    <div class="seg-pick" role="group" aria-label="Timer for Endless and Free Launch">
+      <button data-act="untimed" data-v="0" aria-pressed="${!store.get("untimed", false)}"><span aria-hidden="true">⏱️</span>30 seconds</button>
+      <button data-act="untimed" data-v="1" aria-pressed="${!!store.get("untimed", false)}"><span aria-hidden="true">∞</span>No timer</button>
+    </div>
+    <p class="hint">Only for Endless and Free Launch, which never change your Elo. Every other mode stays timed. Saved on this device.</p>
+
     <h2>Sound</h2>
     <div class="setting-row">
       <label for="vol">Volume</label>
@@ -1893,6 +1904,7 @@ document.addEventListener("click", async e => {
   else if (act === "quick") go("queue");
   else if (act === "quick-cancel") go("home");
   else if (act === "sound-test") SFX("hadal");
+  else if (act === "untimed") { store.set("untimed", t.dataset.v === "1"); render(); }
   else if (act === "spin") {
     const av = t.querySelector(".av");
     av.classList.remove("spin"); void av.offsetWidth; av.classList.add("spin");
