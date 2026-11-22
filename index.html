@@ -959,13 +959,26 @@ function depthFor(sh, prompt) {
   return Math.round(HADAL_DEPTH * Math.log(ZERO_SHARE / sh) / Math.log(ZERO_SHARE / KRILLION_SHARE));
 }
 function zoneFor(depth) { let z = ZONES[0]; ZONES.forEach(x => { if (depth >= x.min) z = x; }); return z; }
-function scoreAnswer(prompt, raw, fixed) {
+// Answers you've used before count as more common: each earlier use makes it
+// REPEAT_FACTOR times as common (never more common than the top answer).
+const REPEAT_FACTOR = 3;
+function repeatKey(prompt, idx) { return (prompt.baseId || prompt.id) + ":" + norm(prompt.answers[idx].display); }
+function repeatsStoreKey() { const u = me(); return "repeats:" + (u ? u.name.toLowerCase() : "guest"); }
+function timesUsed(prompt, idx) { return store.get(repeatsStoreKey(), {})[repeatKey(prompt, idx)] || 0; }
+function noteUsed(prompt, idx) {
+  if (idx < 0) return;
+  const m = store.get(repeatsStoreKey(), {}); const k = repeatKey(prompt, idx);
+  m[k] = (m[k] || 0) + 1; store.set(repeatsStoreKey(), m);
+}
+function repeatsCount() { return S.mode === "solo" || S.mode === "subject" || S.mode === "bot"; }
+function scoreAnswer(prompt, raw, fixed, useRepeats) {
   const idx = matchAnswer(prompt, raw);
   if (idx < 0) return { raw: raw || "", idx: -1, points: 0, depth: 0, share: 0, zone: null, valid: false };
-  const sh = share(prompt, idx, fixed);
+  const used = useRepeats ? timesUsed(prompt, idx) : 0;
+  const sh = used ? Math.min(prompt.zeroShare, share(prompt, idx, fixed) * Math.pow(REPEAT_FACTOR, used)) : share(prompt, idx, fixed);
   const depth = depthFor(sh, prompt);
   const points = sh <= prompt.krillShare ? 100 : Math.max(2, Math.min(97, Math.round(100 * depth / HADAL_DEPTH)));
-  return { raw, idx, display: prompt.answers[idx].display, points, depth, share: sh, zone: zoneFor(depth), valid: true };
+  return { raw, idx, display: prompt.answers[idx].display, points, depth, share: sh, zone: zoneFor(depth), valid: true, used };
 }
 function oneIn(sh) { return sh <= 0 ? "" : "about 1 in " + Math.max(1, Math.round(100 / sh)).toLocaleString(); }
 
@@ -1175,7 +1188,8 @@ function reveal() {
   if (S.mode === "bot") S.theirs[S.round] = botAnswer(S.level, prompt);
   if (S.live) S.theirs[S.round] = liveOppAnswer(S.round);
   const fixed = fixedRarity();
-  S.lastMine = scoreAnswer(prompt, S.mine[S.round], fixed);
+  S.lastMine = scoreAnswer(prompt, S.mine[S.round], fixed, repeatsCount());
+  if (repeatsCount()) noteUsed(prompt, S.lastMine.idx);
   S.lastTheirs = (S.mode === "daily" || S.mode === "solo" || S.mode === "subject" || S.mode === "challenge-host") ? null : scoreAnswer(prompt, S.theirs[S.round], fixed);
   if (S.mode !== "daily") { recordAnswer(prompt.id, S.lastMine.idx); }
   S.scores = S.scores || []; S.oppScores = S.oppScores || [];
@@ -1659,7 +1673,7 @@ function answerCard(label, r, me_) {
       ${norm(r.raw) !== norm(r.display) ? `<p class="matched">you typed “${esc(r.raw)}”</p>` : ""}
       <div class="gauge" aria-hidden="true"><span style="--d:${depthPct.toFixed(1)}%"></span></div>
       <p class="pts"><b>0</b> pts</p>
-      <p class="meta">${r.zone.name} · ${altText(r.depth)} up · ${oneIn(r.share)}</p>
+      <p class="meta">${r.zone.name} · ${altText(r.depth)} up · ${oneIn(r.share)}</p>${r.used ? `<p class="hint repeat-note">You've said this ${r.used === 1 ? "once" : r.used + " times"} before, so it counts as more common now.</p>` : ""}
       <p class="played">Played like <b>${perfElo(r.points, 1).toLocaleString()}</b></p>
       ${r.points === 100 ? `<p class="what" data-what="${esc(r.display)}" data-hint="${esc(curHint())}" hidden></p>` : ""}`
     : `<p class="pts"><b>0</b> pts</p><p class="meta">${r.raw ? "Not on our list for this prompt" : "Time ran out"}</p><p class="played">Played like <b>${perfElo(0, 1).toLocaleString()}</b></p>`}
@@ -2237,7 +2251,7 @@ function fromHash() {
 }
 
 // test hook
-window.Krillion = { PROMPTS, BASES, pickSet, state: () => S, scoreAnswer, matchAnswer, pickPrompts, depthFor, botAnswer, BOTS, todayKey };
+window.Krillion = { PROMPTS, BASES, pickSet, noteUsed, state: () => S, scoreAnswer, matchAnswer, pickPrompts, depthFor, botAnswer, BOTS, todayKey };
 
 if (!fromHash()) render();
 })();
