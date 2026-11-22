@@ -519,6 +519,24 @@ h2 + .layout-bar { justify-content: flex-start; margin-top: 10px; }
 .hub-avatar { --hc: var(--hadal); }
 .hub-settings { --hc: var(--midnight); }
 @container app (max-width: 520px) { .tabs { grid-template-columns: repeat(5, 1fr); } .hub-sub { display: none; } .hub-grid { gap: 10px; height: calc(100svh - 150px); } }
+
+/* Play section: big boxes like the main menu */
+.play-grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: minmax(190px, calc((100svh - 220px) / 2)); gap: 14px; margin-top: 8px; }
+.play-box { padding: 14px 10px; }
+.play-box .hub-ic { font-size: clamp(40px, 8cqi, 72px); }
+.play-box .hub-name { font-size: clamp(20px, 3.6cqi, 30px); }
+.pb-tag { position: absolute; top: 10px; right: 12px; font-family: var(--font-data); font-size: 12px; color: var(--kelp); }
+.pb-quick { --hc: #4cd6ff; }
+.pb-daily { --hc: var(--hadal); }
+.pb-endless { --hc: #ff5fa2; }
+.pb-solo { --hc: var(--krill); }
+.pb-subjects { --hc: #5fe08a; }
+.pb-friends { --hc: var(--midnight); }
+.how { margin-top: 22px; background: var(--sea-2); border: 1px solid var(--sea-3); border-radius: var(--r); padding: 12px 18px; }
+.how summary { cursor: pointer; font-weight: 700; }
+.how .hero { margin-top: 10px; }
+.back-link { margin-top: 6px; }
+@container app (max-width: 620px) { .play-grid { grid-template-columns: 1fr 1fr; grid-auto-rows: minmax(150px, calc((100svh - 230px) / 3)); gap: 10px; } .play-box .hub-sub { display: block; font-size: 12px; } }
 </style></head><body>
 <div id="app"></div>
 <script>
@@ -2230,40 +2248,40 @@ function viewHome() {
   const u = me();
   const key = todayKey();
   const done = u ? u.daily[key] : store.get("guestDaily", {})[key];
+  const box = (cls, attrs, ic, name, sub, tag) => `<button class="hub-box play-box ${cls}" ${attrs}>${tag ? `<span class="pb-tag">${tag}</span>` : ""}<span class="hub-ic" aria-hidden="true">${ic}</span><span class="hub-name">${name}</span><span class="hub-sub">${sub}</span></button>`;
   return `${header()}${tabsBar("modes")}
   <main class="home">
+    <div class="play-grid">
+      ${box("pb-quick", `data-act="quick"`, "⚡", "Quick match", "Play a real person near your Elo, right now", `<span id="online">${onlineText()}</span>`)}
+      ${done ? box("pb-daily", `data-act="daily-view"`, "📅", "Daily Launch", `Done today: ${done.score}. New one at midnight`, "#" + dailyNumber(key))
+             : box("pb-daily", `data-act="daily"`, "📅", "Daily Launch", "Same 7 prompts for everyone today", "#" + dailyNumber(key))}
+      ${box("pb-endless", `data-act="endless"`, "♾️", "Endless", "Never-ending prompts, one secret 1 in Attillion each", endlessStats().best ? "Best " + endlessStats().best : "")}
+      ${box("pb-solo", `data-act="solo"`, "🎯", "Free Launch", "7 new prompts, beat your high score", soloStats().best ? "Best " + soloStats().best : "")}
+      ${box("pb-subjects", `data-go="subjects"`, "📚", "Subjects", "Sports, movies, history, weather and more", "")}
+      ${box("pb-friends", `data-go="friends"`, "🤝", "Play a friend", "Send a challenge or enter a code", "")}
+    </div>
+    <details class="how">
+      <summary>How scoring works</summary>
     <section class="hero">
       <p class="eyebrow">7 prompts · 30 seconds each · up to 100 points a round</p>
       <h1>Think of the answer <em>nobody else</em> will.</h1>
       <p class="lede">Every prompt has hundreds of right answers. Common ones barely leave the ground and score almost nothing. Rare ones launch higher. Find one of the truly rare answers, the few that almost nobody thinks of, and you break past the Moon: <strong>1 in Attillion</strong>, a full 100 points.</p>
       ${depthLegend()}
     </section>
-
-    <section class="modes">
-      <article class="mode quick">
-        <div class="mode-head"><h2>Quick match</h2><span class="tag" id="online">${onlineText()}</span></div>
-        <p>Get paired with a real player near your Elo who is here right now. You both get the same 7 prompts at the same time, and answers are shown together at the end of each round.</p>
-        <button class="btn primary" data-act="quick">Find a match</button>
-      </article>
-      <article class="mode daily">
-        <div class="mode-head"><h2>Daily Launch #${dailyNumber(key)}</h2><span class="tag">${esc(key)}</span></div>
-        <p>Seven prompts, the same for everyone today. Rarity is locked for the day so every score is comparable.</p>
-        ${done ? `<p class="done">You scored <b>${done.score}</b> today. New launch at midnight.</p><button class="btn ghost" data-act="daily-view">See today's result</button>`
-               : `<button class="btn primary" data-act="daily">Start today's launch</button>`}
-      </article>
-
-      <article class="mode solo">
-        <div class="mode-head"><h2>Free Launch</h2>${soloStats().best ? `<span class="tag">Best ${soloStats().best}</span>` : ""}</div>
-        <p>Seven new prompts every time, as many times as you like. Just you against your own high score.</p>
-        <button class="btn primary" data-act="solo">Launch</button>
-      </article>
-
-      <article class="mode endless">
-        <div class="mode-head"><h2>Endless Launch</h2>${endlessStats().best ? `<span class="tag">Best ${endlessStats().best}</span>` : `<span class="tag">New</span>`}</div>
-        <p>Prompts that never run out. Every prompt hides exactly one secret answer that's the 1 in Attillion. Everything else scores less. Stop whenever you like.</p>
-        <button class="btn primary" data-act="endless">Start endless</button>
-      </article>
-
+    </details>
+  </main>`;
+}
+function playSubView(inner) {
+  return `${header()}${tabsBar("modes")}
+  <main class="home">
+    <button class="link back-link" data-go="modes">← Back to Play</button>
+    <section class="modes one">
+${inner}
+    </section>
+  </main>`;
+}
+function viewSubjects() {
+  return playSubView(`
       <article class="mode subjects">
         <div class="mode-head"><h2>Subject Launches</h2><span class="tag">Unlimited</span></div>
         <p>Pick a subject and get 7 prompts all about it. Play as often as you like and chase your best in each one.</p>
@@ -2271,7 +2289,10 @@ function viewHome() {
           ${SUBJECTS.map(x => { const b = subjectStats(x.key).best; return `<button class="subject" data-act="subject" data-cat="${x.key}"><span class="subj-icon" aria-hidden="true">${x.icon}</span><span class="subj-name">${x.name}</span><span class="subj-best">${b ? "Best " + b : "Not played"}</span></button>`; }).join("")}
         </div>
       </article>
-
+`);
+}
+function viewFriends() {
+  return playSubView(`
       <article class="mode friends">
         <div class="mode-head"><h2>Play a friend</h2></div>
         <p>Play your 7 rounds, send the challenge, and your friend plays the same prompts. After each round they see what you said. Same answers are allowed.</p>
@@ -2280,9 +2301,7 @@ function viewHome() {
           <button class="btn ghost" data-go="join">Enter a code</button>
         </div>
       </article>
-
-    </section>
-  </main>`;
+`);
 }
 function viewBots() {
   const u = me();
@@ -2850,7 +2869,7 @@ function fillDescriptions() {
 function render() {
   const v = S.view;
   const html = v === "play" ? viewPlay() : v === "results" ? viewResults() : v === "login" ? viewLogin()
-    : v === "settings" ? viewSettings() : v === "avatar" ? viewAvatar() : v === "bots" ? viewBots() : v === "modes" ? viewHome() : v === "profile" ? viewProfile() : v === "leaderboard" ? viewLeaderboard() : v === "join" ? viewJoin()
+    : v === "settings" ? viewSettings() : v === "avatar" ? viewAvatar() : v === "bots" ? viewBots() : v === "modes" ? viewHome() : v === "subjects" ? viewSubjects() : v === "friends" ? viewFriends() : v === "profile" ? viewProfile() : v === "leaderboard" ? viewLeaderboard() : v === "join" ? viewJoin()
     : v === "queue" ? viewQueue() : v === "challenge" ? viewChallengeIntro() : v === "reply" ? viewReplyResult() : v === "daily-done" ? viewDailyDone() : viewHub();
   $app().innerHTML = html;
   document.body.dataset.view = v;
