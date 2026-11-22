@@ -1282,9 +1282,9 @@ function viewHome() {
   </main>`;
 }
 function playSubView(inner) {
-  return `${header()}${tabsBar("modes")}
+  return `${header()}<button class="link back-link menu-back" data-go="modes">← Back to Play</button>
   <main class="home">
-    <button class="link back-link" data-go="modes">← Back to Play</button>
+    
     <section class="modes one">
 ${inner}
     </section>
@@ -1640,7 +1640,7 @@ function viewProfile() {
 const SECTIONS = [["modes", "🚀", "Play", "Quick match, daily, endless, free, subjects and friends"], ["bots", "🤖", "Play bots", "The computer and this event's bots"], ["avatar", "👩‍🚀", "Avatar", "Pick your avatar and enter codes"], ["settings", "⚙️", "Settings", "Timer, screen, sound and account"]];
 // Inside a section: a way back to the main menu, plus quick hops to the other three.
 function tabsBar(active) {
-  return `<nav class="tabs" aria-label="Sections"><button data-go="home" class="tab back" aria-label="Main menu"><span aria-hidden="true">←</span>Menu</button>${SECTIONS.map(([v, ic, l]) => `<button data-go="${v}" class="tab ${active === v ? "on" : ""}" aria-current="${active === v ? "page" : "false"}"><span aria-hidden="true">${v === "avatar" ? avMarkup(myAvatarObj()) : ic}</span>${l}</button>`).join("")}</nav>`;
+  return `<button class="link back-link menu-back" data-go="home">← Menu</button>`;
 }
 // The main menu: four big boxes that fill the screen.
 function viewHub() {
