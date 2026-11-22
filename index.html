@@ -496,12 +496,29 @@ h2 + .layout-bar { justify-content: flex-start; margin-top: 10px; }
 @container app (max-width: 720px) { .ev-bots { grid-template-columns: 1fr; } }
 
 /* Section tabs: Play / Play bots / Avatar / Settings */
-.tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; background: var(--sea-2); border: 1px solid var(--sea-3); border-radius: 999px; padding: 5px; margin: 4px 0 8px; position: sticky; top: 6px; z-index: 20; }
+.tabs { display: grid; grid-template-columns: .8fr repeat(4, 1fr); gap: 6px; background: var(--sea-2); border: 1px solid var(--sea-3); border-radius: 999px; padding: 5px; margin: 4px 0 8px; position: sticky; top: 6px; z-index: 20; }
 .tabs .tab { border: 0; background: transparent; color: var(--kelp); border-radius: 999px; padding: 9px 6px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; font-size: 15px; min-width: 0; }
 .tabs .tab:hover { color: var(--foam); }
 .tabs .tab.on { background: var(--krill); color: var(--krill-ink); }
 @container app (max-width: 520px) { .tabs .tab { flex-direction: column; gap: 0; font-size: 12px; padding: 6px 2px; } .tabs .tab span { font-size: 18px; } .tabs { border-radius: 18px; } .tabs .tab { border-radius: 14px; } }
 .modes.one { grid-template-columns: 1fr; }
+
+.tabs .tab.back { color: var(--foam); }
+/* Main menu: four big boxes */
+.hub { padding-top: 4px; }
+.hub-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 14px; height: calc(100svh - 120px); min-height: 380px; }
+.hub-box { border: 1px solid var(--sea-3); border-radius: 22px; background: var(--sea-2); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 16px; text-align: center; transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease; position: relative; overflow: hidden; }
+.hub-box:hover, .hub-box:focus-visible { transform: translateY(-3px); border-color: var(--hc); box-shadow: 0 10px 30px -12px var(--hc); }
+.hub-box:active { transform: scale(.98); }
+.hub-box::before { content: ""; position: absolute; inset: 0; background: radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--hc) 28%, transparent), transparent 70%); pointer-events: none; }
+.hub-ic { font-size: clamp(48px, 12cqi, 96px); line-height: 1; position: relative; }
+.hub-name { font-family: var(--font-display); font-weight: 800; font-size: clamp(22px, 5cqi, 38px); color: var(--foam); position: relative; }
+.hub-sub { color: var(--kelp); font-size: clamp(12px, 2.2cqi, 15px); max-width: 26ch; position: relative; }
+.hub-modes { --hc: var(--krill); }
+.hub-bots { --hc: var(--twilight); }
+.hub-avatar { --hc: var(--hadal); }
+.hub-settings { --hc: var(--midnight); }
+@container app (max-width: 520px) { .tabs { grid-template-columns: repeat(5, 1fr); } .hub-sub { display: none; } .hub-grid { gap: 10px; height: calc(100svh - 150px); } }
 </style></head><body>
 <div id="app"></div>
 <script>
@@ -2213,7 +2230,7 @@ function viewHome() {
   const u = me();
   const key = todayKey();
   const done = u ? u.daily[key] : store.get("guestDaily", {})[key];
-  return `${header()}${tabsBar("home")}
+  return `${header()}${tabsBar("modes")}
   <main class="home">
     <section class="hero">
       <p class="eyebrow">7 prompts · 30 seconds each · up to 100 points a round</p>
@@ -2484,7 +2501,7 @@ function viewResults() {
       ${S.mode === "endless" ? `<button class="btn primary" data-act="endless">Start a new endless run</button>` : ""}
       ${S.mode === "subject" ? `<button class="btn primary" data-act="subject" data-cat="${S.cat}">Play ${subjName()} again</button>` : ""}
       ${S.mode === "bot" ? `<button class="btn primary" data-act="bot" data-level="${S.level}">Rematch ${BOTS[S.level].name}</button>` : ""}
-      <button class="btn ghost" data-go="home">Back to Earth</button>
+      <button class="btn ghost" data-go="modes">Back to Earth</button>
     </div>
   </main>`;
 }
@@ -2519,7 +2536,7 @@ function viewDailyDone() {
     <div class="table-wrap"><table class="breakdown"><thead><tr><th>Prompt</th><th>You</th><th>Depth</th><th>Pts</th></tr></thead><tbody>
     ${prompts.map((id, i) => `<tr><td class="q">${esc(PROMPT_BY_ID[id].q)}</td><td>${esc(scores[i].raw || "–")}</td><td class="n">${altText(scores[i].depth)}</td><td class="n">${scores[i].points}</td></tr>`).join("")}
     </tbody></table></div>
-    <button class="btn ghost" data-go="home">Back to Earth</button>
+    <button class="btn ghost" data-go="modes">Back to Earth</button>
   </main>`;
 }
 
@@ -2590,9 +2607,18 @@ function viewProfile() {
   </main>`;
 }
 
+const SECTIONS = [["modes", "🚀", "Play", "Quick match, daily, endless, free, subjects and friends"], ["bots", "🤖", "Play bots", "The computer and this event's bots"], ["avatar", "👩‍🚀", "Avatar", "Pick your avatar and enter codes"], ["settings", "⚙️", "Settings", "Timer, screen, sound and account"]];
+// Inside a section: a way back to the main menu, plus quick hops to the other three.
 function tabsBar(active) {
-  const tabs = [["home", "🚀", "Play"], ["bots", "🤖", "Play bots"], ["avatar", "👩‍🚀", "Avatar"], ["settings", "⚙️", "Settings"]];
-  return `<nav class="tabs" aria-label="Sections">${tabs.map(([v, ic, l]) => `<button data-go="${v}" class="tab ${active === v ? "on" : ""}" aria-current="${active === v ? "page" : "false"}"><span aria-hidden="true">${ic}</span>${l}</button>`).join("")}</nav>`;
+  return `<nav class="tabs" aria-label="Sections"><button data-go="home" class="tab back" aria-label="Main menu"><span aria-hidden="true">←</span>Menu</button>${SECTIONS.map(([v, ic, l]) => `<button data-go="${v}" class="tab ${active === v ? "on" : ""}" aria-current="${active === v ? "page" : "false"}"><span aria-hidden="true">${ic}</span>${l}</button>`).join("")}</nav>`;
+}
+// The main menu: four big boxes that fill the screen.
+function viewHub() {
+  return `${header()}<main class="hub">
+    <div class="hub-grid">
+      ${SECTIONS.map(([v, ic, l, sub]) => `<button class="hub-box hub-${v}" data-go="${v}"><span class="hub-ic" aria-hidden="true">${ic}</span><span class="hub-name">${l}</span><span class="hub-sub">${sub}</span></button>`).join("")}
+    </div>
+  </main>`;
 }
 function viewAvatar() {
   const u = me();
@@ -2824,8 +2850,8 @@ function fillDescriptions() {
 function render() {
   const v = S.view;
   const html = v === "play" ? viewPlay() : v === "results" ? viewResults() : v === "login" ? viewLogin()
-    : v === "settings" ? viewSettings() : v === "avatar" ? viewAvatar() : v === "bots" ? viewBots() : v === "profile" ? viewProfile() : v === "leaderboard" ? viewLeaderboard() : v === "join" ? viewJoin()
-    : v === "queue" ? viewQueue() : v === "challenge" ? viewChallengeIntro() : v === "reply" ? viewReplyResult() : v === "daily-done" ? viewDailyDone() : viewHome();
+    : v === "settings" ? viewSettings() : v === "avatar" ? viewAvatar() : v === "bots" ? viewBots() : v === "modes" ? viewHome() : v === "profile" ? viewProfile() : v === "leaderboard" ? viewLeaderboard() : v === "join" ? viewJoin()
+    : v === "queue" ? viewQueue() : v === "challenge" ? viewChallengeIntro() : v === "reply" ? viewReplyResult() : v === "daily-done" ? viewDailyDone() : viewHub();
   $app().innerHTML = html;
   document.body.dataset.view = v;
   fillDescriptions();
@@ -2867,7 +2893,7 @@ document.addEventListener("click", async e => {
   }
   else if (act === "next") nextRound();
   else if (act === "quick") go("queue");
-  else if (act === "quick-cancel") go("home");
+  else if (act === "quick-cancel") go("modes");
   else if (act === "sound-test") SFX("hadal");
   else if (act === "untimed") { store.set("untimed", t.dataset.v === "1"); render(); }
   else if (act === "spin") {

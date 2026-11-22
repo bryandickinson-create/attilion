@@ -1248,7 +1248,7 @@ function viewHome() {
   const u = me();
   const key = todayKey();
   const done = u ? u.daily[key] : store.get("guestDaily", {})[key];
-  return `${header()}${tabsBar("home")}
+  return `${header()}${tabsBar("modes")}
   <main class="home">
     <section class="hero">
       <p class="eyebrow">7 prompts · 30 seconds each · up to 100 points a round</p>
@@ -1519,7 +1519,7 @@ function viewResults() {
       ${S.mode === "endless" ? `<button class="btn primary" data-act="endless">Start a new endless run</button>` : ""}
       ${S.mode === "subject" ? `<button class="btn primary" data-act="subject" data-cat="${S.cat}">Play ${subjName()} again</button>` : ""}
       ${S.mode === "bot" ? `<button class="btn primary" data-act="bot" data-level="${S.level}">Rematch ${BOTS[S.level].name}</button>` : ""}
-      <button class="btn ghost" data-go="home">Back to Earth</button>
+      <button class="btn ghost" data-go="modes">Back to Earth</button>
     </div>
   </main>`;
 }
@@ -1554,7 +1554,7 @@ function viewDailyDone() {
     <div class="table-wrap"><table class="breakdown"><thead><tr><th>Prompt</th><th>You</th><th>Depth</th><th>Pts</th></tr></thead><tbody>
     ${prompts.map((id, i) => `<tr><td class="q">${esc(PROMPT_BY_ID[id].q)}</td><td>${esc(scores[i].raw || "–")}</td><td class="n">${altText(scores[i].depth)}</td><td class="n">${scores[i].points}</td></tr>`).join("")}
     </tbody></table></div>
-    <button class="btn ghost" data-go="home">Back to Earth</button>
+    <button class="btn ghost" data-go="modes">Back to Earth</button>
   </main>`;
 }
 
@@ -1625,9 +1625,18 @@ function viewProfile() {
   </main>`;
 }
 
+const SECTIONS = [["modes", "🚀", "Play", "Quick match, daily, endless, free, subjects and friends"], ["bots", "🤖", "Play bots", "The computer and this event's bots"], ["avatar", "👩‍🚀", "Avatar", "Pick your avatar and enter codes"], ["settings", "⚙️", "Settings", "Timer, screen, sound and account"]];
+// Inside a section: a way back to the main menu, plus quick hops to the other three.
 function tabsBar(active) {
-  const tabs = [["home", "🚀", "Play"], ["bots", "🤖", "Play bots"], ["avatar", "👩‍🚀", "Avatar"], ["settings", "⚙️", "Settings"]];
-  return `<nav class="tabs" aria-label="Sections">${tabs.map(([v, ic, l]) => `<button data-go="${v}" class="tab ${active === v ? "on" : ""}" aria-current="${active === v ? "page" : "false"}"><span aria-hidden="true">${ic}</span>${l}</button>`).join("")}</nav>`;
+  return `<nav class="tabs" aria-label="Sections"><button data-go="home" class="tab back" aria-label="Main menu"><span aria-hidden="true">←</span>Menu</button>${SECTIONS.map(([v, ic, l]) => `<button data-go="${v}" class="tab ${active === v ? "on" : ""}" aria-current="${active === v ? "page" : "false"}"><span aria-hidden="true">${ic}</span>${l}</button>`).join("")}</nav>`;
+}
+// The main menu: four big boxes that fill the screen.
+function viewHub() {
+  return `${header()}<main class="hub">
+    <div class="hub-grid">
+      ${SECTIONS.map(([v, ic, l, sub]) => `<button class="hub-box hub-${v}" data-go="${v}"><span class="hub-ic" aria-hidden="true">${ic}</span><span class="hub-name">${l}</span><span class="hub-sub">${sub}</span></button>`).join("")}
+    </div>
+  </main>`;
 }
 function viewAvatar() {
   const u = me();
@@ -1859,8 +1868,8 @@ function fillDescriptions() {
 function render() {
   const v = S.view;
   const html = v === "play" ? viewPlay() : v === "results" ? viewResults() : v === "login" ? viewLogin()
-    : v === "settings" ? viewSettings() : v === "avatar" ? viewAvatar() : v === "bots" ? viewBots() : v === "profile" ? viewProfile() : v === "leaderboard" ? viewLeaderboard() : v === "join" ? viewJoin()
-    : v === "queue" ? viewQueue() : v === "challenge" ? viewChallengeIntro() : v === "reply" ? viewReplyResult() : v === "daily-done" ? viewDailyDone() : viewHome();
+    : v === "settings" ? viewSettings() : v === "avatar" ? viewAvatar() : v === "bots" ? viewBots() : v === "modes" ? viewHome() : v === "profile" ? viewProfile() : v === "leaderboard" ? viewLeaderboard() : v === "join" ? viewJoin()
+    : v === "queue" ? viewQueue() : v === "challenge" ? viewChallengeIntro() : v === "reply" ? viewReplyResult() : v === "daily-done" ? viewDailyDone() : viewHub();
   $app().innerHTML = html;
   document.body.dataset.view = v;
   fillDescriptions();
@@ -1902,7 +1911,7 @@ document.addEventListener("click", async e => {
   }
   else if (act === "next") nextRound();
   else if (act === "quick") go("queue");
-  else if (act === "quick-cancel") go("home");
+  else if (act === "quick-cancel") go("modes");
   else if (act === "sound-test") SFX("hadal");
   else if (act === "untimed") { store.set("untimed", t.dataset.v === "1"); render(); }
   else if (act === "spin") {
