@@ -291,7 +291,9 @@ body.krillion-hit::after { background: radial-gradient(ellipse at center, rgba(4
 @keyframes nope { 20%,60% { transform: translateX(-8px); } 40%,80% { transform: translateX(8px); } }
 
 /* ===== twists, avatars, water column ===== */
-.prompt .twist { display: block; color: var(--krill); font-size: .62em; margin-top: 8px; letter-spacing: -0.01em; }
+.prompt .twist { display: inline-block; color: var(--krill); font-size: .62em; margin-top: 10px; letter-spacing: -0.01em; padding: 6px 12px; border: 2px solid var(--krill); border-radius: 12px; }
+.twist-tag { display: inline-block; background: var(--krill); color: var(--krill-ink); border-radius: 6px; padding: 1px 7px; margin-right: 6px; font-size: .8em; text-transform: uppercase; letter-spacing: .06em; }
+.twist-warn { color: var(--krill); font-weight: 700; }
 .prompt.small .twist { font-size: .7em; margin-top: 4px; }
 .top nav .avbtn { font-size: 22px; line-height: 1; padding: 6px 10px; border-color: var(--sea-3); }
 
@@ -487,3 +489,11 @@ h2 + .layout-bar { justify-content: flex-start; margin-top: 10px; }
 .ev-bots { grid-template-columns: repeat(3, 1fr); }
 .ev-bot .bot-name { color: #ffc93c; }
 @container app (max-width: 720px) { .ev-bots { grid-template-columns: 1fr; } }
+
+/* Section tabs: Play / Play bots / Avatar / Settings */
+.tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; background: var(--sea-2); border: 1px solid var(--sea-3); border-radius: 999px; padding: 5px; margin: 4px 0 8px; position: sticky; top: 6px; z-index: 20; }
+.tabs .tab { border: 0; background: transparent; color: var(--kelp); border-radius: 999px; padding: 9px 6px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; font-size: 15px; min-width: 0; }
+.tabs .tab:hover { color: var(--foam); }
+.tabs .tab.on { background: var(--krill); color: var(--krill-ink); }
+@container app (max-width: 520px) { .tabs .tab { flex-direction: column; gap: 0; font-size: 12px; padding: 6px 2px; } .tabs .tab span { font-size: 18px; } .tabs { border-radius: 18px; } .tabs .tab { border-radius: 14px; } }
+.modes.one { grid-template-columns: 1fr; }

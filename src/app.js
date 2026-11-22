@@ -389,8 +389,9 @@ const CAT_OF = {
   weather: "weather", volcano: "weather geography", disaster: "history weather", rainthing: "season-spring weather"
 };
 (window.KRILLION_PROMPTS || []).forEach(p => {
-  const more = (window.KRILLION_MORE || {})[p.id];
-  const entries = (more ? p.a + ";" + more : p.a).split(";").map(e => ({ forms: e.split("|").map(s => s.trim()).filter(Boolean) })).filter(e => e.forms.length);
+  // extra answers: hand-picked lists first, then the big dictionary list at the rare end
+  const more = [window.KRILLION_MORE, window.KRILLION_MORE3, window.KRILLION_MORE2].map(m => (m || {})[p.id]).filter(Boolean);
+  const entries = [p.a].concat(more).join(";").split(";").map(e => ({ forms: e.split("|").map(s => s.trim()).filter(Boolean) })).filter(e => e.forms.length);
   const base = buildPrompt(p.id, p.q, entries, FAMILIAR, { baseId: p.id });
   base.cats = ((p.cat || "") + " " + (CAT_OF[p.id] || "")).split(/[ ,]+/).filter(Boolean);
   BASES.push(base); PROMPTS.push(base); VARIANTS[p.id] = [];
@@ -411,12 +412,46 @@ const CAT_OF = {
 });
 const PROMPT_BY_ID = Object.fromEntries(PROMPTS.map(p => [p.id, p]));
 
+// Extra words around a real answer still count: "Yellowstone National Park",
+// "light blue", "the Dallas Cowboys". A last name or last word that only one
+// answer ends with counts too: "Mahomes", "Cowboys".
+function looseMatch(prompt, k) {
+  const words = k.split(" ");
+  const ok = w => w.replace(/ /g, "").length >= 4;
+  if (words.length > 1) {
+    for (let len = words.length - 1; len >= 1; len--) {
+      for (let st = 0; st + len <= words.length; st++) {
+        const sub = words.slice(st, st + len).join(" ");
+        if (!ok(sub)) continue;
+        if (prompt.index.has(sub)) return prompt.index.get(sub);
+        const ss = singular(sub);
+        if (prompt.index.has(ss)) return prompt.index.get(ss);
+      }
+    }
+    return -1;
+  }
+  if (!prompt.tails) {
+    const seen = new Map();
+    for (const [key, i] of prompt.index) {
+      if (!key.includes(" ")) continue;
+      const w = key.slice(key.lastIndexOf(" ") + 1);
+      if (w.length < 5 || prompt.index.has(w)) continue;
+      const was = seen.get(w);
+      seen.set(w, was === undefined || was === i ? i : -1);
+    }
+    prompt.tails = seen;
+  }
+  const t = prompt.tails.get(k) ?? prompt.tails.get(singular(k));
+  return t === undefined ? -1 : t;
+}
 function matchAnswer(prompt, raw) {
   const k = norm(raw);
   if (!k) return -1;
   if (prompt.index.has(k)) return prompt.index.get(k);
   const s = singular(k);
   if (prompt.index.has(s)) return prompt.index.get(s);
+  const loose = looseMatch(prompt, k);
+  if (loose >= 0) return loose;
   // Spelling forgiveness grows with length: 1 typo from 4 letters, 2 from 6, 3 from 13.
   const tight = k.replace(/ /g, "");
   const tolFor = n => n < 4 ? 0 : n < 6 ? 1 : n < 13 ? 2 : 3;
@@ -473,7 +508,31 @@ function noteUsed(prompt, idx) {
   const m = store.get(repeatsStoreKey(), {}); const k = repeatKey(prompt, idx);
   m[k] = (m[k] || 0) + 1; store.set(repeatsStoreKey(), m);
 }
-function repeatsCount() { return S.mode === "solo" || S.mode === "subject" || S.mode === "bot"; }
+function repeatsCount() { return S.mode === "solo" || S.mode === "subject" || S.mode === "endless" || S.mode === "bot"; }
+
+/* ---------- Endless Launch ----------
+   Prompts never run out, and each prompt hides exactly ONE secret answer that is
+   the 1 in Attillion. Everything else tops out just below it. */
+function endlessQueue(seed) {
+  const r = rng(seed);
+  const ids = BASES.map(p => p.id);
+  for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
+  return ids;
+}
+function endlessSecret(prompt) {
+  // somewhere in the less-obvious half of the answers people know
+  const lo = Math.floor(prompt.familiar * 0.45), hi = Math.max(lo + 1, prompt.familiar);
+  const r = rng(hashStr("secret:" + prompt.id + ":" + S.seed + ":" + S.round));
+  return Math.min(prompt.answers.length - 1, lo + Math.floor(r() * (hi - lo)));
+}
+function endlessAdjust(prompt, res) {
+  S.secret = endlessSecret(prompt);
+  if (!res.valid) return res;
+  if (res.idx === S.secret) return Object.assign({}, res, { points: 100, depth: MAX_DEPTH, zone: zoneFor(MAX_DEPTH), secretHit: true });
+  const depth = Math.min(res.depth, HADAL_DEPTH - 1);
+  return Object.assign({}, res, { points: Math.min(res.points, 95), depth, zone: zoneFor(depth) });
+}
+function endlessStats() { const u = me(); return (u ? u.endless : store.get("guestEndless", null)) || {}; }
 function scoreAnswer(prompt, raw, fixed, useRepeats) {
   const idx = matchAnswer(prompt, raw);
   if (idx < 0) return { raw: raw || "", idx: -1, points: 0, depth: 0, share: 0, zone: null, valid: false };
@@ -623,7 +682,7 @@ function go(view, extra) {
 function startMatch(opts) {
   // opts: { mode: "bot"|"daily"|"challenge-host"|"challenge-guest", level, seed, prompts, opp }
   const seed = opts.seed != null ? opts.seed : Math.floor(Math.random() * 2 ** 31);
-  const prompts = opts.prompts || pickFresh(seed, opts.cat);
+  const prompts = opts.prompts || (opts.mode === "endless" ? endlessQueue(seed) : pickFresh(seed, opts.cat));
   markSeen(prompts);
   go("play", {
     mode: opts.mode, level: opts.level, seed, prompts, round: 0,
@@ -633,7 +692,7 @@ function startMatch(opts) {
   });
   beginRound();
 }
-function fixedRarity() { return S.mode === "live" || S.mode === "daily" || S.mode === "solo" || S.mode === "subject" || S.mode === "challenge-host" || S.mode === "challenge-guest"; }
+function fixedRarity() { return S.mode === "endless" || S.mode === "live" || S.mode === "daily" || S.mode === "solo" || S.mode === "subject" || S.mode === "challenge-host" || S.mode === "challenge-guest"; }
 function beginRound() {
   S.phase = "answer"; S.deadline = Date.now() + ROUND_SECONDS * 1000; S.draft = "";
   S.botLockAt = S.mode === "bot" ? Date.now() + (3 + Math.random() * 19) * 1000 : null;
@@ -668,7 +727,7 @@ function submit(timeUp) {
   if (!timeUp) {
     const prompt = PROMPT_BY_ID[S.prompts[S.round]];
     let msg = !val ? "Type an answer first." : matchAnswer(prompt, val) < 0 ? `“${val}” isn't on the list for this prompt. Try another.` : "";
-    if (msg && val && prompt.twist && matchAnswer(PROMPT_BY_ID[prompt.baseId], val) >= 0) msg = `“${val}” fits the topic but not the twist. It has to be ${prompt.twist.replace(/^that /, "one that ").replace(/^with/, "one with")}.`;
+    if (msg && val && prompt.twist && matchAnswer(PROMPT_BY_ID[prompt.baseId], val) >= 0) msg = `“${val}” would count normally, but this is a twist round. Your answer has to be ${prompt.twist.replace(/^that /, "one that ").replace(/^with/, "one with")}.`;
     if (msg) {
       const err = document.getElementById("answer-error");
       if (err) err.textContent = msg;
@@ -693,14 +752,15 @@ function reveal() {
   if (S.live) S.theirs[S.round] = liveOppAnswer(S.round);
   const fixed = fixedRarity();
   S.lastMine = scoreAnswer(prompt, S.mine[S.round], fixed, repeatsCount());
+  if (S.mode === "endless") S.lastMine = endlessAdjust(prompt, S.lastMine);
   if (repeatsCount()) noteUsed(prompt, S.lastMine.idx);
-  S.lastTheirs = (S.mode === "daily" || S.mode === "solo" || S.mode === "subject" || S.mode === "challenge-host") ? null : scoreAnswer(prompt, S.theirs[S.round], fixed);
+  S.lastTheirs = (S.mode === "daily" || S.mode === "solo" || S.mode === "subject" || S.mode === "endless" || S.mode === "challenge-host") ? null : scoreAnswer(prompt, S.theirs[S.round], fixed);
   if (S.mode !== "daily") { recordAnswer(prompt.id, S.lastMine.idx); }
   S.scores = S.scores || []; S.oppScores = S.oppScores || [];
   S.scores[S.round] = S.lastMine; if (S.lastTheirs) S.oppScores[S.round] = S.lastTheirs;
   if (S.lastMine.points === 100) {
     const found = { q: prompt.twist ? prompt.baseQ + " " + prompt.twist : prompt.q, a: S.lastMine.display, depth: S.lastMine.depth, share: S.lastMine.share, when: Date.now(),
-      mode: S.mode === "bot" ? "vs " + BOTS[S.level].name : S.mode === "live" ? "Quick match" : S.mode === "daily" ? "Daily Launch" : S.mode === "solo" ? "Free Launch" : S.mode === "subject" ? subjName() + " Launch" : "Friend challenge" };
+      mode: S.mode === "bot" ? "vs " + BOTS[S.level].name : S.mode === "live" ? "Quick match" : S.mode === "daily" ? "Daily Launch" : S.mode === "solo" ? "Free Launch" : S.mode === "subject" ? subjName() + " Launch" : S.mode === "endless" ? "Endless Launch" : "Friend challenge" };
     const before = krillCount(me());
     if (me()) updateUser(x => { x.krillions = (x.krillions || []); x.krillions.unshift(found); x.krillions = x.krillions.slice(0, 500); });
     else { const g = store.get("guestKrillions", []); g.unshift(found); store.set("guestKrillions", g.slice(0, 500)); }
@@ -753,6 +813,10 @@ function nextRound() {
     liveCheck();
     return;
   }
+  if (S.mode === "endless") {
+    if (S.round + 1 >= S.prompts.length) S.prompts = S.prompts.concat(endlessQueue(S.seed + S.prompts.length));
+    S.round++; beginRound(); return;
+  }
   if (S.round < ROUNDS - 1) { S.round++; beginRound(); }
   else finishMatch();
 }
@@ -777,6 +841,14 @@ function finishMatch() {
     if (me()) updateUser(x => { x.solo = x.solo || {}; upd(x.solo); });
     else { const g = store.get("guestSolo", {}); upd(g); store.set("guestSolo", g); }
     res.newBest = my > before; res.prevBest = before;
+  } else if (S.mode === "endless") {
+    S.prompts = S.prompts.slice(0, S.scores.length);
+    const found = S.scores.filter(x => x && x.secretHit).length;
+    const before = endlessStats();
+    const upd = x => { x.best = Math.max(x.best || 0, my); x.mostFound = Math.max(x.mostFound || 0, found); x.longest = Math.max(x.longest || 0, S.scores.length); x.plays = (x.plays || 0) + 1; x.found = (x.found || 0) + found; };
+    if (me()) updateUser(x => { x.endless = x.endless || {}; upd(x.endless); });
+    else { const g = store.get("guestEndless", {}); upd(g); store.set("guestEndless", g); }
+    res.newBest = my > (before.best || 0); res.prevBest = before.best || 0; res.found = found; res.rounds = S.scores.length;
   } else if (S.mode === "subject") {
     const before = subjectStats(S.cat).best;
     const run = { score: my, when: Date.now() };
@@ -1162,7 +1234,7 @@ function header() {
     <button class="brand" data-go="home" aria-label="Attillion home"><span class="mark" aria-hidden="true"></span>Attillion</button>
     <nav>
       <button data-go="leaderboard">Leaderboard</button>
-      <button data-go="settings" class="avbtn" aria-label="Change your avatar" title="Change your avatar">${myAvatar()}</button>
+      <button data-go="avatar" class="avbtn" aria-label="Change your avatar" title="Change your avatar">${myAvatar()}</button>
       ${u ? `<button data-go="profile" class="chip">${esc(u.name)} · <b>${u.elo}</b></button>` : `<button data-go="login" class="chip">Log in</button>`}
     </nav>
   </header>`;
@@ -1172,7 +1244,7 @@ function viewHome() {
   const u = me();
   const key = todayKey();
   const done = u ? u.daily[key] : store.get("guestDaily", {})[key];
-  return `${header()}
+  return `${header()}${tabsBar("home")}
   <main class="home">
     <section class="hero">
       <p class="eyebrow">7 prompts · 30 seconds each · up to 100 points a round</p>
@@ -1200,6 +1272,12 @@ function viewHome() {
         <button class="btn primary" data-act="solo">Launch</button>
       </article>
 
+      <article class="mode endless">
+        <div class="mode-head"><h2>Endless Launch</h2>${endlessStats().best ? `<span class="tag">Best ${endlessStats().best}</span>` : `<span class="tag">New</span>`}</div>
+        <p>Prompts that never run out. Every prompt hides exactly one secret answer that's the 1 in Attillion. Everything else scores less. Stop whenever you like.</p>
+        <button class="btn primary" data-act="endless">Start endless</button>
+      </article>
+
       <article class="mode subjects">
         <div class="mode-head"><h2>Subject Launches</h2><span class="tag">Unlimited</span></div>
         <p>Pick a subject and get 7 prompts all about it. Play as often as you like and chase your best in each one.</p>
@@ -1217,6 +1295,14 @@ function viewHome() {
         </div>
       </article>
 
+    </section>
+  </main>`;
+}
+function viewBots() {
+  const u = me();
+  return `${header()}${tabsBar("bots")}
+  <main class="home">
+    <section class="modes one">
       ${viewEventCard()}
 
       <article class="mode bots">
@@ -1232,7 +1318,6 @@ function viewHome() {
         ${u ? "" : `<p class="hint"><button class="link" data-go="login">Log in</button> to save your Elo. Guests can still play.</p>`}
       </article>
     </section>
-    ${layoutBar()}
   </main>`;
 }
 function layoutBar() {
@@ -1259,7 +1344,8 @@ function viewPlay() {
   const pod = (name, list, id, prev, cls, note) => `<div class="pod ${cls}">
       <span class="pod-name">${esc(name)}</span>
       <b class="pod-total" id="${id}" data-from="${prev}">${note ? "?" : prev}</b>
-      <div class="pod-rounds" aria-hidden="true">${Array.from({ length: ROUNDS }, (_, i) => {
+      <div class="pod-rounds" aria-hidden="true">${Array.from({ length: ROUNDS }, (_, j) => {
+        const i = S.mode === "endless" ? Math.max(0, S.round - ROUNDS + 1) + j : j;
         const r = list && list[i];
         const fresh = revealing && i === S.round;
         return `<span class="seg ${r ? (r.valid ? "z-" + r.zone.key : "miss") : ""} ${fresh ? "fresh" : ""}" style="--h:${r ? Math.max(8, r.points) : 0}%"></span>`;
@@ -1269,7 +1355,7 @@ function viewPlay() {
   const oppLabel = oppName || (S.mode === "challenge-host" ? "Your friend" : null);
   const scoreLine = `<div class="scoreboard ${oppLabel ? "duo" : "solo"}">
       ${pod("You", S.scores, "pod-me", prevMine, "me")}
-      <div class="sb-mid"><span class="sb-round">Round ${S.round + 1}/${ROUNDS}</span>${oppName ? `<span class="sb-lead" id="lead">${S.round === 0 && !revealing ? "First launch" : leadTextAt(oppName, prevMine, prevOpp)}</span>` : S.mode === "daily" ? `<span class="sb-lead">Daily Launch</span>` : S.mode === "solo" ? `<span class="sb-lead">Free Launch</span>` : S.mode === "subject" ? `<span class="sb-lead">${subjName()} Launch</span>` : ""}</div>
+      <div class="sb-mid"><span class="sb-round">${S.mode === "endless" ? "Round " + (S.round + 1) : `Round ${S.round + 1}/${ROUNDS}`}</span>${oppName ? `<span class="sb-lead" id="lead">${S.round === 0 && !revealing ? "First launch" : leadTextAt(oppName, prevMine, prevOpp)}</span>` : S.mode === "daily" ? `<span class="sb-lead">Daily Launch</span>` : S.mode === "solo" ? `<span class="sb-lead">Free Launch</span>` : S.mode === "subject" ? `<span class="sb-lead">${subjName()} Launch</span>` : S.mode === "endless" ? `<span class="sb-lead">Endless · ${S.scores ? S.scores.filter(x => x && x.secretHit).length : 0} 🌟 found</span>` : ""}</div>
       ${oppLabel ? pod(oppLabel, oppName ? S.oppScores : null, "pod-opp", prevOpp, "opp", oppName ? "" : "plays after you") : ""}
     </div>`;
   let body = "";
@@ -1277,7 +1363,7 @@ function viewPlay() {
     body = `
       <div class="prompt-card">
         <div class="ring" id="ring" style="--p:1"><span id="clock">${ROUND_SECONDS}</span></div>
-        <p class="round-label">Round ${S.round + 1} of ${ROUNDS}</p>
+        <p class="round-label">${roundLabel()}${prompt.twist ? ` · <span class="twist-warn">twist round, read the rule!</span>` : ""}</p>
         <h2 class="prompt">${promptTitle(prompt)}</h2>
         ${S.phase === "answer" ? `
         <form id="answer-form" autocomplete="off">
@@ -1297,7 +1383,8 @@ function viewPlay() {
   </main>`;
 }
 
-function promptTitle(p) { return p.twist ? `${esc(p.baseQ)} <span class="twist">${esc(p.twist)}</span>` : esc(p.q); }
+function roundLabel() { return S.mode === "endless" ? `Round ${S.round + 1} · Endless` : `Round ${S.round + 1} of ${ROUNDS}`; }
+function promptTitle(p) { return p.twist ? `${esc(p.baseQ)} <span class="twist"><b class="twist-tag">Twist</b> ${esc(p.twist)}</span>` : esc(p.q); }
 // Where an answer's avatar ends up in the sky column (percent from the top).
 // Rarer answers climb higher; a miss stays on the launch pad at the bottom.
 function diveY(r) {
@@ -1346,7 +1433,7 @@ function revealBlock(prompt, oppName) {
   while (samples.length < 4 && pool.length) samples.push(pool.splice(Math.floor(r() * pool.length), 1)[0].a.display);
   const same = S.lastTheirs && S.lastMine.valid && S.lastTheirs.valid && S.lastMine.idx === S.lastTheirs.idx;
   return `<div class="reveal">
-    <p class="round-label">Round ${S.round + 1} of ${ROUNDS}</p>
+    <p class="round-label">${roundLabel()}</p>
     <h2 class="prompt small">${promptTitle(prompt)}</h2>
     <div class="reveal-grid">
     ${diveColumn(oppName)}
@@ -1356,9 +1443,10 @@ function revealBlock(prompt, oppName) {
     </div>
     </div>
     ${same ? `<p class="same">Same answer. You both score it.</p>` : ""}
-    ${S.unlockNote ? `<p class="unlock-note">That's Attillion #${S.unlockNote.krill}! You unlocked the ${avMarkup(S.unlockNote)} <b>${S.unlockNote.name}</b>. <button class="link" data-go="settings">Use it</button></p>` : ""}
-    <p class="trench">Up among the stars: ${samples.map(esc).join(", ")}</p>
-    <button class="btn primary" id="next" data-act="next">${S.round < ROUNDS - 1 ? "Next prompt" : "See results"}</button>
+    ${S.unlockNote ? `<p class="unlock-note">That's Attillion #${S.unlockNote.krill}! You unlocked the ${avMarkup(S.unlockNote)} <b>${S.unlockNote.name}</b>. <button class="link" data-go="avatar">Use it</button></p>` : ""}
+    ${S.mode === "endless" ? (S.lastMine.secretHit ? `<p class="best-note">You found the one secret 1 in Attillion!</p>` : `<p class="trench">The one secret 1 in Attillion was: <b>${esc(prompt.answers[S.secret].display)}</b></p>`) : `<p class="trench">Up among the stars: ${samples.map(esc).join(", ")}</p>`}
+    ${S.mode === "endless" ? `<div class="row"><button class="btn primary" id="next" data-act="next">Next prompt</button><button class="btn ghost" data-act="endless-stop">Stop here</button></div>`
+      : `<button class="btn primary" id="next" data-act="next">${S.round < ROUNDS - 1 ? "Next prompt" : "See results"}</button>`}
   </div>`;
 }
 
@@ -1381,13 +1469,19 @@ function viewResults() {
   if (res.tokens) {
     const prize = avatarById("ev-" + EVENT.key);
     extra += `<p class="best-note ev-note">+${res.tokens} ${EVENT.token} ${esc(EVENT.tokenName)} · ${eventTokens(me())} / ${EVENT_GOAL}</p>`;
-    if (res.evUnlocked) extra += `<p class="unlock-note">You collected ${EVENT_GOAL} ${EVENT.token} and unlocked the ${avMarkup(prize)} <b>${esc(prize.name)}</b>! <button class="link" data-go="settings">Use it</button></p>`;
+    if (res.evUnlocked) extra += `<p class="unlock-note">You collected ${EVENT_GOAL} ${EVENT.token} and unlocked the ${avMarkup(prize)} <b>${esc(prize.name)}</b>! <button class="link" data-go="avatar">Use it</button></p>`;
   }
   if (S.mode === "solo") {
     const st = soloStats();
     extra += res.newBest && res.prevBest > 0 ? `<p class="best-note">New personal best! Up from ${res.prevBest}.</p>`
       : res.newBest ? `<p class="best-note">Your first Free Launch score. Now beat it.</p>`
       : `<p class="hint">Your best Free Launch: <b>${st.best}</b> · ${st.plays} launch${st.plays === 1 ? "" : "es"} so far</p>`;
+  }
+  if (S.mode === "endless") {
+    const st = endlessStats();
+    extra += `<p class="best-note">${res.rounds} prompt${res.rounds === 1 ? "" : "s"} played · ${res.found} secret 1 in Attillion${res.found === 1 ? "" : "s"} found</p>`;
+    extra += res.newBest && res.prevBest > 0 ? `<p class="best-note">New Endless best! Up from ${res.prevBest}.</p>`
+      : `<p class="hint">Best Endless score: <b>${st.best || 0}</b> · most secrets in one run: <b>${st.mostFound || 0}</b> · longest run: <b>${st.longest || 0}</b> prompts</p>`;
   }
   if (S.mode === "subject") {
     const st = subjectStats(S.cat);
@@ -1406,18 +1500,19 @@ function viewResults() {
     extra += codeBox(`Send this back to ${esc(S.challenge.from)}`, res.code, "r", "Their game updates when they paste it under Enter a code.");
   }
   return `${header()}<main class="results">
-    <p class="eyebrow">${S.mode === "live" ? "Quick match" : S.mode === "solo" ? "Free Launch" : S.mode === "subject" ? subjName() + " Launch" : S.mode === "daily" ? "Daily Launch #" + dailyNumber(S.dailyKey) : S.mode === "bot" ? "vs " + BOTS[S.level].name : S.mode === "challenge-host" ? "Challenge created" : "Challenge from " + esc(S.challenge.from)}</p>
+    <p class="eyebrow">${S.mode === "live" ? "Quick match" : S.mode === "endless" ? "Endless Launch" : S.mode === "solo" ? "Free Launch" : S.mode === "subject" ? subjName() + " Launch" : S.mode === "daily" ? "Daily Launch #" + dailyNumber(S.dailyKey) : S.mode === "bot" ? "vs " + BOTS[S.level].name : S.mode === "challenge-host" ? "Challenge created" : "Challenge from " + esc(S.challenge.from)}</p>
     <h1>${verdict || `You scored ${res.my}`}</h1>
     <div class="totals">
-      <div><span>${myAvatar()} You</span><b>${res.my}</b><em>played like ${perfElo(res.my, ROUNDS).toLocaleString()}</em></div>
+      <div><span>${myAvatar()} You</span><b>${res.my}</b><em>played like ${perfElo(res.my, S.mode === "endless" ? Math.max(1, res.rounds) : ROUNDS).toLocaleString()}</em></div>
       ${oppName ? `<div><span>${oppAvatar()} ${esc(oppName)}</span><b>${res.their}</b><em>played like ${perfElo(res.their, ROUNDS).toLocaleString()}</em></div>` : ""}
-      <div class="of">out of ${ROUNDS * 100}</div>
+      <div class="of">out of ${(S.mode === "endless" ? res.rounds : ROUNDS) * 100}</div>
     </div>
     ${extra}
     <div class="table-wrap"><table class="breakdown"><thead><tr><th>Prompt</th><th>You</th><th>Pts</th>${oppName ? `<th>${esc(oppName)}</th><th>Pts</th>` : ""}</tr></thead><tbody>${rows}</tbody></table></div>
     <div class="row">
       ${S.mode === "live" ? `<button class="btn primary" data-act="quick">Find another match</button>` : ""}
       ${S.mode === "solo" ? `<button class="btn primary" data-act="solo">Launch again</button>` : ""}
+      ${S.mode === "endless" ? `<button class="btn primary" data-act="endless">Start a new endless run</button>` : ""}
       ${S.mode === "subject" ? `<button class="btn primary" data-act="subject" data-cat="${S.cat}">Play ${subjName()} again</button>` : ""}
       ${S.mode === "bot" ? `<button class="btn primary" data-act="bot" data-level="${S.level}">Rematch ${BOTS[S.level].name}</button>` : ""}
       <button class="btn ghost" data-go="home">Back to Earth</button>
@@ -1526,12 +1621,16 @@ function viewProfile() {
   </main>`;
 }
 
-function viewSettings() {
+function tabsBar(active) {
+  const tabs = [["home", "🚀", "Play"], ["bots", "🤖", "Play bots"], ["avatar", "👩‍🚀", "Avatar"], ["settings", "⚙️", "Settings"]];
+  return `<nav class="tabs" aria-label="Sections">${tabs.map(([v, ic, l]) => `<button data-go="${v}" class="tab ${active === v ? "on" : ""}" aria-current="${active === v ? "page" : "false"}"><span aria-hidden="true">${ic}</span>${l}</button>`).join("")}</nav>`;
+}
+function viewAvatar() {
   const u = me();
   const peak = u ? u.peak : 0;
   const current = myAvatarObj().e + myAvatarObj().id;
-  return `${header()}<main class="narrow">
-    <p class="eyebrow">Settings</p>
+  return `${header()}${tabsBar("avatar")}<main class="narrow">
+    <p class="eyebrow">Avatar</p>
     <h1>Your avatar</h1>
     <p class="lede small">This is you on the launch tower. Rarer answers send it higher. New avatars unlock as your best Elo climbs.${u ? ` Your best so far is <b>${peak}</b>.` : ""}</p>
     ${u ? "" : `<p class="hint"><button class="link" data-go="login">Log in</button> to earn Elo and unlock more avatars.</p>`}
@@ -1551,7 +1650,13 @@ function viewSettings() {
       <button class="btn primary small" type="submit">Unlock</button>
     </form>
     <p class="error" id="code-msg" role="alert">${esc(S.codeMsg || "")}</p>
-
+  </main>`;
+}
+function viewSettings() {
+  const u = me();
+  return `${header()}${tabsBar("settings")}<main class="narrow">
+    <p class="eyebrow">Settings</p>
+    <h1>Settings</h1>
     <h2>Screen</h2>
     ${layoutBar()}
     <p class="hint">Auto fits whatever screen you're on. Pick one to use that layout anywhere. Saved on this device.</p>
@@ -1743,12 +1848,12 @@ function fillDescriptions() {
 function render() {
   const v = S.view;
   const html = v === "play" ? viewPlay() : v === "results" ? viewResults() : v === "login" ? viewLogin()
-    : v === "settings" ? viewSettings() : v === "profile" ? viewProfile() : v === "leaderboard" ? viewLeaderboard() : v === "join" ? viewJoin()
+    : v === "settings" ? viewSettings() : v === "avatar" ? viewAvatar() : v === "bots" ? viewBots() : v === "profile" ? viewProfile() : v === "leaderboard" ? viewLeaderboard() : v === "join" ? viewJoin()
     : v === "queue" ? viewQueue() : v === "challenge" ? viewChallengeIntro() : v === "reply" ? viewReplyResult() : v === "daily-done" ? viewDailyDone() : viewHome();
   $app().innerHTML = html;
   document.body.dataset.view = v;
   fillDescriptions();
-  if (window.KrillionFX) window.KrillionFX.setDepth(v === "play" ? 0.15 + 0.85 * (S.round / (ROUNDS - 1)) : 0);
+  if (window.KrillionFX) window.KrillionFX.setDepth(v === "play" ? 0.15 + 0.85 * Math.min(1, S.round / (ROUNDS - 1)) : 0);
 }
 
 /* ---------- events ---------- */
@@ -1773,6 +1878,8 @@ document.addEventListener("click", async e => {
   }
   else if (act === "daily-view") go("daily-done");
   else if (act === "solo") startMatch({ mode: "solo" });
+  else if (act === "endless") startMatch({ mode: "endless" });
+  else if (act === "endless-stop") { if (S.view === "play" && S.mode === "endless" && S.phase === "reveal") finishMatch(); }
   else if (act === "subject" && SUBJECT_BY_KEY[t.dataset.cat]) startMatch({ mode: "subject", cat: t.dataset.cat });
   else if (act === "challenge-new") {
     const id = Math.random().toString(36).slice(2, 10);
@@ -1858,20 +1965,20 @@ document.addEventListener("submit", async e => {
     const bundle = BUNDLES.find(x => x.code === h);
     if (bundle) {
       const u = me();
-      if (redeemed(u).includes(bundle.id)) { go("settings", { codeMsg: `You already unlocked ${bundle.name}.` }); return; }
+      if (redeemed(u).includes(bundle.id)) { go("avatar", { codeMsg: `You already unlocked ${bundle.name}.` }); return; }
       if (u) updateUser(x => { x.codes = (x.codes || []).concat(bundle.id); x.avatar = bundle.pick; });
       else { store.set("guestCodes", redeemed(null).concat(bundle.id)); store.set("guestAvatar", bundle.pick); }
-      go("settings", { codeMsg: `Unlocked ${bundle.name}: ☄️ 🌘 🪐 🌌` });
+      go("avatar", { codeMsg: `Unlocked ${bundle.name}: ☄️ 🌘 🪐 🌌` });
       celebrateAvatar(bundle.pick);
       return;
     }
     const a = AVATARS.find(x => x.code === h);
-    if (!a) { SFX("error"); go("settings", { codeMsg: "That code doesn't unlock anything." }); return; }
+    if (!a) { SFX("error"); go("avatar", { codeMsg: "That code doesn't unlock anything." }); return; }
     const u = me();
-    if (redeemed(u).includes(a.id)) { go("settings", { codeMsg: `You already have the ${a.name}.` }); return; }
+    if (redeemed(u).includes(a.id)) { go("avatar", { codeMsg: `You already have the ${a.name}.` }); return; }
     if (u) updateUser(x => { x.codes = (x.codes || []).concat(a.id); x.avatar = a.id; });
     else { store.set("guestCodes", redeemed(null).concat(a.id)); store.set("guestAvatar", a.id); }
-    go("settings", { codeMsg: `Unlocked: ${a.e} ${a.name}${a.dev ? " (Developer)" : ""}. It's now your avatar.` });
+    go("avatar", { codeMsg: `Unlocked: ${a.e} ${a.name}${a.dev ? " (Developer)" : ""}. It's now your avatar.` });
     celebrateAvatar(a.id);
     return;
   }
