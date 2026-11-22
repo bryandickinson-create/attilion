@@ -524,7 +524,7 @@ function playReveal() {
   requestAnimationFrame(() => requestAnimationFrame(() => { if (dMe) dMe.classList.add("go"); }));
   if (mineCard) {
     FX.countUp(mineCard.querySelector(".pts b"), S.lastMine.points, 900);
-    FX.reveal(mineCard, S.lastMine.valid ? S.lastMine.zone.key : null, "you", { devTakeover: ["rdev", "gdev"].includes(myAvatarObj().id) ? myAvatarObj().id : null });
+    FX.reveal(mineCard, S.lastMine.valid ? S.lastMine.zone.key : null, "you", { devTakeover: ["dev", "rdev", "gdev"].includes(myAvatarObj().id) ? myAvatarObj().id : null });
     SFX(S.lastMine.valid ? S.lastMine.zone.key : "miss");
     FX.countUp(document.getElementById("pod-me"), total(S.scores), 900);
   }

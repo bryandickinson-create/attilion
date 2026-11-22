@@ -455,6 +455,10 @@ body.krillion-hit::after { background: radial-gradient(ellipse at center, rgba(4
 /* secret Saturn: warm butterscotch bands, set apart from the Elo planet */
 .av-saturn { filter: sepia(.9) saturate(2.2) hue-rotate(-8deg) brightness(1.08) drop-shadow(0 0 5px rgba(255,214,150,.6)); }
 h2 + .layout-bar { justify-content: flex-start; margin-top: 10px; }
+/* plain Developer takeover: its own purple */
+.dev-takeover.plain { background: radial-gradient(circle at var(--ox) var(--oy), rgba(160,110,255,.16), rgba(3,4,14,.55) 70%); }
+.dev-takeover.plain .dev-giant { animation: devgrow 2.9s cubic-bezier(.5,0,.3,1) forwards; }
+.dev-takeover.plain .dev-label { color: #d9c6ff; text-shadow: 0 0 22px rgba(160,110,255,.8), 0 4px 0 rgba(0,0,0,.4); }
 </style></head><body>
 <div id="app"></div>
 <script>
@@ -1121,7 +1125,7 @@ function playReveal() {
   requestAnimationFrame(() => requestAnimationFrame(() => { if (dMe) dMe.classList.add("go"); }));
   if (mineCard) {
     FX.countUp(mineCard.querySelector(".pts b"), S.lastMine.points, 900);
-    FX.reveal(mineCard, S.lastMine.valid ? S.lastMine.zone.key : null, "you", { devTakeover: ["rdev", "gdev"].includes(myAvatarObj().id) ? myAvatarObj().id : null });
+    FX.reveal(mineCard, S.lastMine.valid ? S.lastMine.zone.key : null, "you", { devTakeover: ["dev", "rdev", "gdev"].includes(myAvatarObj().id) ? myAvatarObj().id : null });
     SFX(S.lastMine.valid ? S.lastMine.zone.key : "miss");
     FX.countUp(document.getElementById("pod-me"), total(S.scores), 900);
   }
@@ -2312,12 +2316,12 @@ function ring(card, rgb, n, dur) {
 /* Rainbow Developer's own Attillion: the creature grows from tiny until it fills
    the screen, then vanishes. */
 function devTakeover(card, id) {
-  const gold = id === "gdev";
+  const gold = id === "gdev", plain = id === "dev";
   const { x, y } = gaugePoint(card);
   const el = document.createElement("div");
-  el.className = "dev-takeover" + (gold ? " gold" : "");
+  el.className = "dev-takeover" + (gold ? " gold" : plain ? " plain" : "");
   el.style.setProperty("--ox", x + "px"); el.style.setProperty("--oy", y + "px");
-  el.innerHTML = `<span class="dev-giant avg av-${gold ? "gdev" : "rdev"}">👾</span><p class="dev-label">1 in an Attillion</p>`;
+  el.innerHTML = `<span class="dev-giant avg av-${gold ? "gdev" : plain ? "dev" : "rdev"}">👾</span><p class="dev-label">1 in an Attillion</p>`;
   document.body.appendChild(el);
   const end = () => el.remove();
   const t = setTimeout(end, 2900);
@@ -2325,7 +2329,7 @@ function devTakeover(card, id) {
   for (let i = 0; i < 3; i++) parts.push({
     x, y, life: 1.6, max: 1.6, delay: i * 0.2, hue: i * 120,
     update(p, dt) { if (p.delay > 0) { p.delay -= dt; p.life += dt; } },
-    draw(c, p) { if (p.delay > 0) return; const k = 1 - p.life / p.max; c.strokeStyle = gold ? `hsla(${40 + p.hue / 30},100%,62%,${(1 - k) * 0.9})` : `hsla(${(p.hue + k * 360) % 360},90%,65%,${(1 - k) * 0.9})`; c.lineWidth = 5 * (1 - k) + 1; c.beginPath(); c.arc(p.x, p.y, 20 + k * Math.max(W, H) * 0.7, 0, TAU); c.stroke(); }
+    draw(c, p) { if (p.delay > 0) return; const k = 1 - p.life / p.max; c.strokeStyle = plain ? `hsla(${265 + p.hue / 20},90%,68%,${(1 - k) * 0.9})` : gold ? `hsla(${40 + p.hue / 30},100%,62%,${(1 - k) * 0.9})` : `hsla(${(p.hue + k * 360) % 360},90%,65%,${(1 - k) * 0.9})`; c.lineWidth = 5 * (1 - k) + 1; c.beginPath(); c.arc(p.x, p.y, 20 + k * Math.max(W, H) * 0.7, 0, TAU); c.stroke(); }
   });
 }
 const escH = v => String(v == null ? "" : v).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -2381,7 +2385,7 @@ window.KrillionFX = {
   // the full 1 in an Attillion moment, played when you pick a new avatar
   celebrate(el, avatarId, avatarHtml, label) {
     if (!el || reduce) return;
-    if (avatarId === "rdev" || avatarId === "gdev") devTakeover(el, avatarId);
+    if (avatarId === "dev" || avatarId === "rdev" || avatarId === "gdev") devTakeover(el, avatarId);
     else krillion(el, "", { avatarHtml, label });
     runFx();
   },

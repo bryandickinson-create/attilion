@@ -450,3 +450,7 @@ body.krillion-hit::after { background: radial-gradient(ellipse at center, rgba(4
 /* secret Saturn: warm butterscotch bands, set apart from the Elo planet */
 .av-saturn { filter: sepia(.9) saturate(2.2) hue-rotate(-8deg) brightness(1.08) drop-shadow(0 0 5px rgba(255,214,150,.6)); }
 h2 + .layout-bar { justify-content: flex-start; margin-top: 10px; }
+/* plain Developer takeover: its own purple */
+.dev-takeover.plain { background: radial-gradient(circle at var(--ox) var(--oy), rgba(160,110,255,.16), rgba(3,4,14,.55) 70%); }
+.dev-takeover.plain .dev-giant { animation: devgrow 2.9s cubic-bezier(.5,0,.3,1) forwards; }
+.dev-takeover.plain .dev-label { color: #d9c6ff; text-shadow: 0 0 22px rgba(160,110,255,.8), 0 4px 0 rgba(0,0,0,.4); }
