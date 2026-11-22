@@ -962,7 +962,8 @@ function answerCard(label, r, me_) {
       <div class="gauge" aria-hidden="true"><span style="--d:${depthPct.toFixed(1)}%"></span></div>
       <p class="pts"><b>0</b> pts</p>
       <p class="meta">${r.zone.name} · ${altText(r.depth)} up · ${oneIn(r.share)}</p>
-      <p class="played">Played like <b>${perfElo(r.points, 1).toLocaleString()}</b></p>`
+      <p class="played">Played like <b>${perfElo(r.points, 1).toLocaleString()}</b></p>
+      ${r.points === 100 ? `<p class="what" data-what="${esc(r.display)}" data-hint="${esc(curHint())}" hidden></p>` : ""}`
     : `<p class="pts"><b>0</b> pts</p><p class="meta">${r.raw ? "Not on our list for this prompt" : "Time ran out"}</p><p class="played">Played like <b>${perfElo(0, 1).toLocaleString()}</b></p>`}
   </div>`;
 }
@@ -1112,6 +1113,7 @@ function viewProfile() {
       <div class="krill-card">
         <p class="kc-a">${esc(k.a)}</p>
         <p class="kc-q">${esc(k.q)}</p>
+        <p class="what small" data-what="${esc(k.a)}" data-hint="${esc(topicHint(k.q))}" hidden></p>
         <p class="kc-m">${new Date(k.when).toLocaleDateString(undefined, { month: "short", day: "numeric" })} · ${esc(k.mode)} · ${altText(k.depth)}</p>
       </div>`).join("")}</div>` : `<p class="hint">None yet. Find an answer almost nobody would say and it will be saved here.</p>`}
     <h2>Recent matches</h2>
@@ -1261,6 +1263,62 @@ function viewReplyResult() {
   </main>`;
 }
 
+/* ---------- "What is it?" blurbs for 1 in an Attillion answers ----------
+ * Looked up live from Wikipedia (search for the answer plus the prompt's topic),
+ * cached in this browser. If the lookup is blocked or finds nothing, the blurb
+ * just doesn't show. */
+function topicHint(q) {
+  let t = String(q || "").replace(/^Name\s+/i, "").replace(/^(a|an|some)\s+/i, "");
+  if (/^something\b/i.test(t)) { const w = t.split(/\s+/); return w[w.length - 1]; }
+  t = t.replace(/^(type of|kind of|famous|piece of|way to|item of)\s+/i, "").replace(/^part of the human body/i, "anatomy").replace(/^game kids play.*/i, "game");
+  t = t.split(/\s+(?:in|on|at|that|that's|with|or|you|people|for|ending|starting)\b|,/i)[0];
+  return t.replace(/^(type of|kind of|famous)\s+/i, "").trim();
+}
+function curHint() { const pr = S.prompts && PROMPT_BY_ID[S.prompts[S.round]]; return pr ? topicHint(pr.baseQ || pr.q) : ""; }
+const descMem = {};
+function lookupDesc(answer, hint) {
+  const key = (answer + "|" + hint).toLowerCase();
+  if (key in descMem) return Promise.resolve(descMem[key]);
+  const cache = store.get("desc", {});
+  if (key in cache) { descMem[key] = cache[key]; return Promise.resolve(cache[key]); }
+  const ctl = typeof AbortController === "function" ? new AbortController() : null;
+  const to = setTimeout(() => ctl && ctl.abort(), 7000);
+  const url = "https://en.wikipedia.org/w/api.php?" + new URLSearchParams({
+    action: "query", format: "json", origin: "*", redirects: "1",
+    generator: "search", gsrsearch: (answer + " " + hint).trim(), gsrlimit: "1",
+    prop: "extracts|description|info", inprop: "url", exintro: "1", explaintext: "1", exsentences: "2"
+  });
+  const p = fetch(url, ctl ? { signal: ctl.signal } : {}).then(r => r.ok ? r.json() : Promise.reject(0)).then(j => {
+    const pages = j && j.query && j.query.pages; if (!pages) return null;
+    const pg = Object.values(pages)[0] || {};
+    let text = String(pg.extract || "").replace(/\s*\([^()]*\)/g, "").replace(/\s+/g, " ").trim();
+    const m = text.match(/^.{20,}?[.!?](?=\s|$)/); if (m) text = m[0];
+    if (text.length > 200) text = text.slice(0, 197).replace(/\s+\S*$/, "") + "…";
+    if (!text && pg.description) text = pg.description.charAt(0).toUpperCase() + pg.description.slice(1) + ".";
+    if (!text || /may (also )?refer to/i.test(text)) return null;
+    return { t: text, url: pg.fullurl || "https://en.wikipedia.org/wiki/" + encodeURIComponent(String(pg.title || answer).replace(/ /g, "_")) };
+  }).then(v => {
+    descMem[key] = v;
+    const c = store.get("desc", {}); c[key] = v; const ks = Object.keys(c); if (ks.length > 400) delete c[ks[0]]; store.set("desc", c);
+    return v;
+  }, () => null).finally(() => clearTimeout(to));
+  return p;
+}
+function fillDescriptions() {
+  document.querySelectorAll("[data-what]:not([data-done])").forEach(el => {
+    el.dataset.done = "1"; el.hidden = false; el.classList.add("loading"); el.textContent = "Looking it up…";
+    lookupDesc(el.dataset.what, el.dataset.hint || "").then(d => {
+      if (!document.body.contains(el)) return;
+      el.classList.remove("loading");
+      if (!d) { el.hidden = true; return; }
+      el.textContent = "";
+      const b = document.createElement("b"); b.textContent = "What is it? ";
+      const a = document.createElement("a"); a.href = /^https:\/\/[a-z]+\.wikipedia\.org\//.test(d.url) ? d.url : "https://en.wikipedia.org/"; a.target = "_blank"; a.rel = "noopener"; a.textContent = "Wikipedia";
+      el.append(b, d.t + " ", a);
+    });
+  });
+}
+
 function render() {
   const v = S.view;
   const html = v === "play" ? viewPlay() : v === "results" ? viewResults() : v === "login" ? viewLogin()
@@ -1268,6 +1326,7 @@ function render() {
     : v === "queue" ? viewQueue() : v === "challenge" ? viewChallengeIntro() : v === "reply" ? viewReplyResult() : v === "daily-done" ? viewDailyDone() : viewHome();
   $app().innerHTML = html;
   document.body.dataset.view = v;
+  fillDescriptions();
   if (window.KrillionFX) window.KrillionFX.setDepth(v === "play" ? 0.15 + 0.85 * (S.round / (ROUNDS - 1)) : 0);
 }
 
