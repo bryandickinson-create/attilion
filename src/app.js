@@ -310,6 +310,7 @@ const SUBJECTS = [
   { key: "geography", name: "Geography", icon: "🌍" },
   { key: "religion", name: "Religion", icon: "🕊️" },
   { key: "movies", name: "Movies & TV", icon: "🎬" },
+  { key: "weather", name: "Weather & Disasters", icon: "🌪️" },
   { key: "seasonal", get name() { return SEASONS[seasonKey()].name; }, get icon() { return SEASONS[seasonKey()].icon; } }
 ];
 // Seasonal Launch: topics change with the time of year
@@ -326,7 +327,8 @@ const CAT_OF = {
   god: "religion",
   beach: "season-summer", icecream: "season-summer", camping: "season-summer", carnival: "season-summer",
   flower: "season-spring", insect: "season-spring", holiday: "season-winter",
-  animated: "movies", superhero: "movies"
+  animated: "movies", superhero: "movies",
+  weather: "weather", volcano: "weather geography", disaster: "history weather", rainthing: "season-spring weather"
 };
 (window.KRILLION_PROMPTS || []).forEach(p => {
   const more = (window.KRILLION_MORE || {})[p.id];
