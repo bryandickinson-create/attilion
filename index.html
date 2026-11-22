@@ -3,21 +3,21 @@
 <title>Attillion</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap">
 <style>
-/* Layout: one centred column that reads like a dive log; depth bands carry the
-   rarity story. Single deep-water theme by choice, so both host themes look the same. */
+/* Layout: one centred column; altitude bands carry the
+   rarity story. Single outer-space theme by choice, so both host themes look the same. */
 :root {
   color-scheme: dark;
-  --sea: #071c2b;          /* page ground */
-  --sea-2: #0c2a3d;        /* raised surface */
-  --sea-3: #12384f;        /* borders, inputs */
-  --foam: #e8f3f1;         /* main text */
-  --kelp: #93b4b8;         /* secondary text */
-  --krill: #ff8a73;        /* accent: krill pink-coral */
-  --krill-ink: #2a0d08;
-  --sunlight: #f3ede0;
-  --twilight: #5fc4c9;
-  --midnight: #4a7fd6;
-  --abyss: #8b6ee0;
+  --sea: #070a1f;          /* page ground */
+  --sea-2: #10163a;        /* raised surface */
+  --sea-3: #232c5e;        /* borders, inputs */
+  --foam: #eef0ff;         /* main text */
+  --kelp: #a6abd8;         /* secondary text */
+  --krill: #ff8a4c;        /* accent: rocket-flame orange */
+  --krill-ink: #2a1206;
+  --sunlight: #8fd8ff;
+  --twilight: #7aa2ff;
+  --midnight: #a58bff;
+  --abyss: #dcdcf0;
   --hadal: #ffc93c;          /* 1 in an Attillion: gold */
   --bad: #c86a6a;
   --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
@@ -29,14 +29,18 @@
 html, body { min-height: 100%; }
 body {
   margin: 0; background: var(--sea); color: var(--foam);
-  background-image: linear-gradient(180deg, #0b2a3c 0%, var(--sea) 340px, #04121c 100%);
+  background-image: linear-gradient(180deg, #03040f 0%, var(--sea) 340px, #0e1a4a 100%);
   background-attachment: fixed;
   font: 16px/1.55 var(--font-body);
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
   padding-block: 0 48px;
 }
-#app { max-width: 880px; margin: 0 auto; }
+#app { max-width: 880px; margin: 0 auto; container-type: inline-size; container-name: app; transition: max-width .35s ease; }
+/* Screen mode from Settings: Auto follows the real screen; the others pin the layout. */
+html[data-device="phone"] #app { max-width: 400px; }
+html[data-device="ipad"] #app { max-width: 780px; }
+html[data-device="computer"] #app { max-width: 880px; min-width: min(880px, 100%); }
 button { font: inherit; color: inherit; cursor: pointer; }
 :focus-visible { outline: 2px solid var(--krill); outline-offset: 3px; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
@@ -44,7 +48,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* header */
 .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 18px; flex-wrap: wrap; }
 .brand { background: none; border: 0; font: 800 24px/1 var(--font-display); letter-spacing: -0.02em; display: flex; align-items: center; gap: 10px; padding: 0; }
-.mark { width: 26px; height: 26px; border-radius: 50% 50% 50% 8px; background: var(--krill); transform: rotate(-45deg); box-shadow: inset -6px -4px 0 rgba(0,0,0,.18); }
+.mark { position: relative; width: 24px; height: 24px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffc49a, var(--krill) 55%, #b9431a); }
+.mark::after { content: ""; position: absolute; left: -7px; right: -7px; top: 9px; height: 6px; border: 2px solid #ffd9b8; border-radius: 50%; transform: rotate(-18deg); border-bottom-color: transparent; }
 .top nav { display: flex; gap: 8px; align-items: center; }
 .top nav button { background: none; border: 1px solid transparent; padding: 8px 12px; border-radius: 999px; color: var(--kelp); }
 .top nav button:hover { color: var(--foam); }
@@ -53,7 +58,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 /* type */
 h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; letter-spacing: -0.02em; margin: 0; }
-h1 { font-size: clamp(34px, 6vw, 58px); line-height: 1.02; font-weight: 800; }
+h1 { font-size: clamp(34px, 6cqi, 58px); line-height: 1.02; font-weight: 800; }
 h1 em { font-style: normal; color: var(--krill); }
 h2 { font-size: 22px; font-weight: 700; }
 .eyebrow { text-transform: uppercase; letter-spacing: .12em; font-size: 12px; color: var(--kelp); margin: 0 0 10px; font-family: var(--font-data); }
@@ -68,7 +73,7 @@ h2 { font-size: 22px; font-weight: 700; }
 .btn { border-radius: 999px; padding: 12px 22px; font-weight: 700; border: 1px solid transparent; transition: transform .12s ease, background .12s; }
 .btn:active { transform: translateY(1px); }
 .btn.primary { background: var(--krill); color: var(--krill-ink); }
-.btn.primary:hover { background: #ffa18e; }
+.btn.primary:hover { background: #ffab7a; }
 .btn.ghost { background: transparent; border-color: var(--sea-3); }
 .btn.ghost:hover { border-color: var(--kelp); }
 .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
@@ -79,11 +84,11 @@ h2 { font-size: 22px; font-weight: 700; }
 .legend li { padding: 12px 12px 14px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .legend .zn { font-weight: 700; }
 .legend .zd { font-family: var(--font-data); opacity: .8; font-size: 12px; }
-.legend .z-sunlight { background: #1d4a5a; color: var(--sunlight); }
-.legend .z-twilight { background: #143d52; color: var(--twilight); }
-.legend .z-midnight { background: #0f2d48; color: #8fb3f0; }
-.legend .z-abyss { background: #0b1f38; color: #b7a5f0; }
-.legend .z-hadal { background: #060f1e; color: var(--hadal); box-shadow: inset 0 0 0 1px rgba(255,201,60,.35); }
+.legend .z-sunlight { background: #24508a; color: var(--sunlight); }
+.legend .z-twilight { background: #1b2f6a; color: var(--twilight); }
+.legend .z-midnight { background: #151d4f; color: #a58bff; }
+.legend .z-abyss { background: #10143a; color: #dcdcf0; }
+.legend .z-hadal { background: #07081a; color: var(--hadal); box-shadow: inset 0 0 0 1px rgba(255,201,60,.35); }
 
 .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 32px; }
 .mode { background: var(--sea-2); border: 1px solid var(--sea-3); border-radius: var(--r); padding: 22px; display: flex; flex-direction: column; min-width: 0; }
@@ -92,7 +97,7 @@ h2 { font-size: 22px; font-weight: 700; }
 .mode .row .btn { margin-top: 0; }
 .mode-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .tag { font-family: var(--font-data); font-size: 12px; color: var(--kelp); }
-.mode.daily { background: linear-gradient(160deg, #14405a, var(--sea-2) 70%); }
+.mode.daily { background: linear-gradient(160deg, #1d2a66, var(--sea-2) 70%); }
 .done b { color: var(--krill); font-family: var(--font-data); }
 .mode.bots { grid-column: 1 / -1; }
 .bots-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 14px; }
@@ -103,7 +108,7 @@ h2 { font-size: 22px; font-weight: 700; }
 .bot-blurb { grid-column: 1 / -1; color: var(--kelp); font-size: 13px; line-height: 1.4; }
 .bot-minnow .bot-name { color: var(--sunlight); }
 .bot-fish .bot-name { color: var(--twilight); }
-.bot-barracuda .bot-name { color: #8fb3f0; }
+.bot-barracuda .bot-name { color: #a58bff; }
 .bot-shark .bot-name { color: var(--krill); }
 
 /* play */
@@ -114,10 +119,10 @@ h2 { font-size: 22px; font-weight: 700; }
 .pip { width: 26px; height: 6px; border-radius: 3px; background: var(--sea-3); }
 .pip.done { background: var(--kelp); }
 .pip.now { background: var(--krill); }
-.prompt-card, .reveal { background: var(--sea-2); border: 1px solid var(--sea-3); border-radius: 20px; padding: clamp(22px, 5vw, 44px); text-align: center; position: relative; }
+.prompt-card, .reveal { background: var(--sea-2); border: 1px solid var(--sea-3); border-radius: 20px; padding: clamp(22px, 5cqi, 44px); text-align: center; position: relative; }
 .round-label { font-family: var(--font-data); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--kelp); margin: 0 0 8px; }
-.prompt { font-size: clamp(30px, 6vw, 50px); line-height: 1.05; font-weight: 800; margin: 0 auto 26px; max-width: 18ch; }
-.prompt.small { font-size: clamp(24px, 4vw, 34px); margin-bottom: 20px; }
+.prompt { font-size: clamp(30px, 6cqi, 50px); line-height: 1.05; font-weight: 800; margin: 0 auto 26px; max-width: 18ch; }
+.prompt.small { font-size: clamp(24px, 4cqi, 34px); margin-bottom: 20px; }
 .ring { --p: 1; width: 74px; height: 74px; margin: 0 auto 18px; border-radius: 50%; display: grid; place-items: center;
   background: conic-gradient(var(--krill) calc(var(--p) * 360deg), var(--sea-3) 0); }
 .ring span { width: 60px; height: 60px; border-radius: 50%; background: var(--sea-2); display: grid; place-items: center; font: 600 24px var(--font-data); }
@@ -140,13 +145,13 @@ h2 { font-size: 22px; font-weight: 700; }
 .ans .pts { margin: 10px 0 0; font-size: 15px; color: var(--kelp); }
 .ans .pts b { font: 700 34px var(--font-data); color: var(--zc, var(--foam)); margin-right: 4px; }
 .ans .meta { margin: 2px 0 0; font-size: 13px; color: var(--kelp); }
-.gauge { margin-top: 14px; height: 10px; border-radius: 5px; background: linear-gradient(90deg, #1d4a5a, #143d52 10%, #0f2d48 30%, #0b1f38 55%, #060f1e); position: relative; }
+.gauge { margin-top: 14px; height: 10px; border-radius: 5px; background: linear-gradient(90deg, #24508a, #1b2f6a 10%, #151d4f 30%, #10143a 55%, #07081a); position: relative; }
 .gauge span { position: absolute; left: var(--d); top: 50%; width: 16px; height: 16px; border-radius: 50%; background: var(--zc, var(--foam)); transform: translate(-50%, -50%); box-shadow: 0 0 0 3px var(--sea); animation: sink .9s cubic-bezier(.2,.8,.2,1); }
 @keyframes sink { from { left: 0; } }
 .ans.z-sunlight { --zc: var(--sunlight); }
 .ans.z-twilight { --zc: var(--twilight); }
-.ans.z-midnight { --zc: #8fb3f0; }
-.ans.z-abyss { --zc: #b7a5f0; }
+.ans.z-midnight { --zc: #a58bff; }
+.ans.z-abyss { --zc: #dcdcf0; }
 .ans.z-hadal { --zc: var(--hadal); border-color: rgba(255,201,60,.55); background: radial-gradient(circle at 80% 0%, rgba(255,201,60,.14), transparent 60%), var(--sea); }
 .ans.invalid .said { color: var(--kelp); text-decoration: line-through; text-decoration-color: var(--bad); }
 .same { color: var(--krill); margin: 14px 0 0; }
@@ -165,7 +170,7 @@ h2 { font-size: 22px; font-weight: 700; }
 .table-wrap { overflow-x: auto; margin: 20px 0; }
 table { width: 100%; border-collapse: collapse; font-size: 15px; }
 th { text-align: left; font-weight: 600; color: var(--kelp); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; padding: 8px 10px; border-bottom: 1px solid var(--sea-3); }
-td { padding: 10px; border-bottom: 1px solid rgba(18,56,79,.6); vertical-align: top; }
+td { padding: 10px; border-bottom: 1px solid rgba(35,44,94,.6); vertical-align: top; }
 td.n { font-family: var(--font-data); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
 td.q { color: var(--kelp); }
 td.sub { color: var(--kelp); font-size: 13px; }
@@ -196,7 +201,7 @@ textarea, .stack input { width: 100%; background: var(--sea); color: var(--foam)
 .tabs button { background: none; border: 1px solid var(--sea-3); border-radius: 999px; padding: 8px 16px; color: var(--kelp); }
 .tabs button[aria-selected="true"] { background: var(--foam); color: var(--sea); border-color: var(--foam); }
 
-@media (max-width: 720px) {
+@container app (max-width: 720px) {
   .modes { grid-template-columns: 1fr; }
   .bots-grid { grid-template-columns: 1fr 1fr; }
   .legend { grid-template-columns: 1fr; }
@@ -217,13 +222,13 @@ body::after { /* darkens the water as the game goes deeper */
   background: radial-gradient(ellipse at 50% 120%, rgba(0,0,0,.55), transparent 60%);
 }
 .mode, .prompt-card, .reveal { backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
-.mode { background-color: rgba(12,42,61,.82); }
-.prompt-card, .reveal { background-color: rgba(12,42,61,.85); }
+.mode { background-color: rgba(16,22,58,.82); }
+.prompt-card, .reveal { background-color: rgba(16,22,58,.85); }
 
 /* scoreboard */
 .scoreboard { display: grid; grid-template-columns: 1fr auto 1fr; align-items: stretch; gap: 12px; margin: 4px 0 18px; }
 .scoreboard.solo { grid-template-columns: 1fr auto; }
-.pod { background: rgba(7,28,43,.8); border: 1px solid var(--sea-3); border-radius: 14px; padding: 10px 14px 12px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 10px; min-width: 0; }
+.pod { background: rgba(7,10,31,.8); border: 1px solid var(--sea-3); border-radius: 14px; padding: 10px 14px 12px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 10px; min-width: 0; }
 .pod.opp { text-align: right; }
 .pod.opp .pod-name { order: 2; }
 .pod.opp .pod-total { order: 1; justify-self: start; }
@@ -234,8 +239,8 @@ body::after { /* darkens the water as the game goes deeper */
 .pod-note { grid-column: 1 / -1; order: 4; font-size: 12px; color: var(--kelp); }
 .seg { display: block; height: 100%; border-radius: 3px; background: var(--sea-3); position: relative; overflow: hidden; }
 .seg::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: var(--h); background: var(--zc, var(--kelp)); border-radius: 3px; }
-.seg.z-sunlight { --zc: var(--sunlight); } .seg.z-twilight { --zc: var(--twilight); } .seg.z-midnight { --zc: #8fb3f0; }
-.seg.z-abyss { --zc: #b7a5f0; } .seg.z-hadal { --zc: var(--hadal); box-shadow: 0 0 10px rgba(255,201,60,.6); } .seg.miss { --zc: var(--bad); --h: 8% !important; }
+.seg.z-sunlight { --zc: var(--sunlight); } .seg.z-twilight { --zc: var(--twilight); } .seg.z-midnight { --zc: #a58bff; }
+.seg.z-abyss { --zc: #dcdcf0; } .seg.z-hadal { --zc: var(--hadal); box-shadow: 0 0 10px rgba(255,201,60,.6); } .seg.miss { --zc: var(--bad); --h: 8% !important; }
 .seg.fresh::after { animation: segrise .9s cubic-bezier(.2,.8,.2,1); }
 .pod.opp .seg.fresh::after { animation-delay: 1.1s; animation-fill-mode: backwards; }
 @keyframes segrise { from { height: 0; } }
@@ -253,16 +258,16 @@ body::after { /* darkens the water as the game goes deeper */
 .ans.fx-midnight { animation: glowblue 1.6s ease-out; }
 .ans.fx-abyss { animation: glowpurple 2s ease-out; }
 .ans.fx-hadal { animation: krillcard 2.4s ease-out; }
-@keyframes shimmer { 0% { box-shadow: 0 0 0 0 rgba(243,237,224,.6); } 100% { box-shadow: 0 0 0 18px rgba(243,237,224,0); } }
+@keyframes shimmer { 0% { box-shadow: 0 0 0 0 rgba(143,216,255,.6); } 100% { box-shadow: 0 0 0 18px rgba(143,216,255,0); } }
 @keyframes sway { 0%,100% { transform: none; } 25% { transform: translateX(-5px) rotate(-.5deg); } 60% { transform: translateX(4px) rotate(.4deg); } }
-@keyframes glowblue { 0% { box-shadow: 0 0 0 rgba(143,179,240,0); } 30% { box-shadow: 0 0 40px rgba(143,179,240,.55); } 100% { box-shadow: 0 0 0 rgba(143,179,240,0); } }
-@keyframes glowpurple { 0% { box-shadow: 0 0 0 rgba(183,165,240,0); transform: none; } 30% { box-shadow: 0 0 60px rgba(183,165,240,.6); transform: scale(1.02); } 100% { box-shadow: 0 0 0 rgba(183,165,240,0); transform: none; } }
+@keyframes glowblue { 0% { box-shadow: 0 0 0 rgba(165,139,255,0); } 30% { box-shadow: 0 0 40px rgba(165,139,255,.55); } 100% { box-shadow: 0 0 0 rgba(165,139,255,0); } }
+@keyframes glowpurple { 0% { box-shadow: 0 0 0 rgba(220,220,240,0); transform: none; } 30% { box-shadow: 0 0 60px rgba(220,220,240,.6); transform: scale(1.02); } 100% { box-shadow: 0 0 0 rgba(220,220,240,0); transform: none; } }
 @keyframes krillcard { 0% { transform: scale(.9); } 20% { transform: scale(1.06); box-shadow: 0 0 80px rgba(255,201,60,.8); } 100% { transform: none; box-shadow: 0 0 24px rgba(255,201,60,.25); } }
 .ans.z-hadal .pts b { text-shadow: 0 0 18px rgba(255,201,60,.8); }
 
 /* 1 in an Attillion takeover */
 body.krillion-hit::after { background: radial-gradient(ellipse at center, rgba(40,30,4,.35), rgba(0,0,0,.75)); transition: background .3s; }
-.krillion-banner { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; cursor: pointer; pointer-events: auto; background: radial-gradient(ellipse at center, rgba(24,18,4,.82), rgba(3,10,18,.9) 70%); animation: dim .3s both;
+.krillion-banner { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; cursor: pointer; pointer-events: auto; background: radial-gradient(ellipse at center, rgba(24,18,4,.82), rgba(3,4,14,.9) 70%); animation: dim .3s both;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 .kb-inner { text-align: center; animation: slam .7s cubic-bezier(.2,1.6,.4,1) both; }
 .kb-who { font-family: var(--font-data); text-transform: uppercase; letter-spacing: .2em; font-size: 14px; color: #ffe9a8; margin: 0; }
@@ -277,7 +282,7 @@ body.krillion-hit::after { background: radial-gradient(ellipse at center, rgba(4
 #app.shake { animation: shake .5s; }
 @keyframes shake { 10%,90% { transform: translate(-2px, 1px); } 20%,80% { transform: translate(4px,-2px); } 30%,50%,70% { transform: translate(-6px, 3px); } 40%,60% { transform: translate(6px,-3px); } }
 
-@media (max-width: 720px) {
+@container app (max-width: 720px) {
   .scoreboard { gap: 8px; }
   .pod { padding: 8px 10px 10px; }
   .pod-name { font-size: 14px; }
@@ -300,23 +305,24 @@ body.krillion-hit::after { background: radial-gradient(ellipse at center, rgba(4
 .dive { position: relative; border-radius: 14px; overflow: hidden; min-height: 300px; display: grid; grid-template-rows: repeat(5, 1fr); border: 1px solid var(--sea-3); }
 .band { position: relative; display: flex; align-items: flex-start; padding: 6px 8px; }
 .band span { font: 600 10px var(--font-data); letter-spacing: .08em; text-transform: uppercase; opacity: .75; }
-.band.z-sunlight { background: linear-gradient(180deg, #2a6274, #1d4a5a); color: var(--sunlight); }
-.band.z-twilight { background: #143d52; color: var(--twilight); }
-.band.z-midnight { background: #0f2d48; color: #8fb3f0; }
-.band.z-abyss { background: #0b1f38; color: #b7a5f0; }
-.band.z-hadal { background: linear-gradient(180deg, #071426, #120f05); color: var(--hadal); box-shadow: inset 0 0 30px rgba(255,201,60,.15); }
-.diver { position: absolute; top: 2%; display: flex; flex-direction: column; align-items: center; transform: translate(-50%, -10%); transition: top 1.6s cubic-bezier(.3,.7,.2,1); z-index: 2; }
+.band.z-sunlight { background: linear-gradient(180deg, #3a74b0, #24508a); color: var(--sunlight); }
+.band.z-twilight { background: #1b2f6a; color: var(--twilight); }
+.band.z-midnight { background: #151d4f; color: #a58bff; }
+.band.z-abyss { background: #10143a; color: #dcdcf0; }
+.band.z-hadal { background: linear-gradient(180deg, #0a0a1e, #151005); color: var(--hadal); box-shadow: inset 0 0 30px rgba(255,201,60,.15); }
+.diver { position: absolute; top: 93%; display: flex; flex-direction: column; align-items: center; transform: translate(-50%, -10%); transition: top 1.6s cubic-bezier(.3,.7,.2,1); z-index: 2; }
 .dive.duo .diver.me { left: 36%; } .dive.duo .diver.opp { left: 72%; }
 .dive.solo .diver.me { left: 58%; }
 .diver.go { top: var(--y); }
 .diver .av { font-size: 30px; line-height: 1; filter: drop-shadow(0 2px 6px rgba(0,0,0,.5)); animation: bob 2.4s ease-in-out infinite; }
-.diver.me .av { transform: scaleX(-1); }
-.diver .tag { margin-top: 2px; font: 600 11px var(--font-body); background: rgba(4,18,28,.75); padding: 1px 7px; border-radius: 999px; white-space: nowrap; max-width: 90px; overflow: hidden; text-overflow: ellipsis; }
+
+.diver .tag { margin-top: 2px; font: 600 11px var(--font-body); background: rgba(5,8,26,.75); padding: 1px 7px; border-radius: 999px; white-space: nowrap; max-width: 90px; overflow: hidden; text-overflow: ellipsis; }
 .diver.me .tag { color: var(--krill); }
 .diver.pending { opacity: .35; }
 .diver.miss .av { filter: grayscale(1) opacity(.6); }
-.diver::before { content: ""; position: absolute; bottom: 100%; left: 50%; width: 2px; height: 0; background: linear-gradient(rgba(220,240,240,0), rgba(220,240,240,.35)); transition: height 1.6s; }
-.diver.go::before { height: 60px; }
+.diver::before { content: ""; position: absolute; top: 34px; left: 50%; width: 3px; height: 0; transform: translateX(-50%); border-radius: 2px; background: linear-gradient(rgba(255,190,140,.75), rgba(255,138,76,0)); transition: height 1.6s; }
+.diver.go::before { height: 70px; }
+.diver.miss::before { display: none; }
 @keyframes bob { 50% { translate: 0 -4px; } }
 .played { margin: 4px 0 0; font-size: 13px; color: var(--kelp); }
 .played b { font-family: var(--font-data); color: var(--foam); }
@@ -333,7 +339,7 @@ body.krillion-hit::after { background: radial-gradient(ellipse at center, rgba(4
 .avatar[disabled] { cursor: not-allowed; opacity: .55; }
 .avatar[disabled] .ae { filter: grayscale(1) brightness(.6); }
 
-@media (max-width: 720px) {
+@container app (max-width: 720px) {
   .reveal-grid { grid-template-columns: 1fr; }
   .dive { min-height: 230px; }
 }
@@ -342,7 +348,7 @@ body.krillion-hit::after { background: radial-gradient(ellipse at center, rgba(4
 .stats { grid-template-columns: repeat(5, 1fr); }
 .stats .gold b { color: var(--hadal); text-shadow: 0 0 14px rgba(255,201,60,.45); }
 .krill-wall { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; margin-top: 14px; align-items: start; }
-.krill-card { border-radius: 14px; padding: 14px; border: 1px solid rgba(255,201,60,.45); background: radial-gradient(circle at 85% 0%, rgba(255,201,60,.16), transparent 60%), #0b1a26; min-width: 0; }
+.krill-card { border-radius: 14px; padding: 14px; border: 1px solid rgba(255,201,60,.45); background: radial-gradient(circle at 85% 0%, rgba(255,201,60,.16), transparent 60%), #0a0d24; min-width: 0; }
 .krill-card p { margin: 0; }
 .kc-a { font: 700 20px/1.15 var(--font-display); color: var(--hadal); overflow-wrap: anywhere; }
 .kc-q { font-size: 13px; color: var(--foam); margin-top: 6px !important; }
@@ -353,7 +359,7 @@ body.krillion-hit::after { background: radial-gradient(ellipse at center, rgba(4
 .setting-row output { font-family: var(--font-data); width: 4ch; text-align: right; }
 .btn.small { padding: 8px 16px; font-size: 14px; }
 #rename-form, #pw-form { border-top: 1px solid var(--sea-3); padding-top: 18px; }
-@media (max-width: 720px) { .stats { grid-template-columns: repeat(3, 1fr); } }
+@container app (max-width: 720px) { .stats { grid-template-columns: repeat(3, 1fr); } }
 .code-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 18px; }
 .code-row label { font-weight: 600; }
 .code-row input { flex: 1; min-width: 160px; background: var(--sea); color: var(--foam); border: 1px solid var(--sea-3); border-radius: 999px; padding: 10px 16px; font: 15px var(--font-data); letter-spacing: .08em; text-transform: uppercase; }
@@ -386,11 +392,11 @@ body.krillion-hit::after { background: radial-gradient(ellipse at center, rgba(4
 .diver.golden .av:has(.av-rdev) { filter: drop-shadow(0 0 10px rgba(255,255,255,.7)); }
 .av-gdev { filter: sepia(1) saturate(5) hue-rotate(-12deg) brightness(1.15) drop-shadow(0 0 6px rgba(255,201,60,.85)); }
 .diver.golden .av:has(.av-gdev) { filter: drop-shadow(0 0 12px rgba(255,201,60,.9)); }
-.dev-takeover.gold { background: radial-gradient(circle at var(--ox) var(--oy), rgba(255,201,60,.14), rgba(3,10,18,.55) 70%); }
+.dev-takeover.gold { background: radial-gradient(circle at var(--ox) var(--oy), rgba(255,201,60,.14), rgba(3,4,14,.55) 70%); }
 .dev-takeover.gold .dev-giant { animation: devgrow 2.9s cubic-bezier(.5,0,.3,1) forwards; }
 .dev-takeover.gold .dev-label { color: #ffc93c; text-shadow: 0 0 22px rgba(255,201,60,.7), 0 4px 0 rgba(0,0,0,.4); }
 .dev-takeover { position: fixed; inset: 0; z-index: 55; overflow: hidden; pointer-events: auto; cursor: pointer;
-  background: radial-gradient(circle at var(--ox) var(--oy), rgba(255,255,255,.08), rgba(3,10,18,.55) 70%); animation: devfade 2.9s ease-in forwards; }
+  background: radial-gradient(circle at var(--ox) var(--oy), rgba(255,255,255,.08), rgba(3,4,14,.55) 70%); animation: devfade 2.9s ease-in forwards; }
 .dev-giant { position: absolute; left: var(--ox); top: var(--oy); font-size: 100px; line-height: 1; transform: translate(-50%, -50%) scale(.08);
   animation: devgrow 2.9s cubic-bezier(.5,0,.3,1) forwards, rainbow 1.2s linear infinite; }
 .dev-label { position: absolute; left: 50%; bottom: 12%; transform: translateX(-50%); margin: 0; white-space: nowrap;
@@ -406,11 +412,11 @@ body.krillion-hit::after { background: radial-gradient(ellipse at center, rgba(4
 @keyframes devfade { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
 
 /* ---------- quick match ---------- */
-.mode.quick { grid-column: 1 / -1; background: linear-gradient(150deg, #0f4a52, var(--sea-2) 65%); }
+.mode.quick { grid-column: 1 / -1; background: linear-gradient(150deg, #2a1f5e, var(--sea-2) 65%); }
 .mode.quick .tag:empty { display: none; }
 .queue { display: flex; justify-content: center; padding-top: 24px; }
-.queue-card { width: 100%; max-width: 520px; text-align: center; background: rgba(12,42,61,.82); border: 1px solid var(--sea-3); border-radius: var(--r); padding: 32px 22px; backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
-.queue-card h1 { font-size: clamp(24px, 6vw, 34px); margin: 18px 0 0; }
+.queue-card { width: 100%; max-width: 520px; text-align: center; background: rgba(16,22,58,.82); border: 1px solid var(--sea-3); border-radius: var(--r); padding: 32px 22px; backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+.queue-card h1 { font-size: clamp(24px, 6cqi, 34px); margin: 18px 0 0; }
 .q-text { color: var(--kelp); margin: 10px 0 0; font-variant-numeric: tabular-nums; min-height: 3em; }
 .row.center { justify-content: center; margin-top: 18px; }
 .q-extra { margin-top: 22px; border-top: 1px solid var(--sea-3); padding-top: 18px; }
@@ -422,6 +428,11 @@ body.krillion-hit::after { background: radial-gradient(ellipse at center, rgba(4
 @keyframes sonar { 0% { transform: scale(.35); opacity: .9; } 100% { transform: scale(1.15); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .sonar i { animation: none; opacity: .4; } }
 .btn:disabled { opacity: .6; cursor: default; }
+
+/* ---------- screen mode picker ---------- */
+.seg-pick { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.seg-pick button { border: 1px solid var(--sea-3); background: var(--sea-2); color: var(--kelp); border-radius: 999px; padding: 8px 14px; display: flex; align-items: center; gap: 6px; }
+.seg-pick button[aria-pressed="true"] { border-color: var(--krill); color: var(--foam); box-shadow: inset 0 0 0 1px var(--krill); }
 </style></head><body>
 <div id="app"></div>
 <script>
@@ -586,46 +597,49 @@ const SFX = (name, gain) => { if (window.KrillionSound) window.KrillionSound.pla
 
 const BOTS = {
   // pick() returns a position in the familiar answers: 0 = most common, 1 = rarest.
-  // lucky = chance of diving straight into the Attillion zone on a round.
-  minnow:    { name: "Minnow",    av: "🐟", elo: 800,  miss: 0.15, lucky: 0.04, pick: () => Math.pow(Math.random(), 2.2) * 0.15, blurb: "Says the first thing that swims by." },
-  fish:      { name: "Fish",      av: "🐠", elo: 1100, miss: 0.10, lucky: 0.07, pick: () => Math.pow(Math.random(), 1.5) * 0.35, blurb: "Knows the reef, rarely goes deeper." },
-  barracuda: { name: "Barracuda", av: "🐡", elo: 1400, miss: 0.07, lucky: 0.12, pick: () => 0.03 + Math.random() * 0.5,         blurb: "Fast, sharp, sometimes too clever." },
-  shark:     { name: "Shark",     av: "🦈", elo: 1700, miss: 0.04, lucky: 0.20, pick: () => 0.06 + Math.random() * 0.69,        blurb: "Lives in the trench. Hunts obscure answers." }
+  // lucky = chance of launching straight into the Attillion zone on a round.
+  minnow:    { name: "Asteroid",  av: "🪨", elo: 800,  miss: 0.15, lucky: 0.04, pick: () => Math.pow(Math.random(), 2.2) * 0.15, blurb: "Says the first thing that drifts by." },
+  fish:      { name: "Comet",     av: "☄️", elo: 1100, miss: 0.10, lucky: 0.07, pick: () => Math.pow(Math.random(), 1.5) * 0.35, blurb: "Goes around the block, rarely leaves orbit." },
+  barracuda: { name: "Star",      av: "🌟", elo: 1400, miss: 0.07, lucky: 0.12, pick: () => 0.03 + Math.random() * 0.5,         blurb: "Bright, fast, sometimes too clever." },
+  shark:     { name: "Black Hole", av: "🕳️", elo: 1700, miss: 0.04, lucky: 0.20, pick: () => 0.06 + Math.random() * 0.69,        blurb: "Pulls in answers nobody else can reach." }
 };
 
 // Avatars unlock by your best (peak) Elo, so a losing streak never takes one away.
 const AVATARS = [
-  { id: "krill",    e: "🦐", name: "Krill",          elo: 0 },
-  { id: "crab",     e: "🦀", name: "Crab",           elo: 0 },
-  { id: "reef",     e: "🐠", name: "Reef fish",      elo: 0 },
-  { id: "puffer",   e: "🐡", name: "Pufferfish",     elo: 1050 },
-  { id: "lobster",  e: "🦞", name: "Lobster",        elo: 1100 },
-  { id: "octopus",  e: "🐙", name: "Octopus",        elo: 1150 },
-  { id: "nautilus", e: "🐚", name: "Nautilus",       elo: 1200 },
-  { id: "turtle",   e: "🐢", name: "Sea turtle",     elo: 1275 },
-  { id: "seal",     e: "🦭", name: "Seal",           elo: 1350 },
-  { id: "dolphin",  e: "🐬", name: "Dolphin",        elo: 1425 },
-  { id: "squid",    e: "🦑", name: "Giant squid",    elo: 1500 },
-  { id: "shark",    e: "🦈", name: "Shark",          elo: 1600 },
-  { id: "whale",    e: "🐋", name: "Blue whale",     elo: 1750 },
-  { id: "spout",    e: "🐳", name: "Spouting whale", elo: 1900 },
-  // Secret creatures: only unlocked by typing a code in Settings. Codes are
-  // stored as hashes so they don't show up as plain text in the page source.
+  { id: "rocket",   e: "🚀", name: "Rocket",         elo: 0 },
+  { id: "satellite",e: "🛰️", name: "Satellite",      elo: 0 },
+  { id: "moon",     e: "🌙", name: "Crescent moon",  elo: 0 },
+  { id: "scope",    e: "🔭", name: "Telescope",      elo: 1050 },
+  { id: "astro",    e: "🧑‍🚀", name: "Astronaut",      elo: 1100 },
+  { id: "earth",    e: "🌍", name: "Earth",          elo: 1150 },
+  { id: "shoot",    e: "🌠", name: "Shooting star",  elo: 1200 },
+  { id: "robot",    e: "🤖", name: "Rover bot",      elo: 1275 },
+  { id: "fullmoon", e: "🌕", name: "Full moon",      elo: 1350 },
+  { id: "planet",   e: "🪐", name: "Ringed planet",  elo: 1425 },
+  { id: "star",     e: "⭐", name: "Star",           elo: 1500 },
+  { id: "sun",      e: "🌞", name: "Sun",            elo: 1600 },
+  { id: "galaxy",   e: "🌌", name: "Galaxy",         elo: 1750 },
+  { id: "hole",     e: "🕳️", name: "Black hole",     elo: 1900 },
   // Attillion trophies: unlocked by how many 1 in an Attillions you have found.
-  { id: "k10",      e: "🐊", name: "Saltwater croc",      krill: 10 },
-  { id: "k20",      e: "🦕", name: "Plesiosaur",          krill: 20 },
-  { id: "gdragon",  e: "🐉", name: "Gold sea dragon",     krill: 50 },
-  { id: "rdragon",  e: "🐉", name: "Rainbow sea dragon",  krill: 100 },
-  { id: "penguin",  e: "🐧", name: "Penguin",        code: 1891601023 },
-  { id: "otter",    e: "🦦", name: "Sea otter",      code: 633339391 },
-  { id: "mermaid",  e: "🧜", name: "Merfolk",        code: 1186902916 },
-  { id: "dragon",   e: "🐉", name: "Sea dragon",     code: 1780114088 },
+  { id: "k10",      e: "☄️", name: "Comet",           krill: 10 },
+  { id: "k20",      e: "🌘", name: "Eclipse",         krill: 20 },
+  { id: "gdragon",  e: "🪐", name: "Golden Saturn",   krill: 50 },
+  { id: "rdragon",  e: "🌌", name: "Rainbow Nebula",  krill: 100 },
+  // Secret avatars: only unlocked by typing a code in Settings. Codes are
+  // stored as hashes so they don't show up as plain text in the page source.
+  { id: "alien",    e: "👽", name: "Alien",          code: 32697793 },
+  { id: "ufo",      e: "🛸", name: "Flying saucer",  code: 477561382 },
+  { id: "spacedog", e: "🐕", name: "Space dog",      code: 1213739381 },
+  { id: "cheese",   e: "🧀", name: "Moon cheese",    code: 190172967 },
   { id: "dev",      e: "👾", name: "Developer",      code: 3929745284, dev: true },
   { id: "rdev",     e: "👾", name: "Rainbow Developer", code: 3751850430, dev: true },
   { id: "gdev",     e: "👾", name: "Gold Developer", code: 762634016, dev: true }
 ];
 // Bundle codes unlock a whole group at once.
-const BUNDLES = [{ id: "krill-all", code: 2284514118, name: "every Attillion trophy creature", pick: "rdragon" }];
+const BUNDLES = [
+  { id: "krill-all", code: 1175683394, name: "every Attillion trophy", pick: "rdragon" },
+  { id: "krill-all", code: 2284514118, name: "every Attillion trophy", pick: "rdragon" }   // the old code still works
+];
 function codeHash(raw) { return hashStr("krillion-code:" + String(raw).toUpperCase().replace(/[^A-Z0-9]/g, "")); }
 function redeemed(u) { return u ? (u.codes || []) : store.get("guestCodes", []); }
 function krillCount(u) { return u ? (u.krillions || []).length : store.get("guestKrillions", []).length; }
@@ -649,12 +663,35 @@ function perfElo(points, rounds) {
 }
 
 const ZONES = [
-  { key: "sunlight", name: "Sunlight zone", min: 0 },
-  { key: "twilight", name: "Twilight zone", min: 200 },
-  { key: "midnight", name: "Midnight zone", min: 1000 },
-  { key: "abyss",    name: "Abyss",         min: 4000 },
+  { key: "sunlight", name: "Sky",          min: 0 },
+  { key: "twilight", name: "Stratosphere", min: 200 },
+  { key: "midnight", name: "Orbit",        min: 1000 },
+  { key: "abyss",    name: "Moon",         min: 4000 },
   { key: "hadal",    name: "1 in an Attillion", min: HADAL_DEPTH }
 ];
+
+// Rarity is stored as a "depth" number (0 to 10,935) and shown as how high you climbed:
+// Sky 0-12 km, Stratosphere 12-100 km, Orbit 100-36,000 km, Moon 36,000-384,400 km,
+// then 1 in an Attillion: past the Moon toward the edge of the Solar System.
+const ALT_D = [0, 200, 1000, 4000, 6000, 10935];
+const ALT_KM = [0, 12, 100, 36000, 384400, 18e9];
+function altitudeKm(depth) {
+  for (let i = 0; i < ALT_D.length - 1; i++) {
+    if (depth <= ALT_D[i + 1] || i === ALT_D.length - 2) {
+      const f = Math.max(0, Math.min(1, (depth - ALT_D[i]) / (ALT_D[i + 1] - ALT_D[i])));
+      if (i === 0) return ALT_KM[1] * f;
+      return Math.exp(Math.log(ALT_KM[i]) + f * (Math.log(ALT_KM[i + 1]) - Math.log(ALT_KM[i])));
+    }
+  }
+  return ALT_KM[ALT_KM.length - 1];
+}
+function altText(depth) {
+  const km = altitudeKm(depth);
+  if (km >= 1e9) return (km / 1e9).toFixed(1).replace(/\.0$/, "") + " billion km";
+  if (km >= 1e6) return (km / 1e6).toFixed(1).replace(/\.0$/, "") + " million km";
+  if (km < 10) return km.toFixed(1).replace(/\.0$/, "") + " km";
+  return Math.round(km).toLocaleString() + " km";
+}
 
 /* ---------- safe storage ---------- */
 const mem = {};
@@ -874,7 +911,7 @@ function unlockedAvatars(u) { return AVATARS.filter(a => isOpen(a, u)); }
 function isDevAvatar(markup) { return /av-[rg]?dev"/.test(String(markup)); }
 function myAvatarObj() {
   const u = me();
-  const id = u ? u.avatar : store.get("guestAvatar", "krill");
+  const id = u ? u.avatar : store.get("guestAvatar", "rocket");
   return unlockedAvatars(u).find(x => x.id === id) || AVATARS[0];
 }
 function myAvatar() { return avMarkup(myAvatarObj()); }
@@ -884,8 +921,8 @@ function curOppName() {
 function oppAvatar() {
   if (S.mode === "bot") return BOTS[S.level].av;
   if (S.mode === "live" && S.live) return avMarkup(avatarById(S.live.opp.av) || AVATARS[0]);
-  if (S.mode === "challenge-guest") { const a = S.challenge && avatarById(S.challenge.av); return a ? avMarkup(a) : "🐟"; }
-  return "🐟";
+  if (S.mode === "challenge-guest") { const a = S.challenge && avatarById(S.challenge.av); return a ? avMarkup(a) : "🚀"; }
+  return "🚀";
 }
 function me() { const n = store.get("session", null); const u = users(); return n && u[n.toLowerCase()] ? u[n.toLowerCase()] : null; }
 async function hashPw(name, pw) {
@@ -1039,7 +1076,7 @@ function reveal() {
   S.scores[S.round] = S.lastMine; if (S.lastTheirs) S.oppScores[S.round] = S.lastTheirs;
   if (S.lastMine.points === 100) {
     const found = { q: prompt.twist ? prompt.baseQ + " " + prompt.twist : prompt.q, a: S.lastMine.display, depth: S.lastMine.depth, share: S.lastMine.share, when: Date.now(),
-      mode: S.mode === "bot" ? "vs " + BOTS[S.level].name : S.mode === "live" ? "Quick match" : S.mode === "daily" ? "Daily Dive" : "Friend challenge" };
+      mode: S.mode === "bot" ? "vs " + BOTS[S.level].name : S.mode === "live" ? "Quick match" : S.mode === "daily" ? "Daily Launch" : "Friend challenge" };
     const before = krillCount(me());
     if (me()) updateUser(x => { x.krillions = (x.krillions || []); x.krillions.unshift(found); x.krillions = x.krillions.slice(0, 500); });
     else { const g = store.get("guestKrillions", []); g.unshift(found); store.set("guestKrillions", g.slice(0, 500)); }
@@ -1147,13 +1184,13 @@ function getRoom() {
   }
   return roomP;
 }
-function myCard() { const u = me(); return { name: u ? u.name : "Guest diver", elo: u ? u.elo : START_ELO, av: myAvatarObj().id }; }
+function myCard() { const u = me(); return { name: u ? u.name : "Guest pilot", elo: u ? u.elo : START_ELO, av: myAvatarObj().id }; }
 function cleanCard(p, field) {   // everything in presence is untrusted
   const q = p && p.presence && p.presence[field];
   if (!q || typeof q !== "object") return null;
   const elo = Math.max(100, Math.min(3500, Math.round(+q.elo) || START_ELO));
-  const name = String(q.name || "").replace(/[^\p{L}\p{N} _.-]/gu, "").trim().slice(0, 20) || "Diver";
-  return { peer: p.peer, name, elo, av: avatarById(String(q.av)) ? String(q.av) : "krill", t: +q.t || 0, want: typeof q.want === "string" ? q.want : null };
+  const name = String(q.name || "").replace(/[^\p{L}\p{N} _.-]/gu, "").trim().slice(0, 20) || "Pilot";
+  return { peer: p.peer, name, elo, av: avatarById(String(q.av)) ? String(q.av) : "rocket", t: +q.t || 0, want: typeof q.want === "string" ? q.want : null };
 }
 function eloWindow(waitMs) { return Math.min(800, 150 + Math.floor(Math.max(0, waitMs) / 5000) * 75); }
 function pairUp(list, now) {
@@ -1172,7 +1209,7 @@ function pairUp(list, now) {
   return pairs;
 }
 let lobbyPeers = 0;
-function onlineText() { return lobbyPeers > 1 ? `${lobbyPeers} divers online` : lobbyPeers === 1 ? "Just you online" : ""; }
+function onlineText() { return lobbyPeers > 1 ? `${lobbyPeers} players online` : lobbyPeers === 1 ? "Just you online" : ""; }
 getRoom().then(room => {
   if (!room) return;
   room.onPeers(ch => {
@@ -1238,7 +1275,7 @@ function viewQueue() {
   return `${header()}<main class="queue">
     <div class="queue-card">
       <div class="sonar" aria-hidden="true"><i></i><i></i><i></i><span class="sonar-av">${myAvatar()}</span></div>
-      <h1 id="q-title">Finding a diver near ${c.elo}</h1>
+      <h1 id="q-title">Finding a player near ${c.elo}</h1>
       <p id="q-text" class="q-text">Connecting…</p>
       <div class="row center">
         <button class="btn ghost" data-act="quick-cancel">Cancel</button>
@@ -1315,6 +1352,18 @@ function liveStop(L) {
   L.room.leave().catch(() => {});
 }
 
+function deviceMode() { const v = store.get("device", "auto"); return ["auto", "phone", "ipad", "computer"].includes(v) ? v : "auto"; }
+function setDeviceMode(v) { store.set("device", v); applyDeviceMode(); }
+function applyDeviceMode() { const v = deviceMode(); if (v === "auto") delete document.documentElement.dataset.device; else document.documentElement.dataset.device = v; }
+applyDeviceMode();
+// picking an avatar plays the full 1 in an Attillion moment with it
+function celebrateAvatar(id) {
+  const a = avatarById(id); if (!a) return;
+  SFX("hadal");
+  const el = document.querySelector(`[data-act="avatar"][data-id="${id}"]`) || document.querySelector(".avbtn");
+  if (window.KrillionFX && window.KrillionFX.celebrate) window.KrillionFX.celebrate(el, a.id, avMarkup(a), a.name);
+}
+
 /* ---------- views ---------- */
 function header() {
   const u = me();
@@ -1337,21 +1386,21 @@ function viewHome() {
     <section class="hero">
       <p class="eyebrow">7 prompts · 30 seconds each · up to 100 points a round</p>
       <h1>Think of the answer <em>nobody else</em> will.</h1>
-      <p class="lede">Every prompt has hundreds of right answers. Common ones float near the surface and score almost nothing. Rare ones sink. Find one of the truly rare answers, the deepest few that almost nobody thinks of, and you hit the trench: <strong>1 in an Attillion</strong>, a full 100 points.</p>
+      <p class="lede">Every prompt has hundreds of right answers. Common ones barely leave the ground and score almost nothing. Rare ones launch higher. Find one of the truly rare answers, the few that almost nobody thinks of, and you break past the Moon: <strong>1 in an Attillion</strong>, a full 100 points.</p>
       ${depthLegend()}
     </section>
 
     <section class="modes">
       <article class="mode quick">
         <div class="mode-head"><h2>Quick match</h2><span class="tag" id="online">${onlineText()}</span></div>
-        <p>Get paired with a real diver near your Elo who is here right now. You both get the same 7 prompts at the same time, and answers are shown together at the end of each round.</p>
+        <p>Get paired with a real player near your Elo who is here right now. You both get the same 7 prompts at the same time, and answers are shown together at the end of each round.</p>
         <button class="btn primary" data-act="quick">Find a match</button>
       </article>
       <article class="mode daily">
-        <div class="mode-head"><h2>Daily Dive #${dailyNumber(key)}</h2><span class="tag">${esc(key)}</span></div>
+        <div class="mode-head"><h2>Daily Launch #${dailyNumber(key)}</h2><span class="tag">${esc(key)}</span></div>
         <p>Seven prompts, the same for everyone today. Rarity is locked for the day so every score is comparable.</p>
-        ${done ? `<p class="done">You scored <b>${done.score}</b> today. New dive at midnight.</p><button class="btn ghost" data-act="daily-view">See today's result</button>`
-               : `<button class="btn primary" data-act="daily">Start today's dive</button>`}
+        ${done ? `<p class="done">You scored <b>${done.score}</b> today. New launch at midnight.</p><button class="btn ghost" data-act="daily-view">See today's result</button>`
+               : `<button class="btn primary" data-act="daily">Start today's launch</button>`}
       </article>
 
       <article class="mode friends">
@@ -1381,7 +1430,7 @@ function viewHome() {
 
 function depthLegend() {
   return `<ol class="legend" aria-label="Depth zones">
-    ${ZONES.map((z, i) => `<li class="z-${z.key}"><span class="zn">${z.name}</span><span class="zd">${z.min.toLocaleString()} m${i === ZONES.length - 1 ? "+" : ""}</span></li>`).join("")}
+    ${ZONES.map((z, i) => `<li class="z-${z.key}"><span class="zn">${z.name}</span><span class="zd">${i === ZONES.length - 1 ? "past the Moon" : altText(z.min) + "+"}</span></li>`).join("")}
   </ol>`;
 }
 
@@ -1404,7 +1453,7 @@ function viewPlay() {
   const oppLabel = oppName || (S.mode === "challenge-host" ? "Your friend" : null);
   const scoreLine = `<div class="scoreboard ${oppLabel ? "duo" : "solo"}">
       ${pod("You", S.scores, "pod-me", prevMine, "me")}
-      <div class="sb-mid"><span class="sb-round">Round ${S.round + 1}/${ROUNDS}</span>${oppName ? `<span class="sb-lead" id="lead">${S.round === 0 && !revealing ? "First dive" : leadTextAt(oppName, prevMine, prevOpp)}</span>` : S.mode === "daily" ? `<span class="sb-lead">Daily Dive</span>` : ""}</div>
+      <div class="sb-mid"><span class="sb-round">Round ${S.round + 1}/${ROUNDS}</span>${oppName ? `<span class="sb-lead" id="lead">${S.round === 0 && !revealing ? "First launch" : leadTextAt(oppName, prevMine, prevOpp)}</span>` : S.mode === "daily" ? `<span class="sb-lead">Daily Launch</span>` : ""}</div>
       ${oppLabel ? pod(oppLabel, oppName ? S.oppScores : null, "pod-opp", prevOpp, "opp", oppName ? "" : "plays after you") : ""}
     </div>`;
   let body = "";
@@ -1433,21 +1482,22 @@ function viewPlay() {
 }
 
 function promptTitle(p) { return p.twist ? `${esc(p.baseQ)} <span class="twist">${esc(p.twist)}</span>` : esc(p.q); }
-// Where an answer's avatar ends up in the water column (percent from the top).
+// Where an answer's avatar ends up in the sky column (percent from the top).
+// Rarer answers climb higher; a miss stays on the launch pad at the bottom.
 function diveY(r) {
-  if (!r || !r.valid) return 7;
-  // each zone is a 20% band; stay below the band's label at the top
+  if (!r || !r.valid) return 93;
+  // each zone is a 20% band, the rarest at the top; stay below the band's label
   const bounds = [0, 200, 1000, 4000, 6000, MAX_DEPTH];
   for (let z = 0; z < 5; z++) {
     if (r.depth <= bounds[z + 1] || z === 4) {
       const f = Math.min(1, (r.depth - bounds[z]) / (bounds[z + 1] - bounds[z]));
-      return z * 20 + 7 + f * 9;
+      return (4 - z) * 20 + 16 - f * 9;
     }
   }
-  return 95;
+  return 8;
 }
 function diveColumn(oppName) {
-  const zones = ZONES.map(z => `<div class="band z-${z.key}"><span>${z.name}</span></div>`).join("");
+  const zones = ZONES.slice().reverse().map(z => `<div class="band z-${z.key}"><span>${z.name}</span></div>`).join("");
   // The Developer creature turns gold in the Attillion zone, and spins when tapped.
   const diver = (cls, av, label, r) => { const gold = isDevAvatar(av) && r && r.points === 100; return `<div class="diver ${cls} ${r && r.valid ? "" : "miss"} ${gold ? "golden" : ""}" style="--y:${diveY(r).toFixed(1)}%" ${gold ? `data-act="spin" title="Tap me"` : ""}><span class="av">${av}</span><span class="tag">${esc(label)}${isDevAvatar(av) ? ` <i class="devtag">DEV</i>` : ""}</span></div>`; };
   return `<div class="dive ${S.lastTheirs ? "duo" : "solo"}" aria-hidden="true">${zones}
@@ -1466,7 +1516,7 @@ function answerCard(label, r, me_) {
       ${norm(r.raw) !== norm(r.display) ? `<p class="matched">you typed “${esc(r.raw)}”</p>` : ""}
       <div class="gauge" aria-hidden="true"><span style="--d:${depthPct.toFixed(1)}%"></span></div>
       <p class="pts"><b>0</b> pts</p>
-      <p class="meta">${r.zone.name} · ${r.depth.toLocaleString()} m · ${oneIn(r.share)}</p>
+      <p class="meta">${r.zone.name} · ${altText(r.depth)} up · ${oneIn(r.share)}</p>
       <p class="played">Played like <b>${perfElo(r.points, 1).toLocaleString()}</b></p>`
     : `<p class="pts"><b>0</b> pts</p><p class="meta">${r.raw ? "Not on our list for this prompt" : "Time ran out"}</p><p class="played">Played like <b>${perfElo(0, 1).toLocaleString()}</b></p>`}
   </div>`;
@@ -1490,7 +1540,7 @@ function revealBlock(prompt, oppName) {
     </div>
     ${same ? `<p class="same">Same answer. You both score it.</p>` : ""}
     ${S.unlockNote ? `<p class="unlock-note">That's Attillion #${S.unlockNote.krill}! You unlocked the ${avMarkup(S.unlockNote)} <b>${S.unlockNote.name}</b>. <button class="link" data-go="settings">Use it</button></p>` : ""}
-    <p class="trench">Down in the trench: ${samples.map(esc).join(", ")}</p>
+    <p class="trench">Up among the stars: ${samples.map(esc).join(", ")}</p>
     <button class="btn primary" id="next" data-act="next">${S.round < ROUNDS - 1 ? "Next prompt" : "See results"}</button>
   </div>`;
 }
@@ -1522,7 +1572,7 @@ function viewResults() {
     extra += codeBox(`Send this back to ${esc(S.challenge.from)}`, res.code, "r", "Their game updates when they paste it under Enter a code.");
   }
   return `${header()}<main class="results">
-    <p class="eyebrow">${S.mode === "live" ? "Quick match" : S.mode === "daily" ? "Daily Dive #" + dailyNumber(S.dailyKey) : S.mode === "bot" ? "vs " + BOTS[S.level].name : S.mode === "challenge-host" ? "Challenge created" : "Challenge from " + esc(S.challenge.from)}</p>
+    <p class="eyebrow">${S.mode === "live" ? "Quick match" : S.mode === "daily" ? "Daily Launch #" + dailyNumber(S.dailyKey) : S.mode === "bot" ? "vs " + BOTS[S.level].name : S.mode === "challenge-host" ? "Challenge created" : "Challenge from " + esc(S.challenge.from)}</p>
     <h1>${verdict || `You scored ${res.my}`}</h1>
     <div class="totals">
       <div><span>${myAvatar()} You</span><b>${res.my}</b><em>played like ${perfElo(res.my, ROUNDS).toLocaleString()}</em></div>
@@ -1534,7 +1584,7 @@ function viewResults() {
     <div class="row">
       ${S.mode === "live" ? `<button class="btn primary" data-act="quick">Find another match</button>` : ""}
       ${S.mode === "bot" ? `<button class="btn primary" data-act="bot" data-level="${S.level}">Rematch ${BOTS[S.level].name}</button>` : ""}
-      <button class="btn ghost" data-go="home">Back to the surface</button>
+      <button class="btn ghost" data-go="home">Back to Earth</button>
     </div>
   </main>`;
 }
@@ -1551,9 +1601,9 @@ function codeBox(title, code, kind, note) {
 }
 
 function dailyShare(key, scores) {
-  const blocks = scores.map(s => !s.valid ? "⬛" : s.points === 100 ? "🦐" : s.depth >= 4000 ? "🟪" : s.depth >= 1000 ? "🟦" : s.depth >= 200 ? "🟩" : "⬜").join("");
+  const blocks = scores.map(s => !s.valid ? "⬛" : s.points === 100 ? "🌟" : s.depth >= 4000 ? "🟪" : s.depth >= 1000 ? "🟦" : s.depth >= 200 ? "🟩" : "⬜").join("");
   const krill = scores.filter(s => s.points === 100).length;
-  return `Attillion Daily Dive #${dailyNumber(key)}\n${blocks}\n${total(scores)}/700${krill ? ` · ${krill}× 1 in an Attillion` : ""}`;
+  return `Attillion Daily Launch #${dailyNumber(key)}\n${blocks}\n${total(scores)}/700${krill ? ` · ${krill}× 1 in an Attillion` : ""}`;
 }
 
 function viewDailyDone() {
@@ -1563,13 +1613,13 @@ function viewDailyDone() {
   const prompts = pickPrompts(hashStr("daily:" + key));
   const scores = done.answers.map((a, i) => scoreAnswer(PROMPT_BY_ID[prompts[i]], a.raw, true));
   return `${header()}<main class="results">
-    <p class="eyebrow">Daily Dive #${dailyNumber(key)}</p>
+    <p class="eyebrow">Daily Launch #${dailyNumber(key)}</p>
     <h1>You scored ${done.score}</h1>
     <div class="share"><pre id="share-text">${esc(dailyShare(key, scores))}</pre><button class="btn ghost" data-act="copy" data-target="share-text">Copy result</button></div>
     <div class="table-wrap"><table class="breakdown"><thead><tr><th>Prompt</th><th>You</th><th>Depth</th><th>Pts</th></tr></thead><tbody>
-    ${prompts.map((id, i) => `<tr><td class="q">${esc(PROMPT_BY_ID[id].q)}</td><td>${esc(scores[i].raw || "–")}</td><td class="n">${scores[i].depth.toLocaleString()} m</td><td class="n">${scores[i].points}</td></tr>`).join("")}
+    ${prompts.map((id, i) => `<tr><td class="q">${esc(PROMPT_BY_ID[id].q)}</td><td>${esc(scores[i].raw || "–")}</td><td class="n">${altText(scores[i].depth)}</td><td class="n">${scores[i].points}</td></tr>`).join("")}
     </tbody></table></div>
-    <button class="btn ghost" data-go="home">Back to the surface</button>
+    <button class="btn ghost" data-go="home">Back to Earth</button>
   </main>`;
 }
 
@@ -1577,7 +1627,7 @@ function viewLogin() {
   const mode = S.mode || "login";
   return `${header()}<main class="narrow">
     <h1>${mode === "login" ? "Log in" : "Create an account"}</h1>
-    <p class="lede small">Your Elo, match history and Daily Dive scores are saved to your account.</p>
+    <p class="lede small">Your Elo, match history and Daily Launch scores are saved to your account.</p>
     <form id="auth-form" class="stack" autocomplete="on">
       <label for="auth-name">Username</label>
       <input id="auth-name" name="username" required minlength="2" maxlength="20" pattern="[A-Za-z0-9_\\-]+" autocomplete="username">
@@ -1595,13 +1645,13 @@ function viewProfile() {
   const u = me(); if (!u) return viewLogin();
   const dailies = Object.entries(u.daily).sort((a, b) => b[0].localeCompare(a[0]));
   return `${header()}<main class="narrow">
-    <p class="eyebrow">Diver profile</p>
+    <p class="eyebrow">Pilot profile</p>
     <h1>${esc(u.name)}</h1>
     <div class="stats">
       <div><span>Elo</span><b>${u.elo}</b></div>
       <div><span>Peak</span><b>${u.peak}</b></div>
       <div><span>Record</span><b>${u.wins}–${u.losses}${u.draws ? "–" + u.draws : ""}</b></div>
-      <div><span>Best dive</span><b>${dailies.length ? Math.max(...dailies.map(d => d[1].score)) : "–"}</b></div>
+      <div><span>Best launch</span><b>${dailies.length ? Math.max(...dailies.map(d => d[1].score)) : "–"}</b></div>
       <div class="gold"><span>Attillions</span><b>${(u.krillions || []).length}</b></div>
     </div>
     <h2>Your 1 in an Attillions</h2>
@@ -1609,13 +1659,13 @@ function viewProfile() {
       <div class="krill-card">
         <p class="kc-a">${esc(k.a)}</p>
         <p class="kc-q">${esc(k.q)}</p>
-        <p class="kc-m">${new Date(k.when).toLocaleDateString(undefined, { month: "short", day: "numeric" })} · ${esc(k.mode)} · ${Math.round(k.depth).toLocaleString()} m</p>
+        <p class="kc-m">${new Date(k.when).toLocaleDateString(undefined, { month: "short", day: "numeric" })} · ${esc(k.mode)} · ${altText(k.depth)}</p>
       </div>`).join("")}</div>` : `<p class="hint">None yet. Find an answer almost nobody would say and it will be saved here.</p>`}
     <h2>Recent matches</h2>
     ${u.history.length ? `<div class="table-wrap"><table class="breakdown"><thead><tr><th>Opponent</th><th>Score</th><th>Elo</th></tr></thead><tbody>
       ${u.history.slice(0, 15).map(h => `<tr><td>${esc(h.opp)}</td><td class="n">${h.me}–${h.them}</td><td class="n ${h.delta >= 0 ? "up" : "down"}">${h.delta >= 0 ? "+" : ""}${h.delta}</td></tr>`).join("")}
     </tbody></table></div>` : `<p class="hint">No matches yet. Try Minnow to warm up.</p>`}
-    <h2>Daily Dives</h2>
+    <h2>Daily Launches</h2>
     ${dailies.length ? `<ul class="dives">${dailies.slice(0, 10).map(([k, d]) => `<li><span>#${dailyNumber(k)} · ${k}</span><b>${d.score}</b></li>`).join("")}</ul>` : `<p class="hint">You haven't dived yet today.</p>`}
     <div class="row"><button class="btn ghost" data-go="settings">Settings</button><button class="btn ghost" data-act="logout">Log out</button></div>
   </main>`;
@@ -1627,9 +1677,9 @@ function viewSettings() {
   const current = myAvatarObj().e + myAvatarObj().id;
   return `${header()}<main class="narrow">
     <p class="eyebrow">Settings</p>
-    <h1>Your sea creature</h1>
-    <p class="lede small">This is you in the water. Rarer answers make it dive deeper. New creatures unlock as your best Elo climbs.${u ? ` Your best so far is <b>${peak}</b>.` : ""}</p>
-    ${u ? "" : `<p class="hint"><button class="link" data-go="login">Log in</button> to earn Elo and unlock more creatures.</p>`}
+    <h1>Your avatar</h1>
+    <p class="lede small">This is you on the launch tower. Rarer answers send it higher. New avatars unlock as your best Elo climbs.${u ? ` Your best so far is <b>${peak}</b>.` : ""}</p>
+    ${u ? "" : `<p class="hint"><button class="link" data-go="login">Log in</button> to earn Elo and unlock more avatars.</p>`}
     <div class="avatars">
       ${AVATARS.filter(a => !a.code || isOpen(a, u)).map(a => {
         const open = isOpen(a, u);
@@ -1646,6 +1696,12 @@ function viewSettings() {
       <button class="btn primary small" type="submit">Unlock</button>
     </form>
     <p class="error" id="code-msg" role="alert">${esc(S.codeMsg || "")}</p>
+
+    <h2>Screen</h2>
+    <div class="seg-pick" role="group" aria-label="Screen mode">
+      ${[["auto", "✨", "Auto"], ["phone", "📱", "Phone"], ["ipad", "📲", "iPad"], ["computer", "💻", "Computer"]].map(([v, ic, l]) => `<button data-act="device" data-v="${v}" aria-pressed="${deviceMode() === v}"><span aria-hidden="true">${ic}</span>${l}</button>`).join("")}
+    </div>
+    <p class="hint">Auto fits whatever screen you're on. Pick one to use that layout anywhere. Saved on this device.</p>
 
     <h2>Sound</h2>
     <div class="setting-row">
@@ -1691,15 +1747,15 @@ function viewLeaderboard() {
   } else {
     const list = all.filter(u => u.daily[key]).map(u => ({ name: u.name, val: u.daily[key].score })).sort((a, b) => b.val - a.val);
     rows = list.length ? list.map((r, i) => `<tr class="${me() && r.name === me().name ? "you" : ""}"><td class="n">${i + 1}</td><td>${esc(r.name)}</td><td></td><td class="n">${r.val}</td></tr>`).join("")
-      : `<tr><td colspan="4" class="empty">Nobody has finished today's dive yet.</td></tr>`;
+      : `<tr><td colspan="4" class="empty">Nobody has finished today's launch yet.</td></tr>`;
   }
   return `${header()}<main class="narrow">
     <h1>Leaderboard</h1>
     <div class="tabs" role="tablist">
       <button role="tab" aria-selected="${tab === "elo"}" data-act="tab" data-tab="elo">Elo rating</button>
-      <button role="tab" aria-selected="${tab === "daily"}" data-act="tab" data-tab="daily">Today's dive</button>
+      <button role="tab" aria-selected="${tab === "daily"}" data-act="tab" data-tab="daily">Today's launch</button>
     </div>
-    <div class="table-wrap"><table class="board"><thead><tr><th>#</th><th>Diver</th><th></th><th>${tab === "elo" ? "Elo" : "Score"}</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="table-wrap"><table class="board"><thead><tr><th>#</th><th>Player</th><th></th><th>${tab === "elo" ? "Elo" : "Score"}</th></tr></thead><tbody>${rows}</tbody></table></div>
     <p class="note">Preview build: this board lists accounts made in this browser, plus the four computer opponents for reference. A shared global board needs the online server.</p>
   </main>`;
 }
@@ -1745,12 +1801,12 @@ function viewReplyResult() {
   return `${header()}<main class="results">
     <p class="eyebrow">Challenge result</p>
     <h1>${verdict}</h1>
-    <div class="totals"><div><span>${myAvatar()} You</span><b>${my}</b><em>played like ${perfElo(my, ROUNDS).toLocaleString()}</em></div><div><span>${c.av && avatarById(c.av) ? avMarkup(avatarById(c.av)) : "🐟"} ${esc(c.from)}</span><b>${their}</b><em>played like ${perfElo(their, ROUNDS).toLocaleString()}</em></div><div class="of">out of 700</div></div>
+    <div class="totals"><div><span>${myAvatar()} You</span><b>${my}</b><em>played like ${perfElo(my, ROUNDS).toLocaleString()}</em></div><div><span>${c.av && avatarById(c.av) ? avMarkup(avatarById(c.av)) : "🚀"} ${esc(c.from)}</span><b>${their}</b><em>played like ${perfElo(their, ROUNDS).toLocaleString()}</em></div><div class="of">out of 700</div></div>
     ${eloLine}
     <div class="table-wrap"><table class="breakdown"><thead><tr><th>Prompt</th><th>You</th><th>Pts</th><th>${esc(c.from)}</th><th>Pts</th></tr></thead><tbody>
       ${prompts.map((p, i) => `<tr><td class="q">${esc(p.q)}</td><td>${esc(mine[i].raw || "–")}</td><td class="n">${mine[i].points}</td><td>${esc(theirs[i].raw || "–")}</td><td class="n">${theirs[i].points}</td></tr>`).join("")}
     </tbody></table></div>
-    <button class="btn ghost" data-go="home">Back to the surface</button>
+    <button class="btn ghost" data-go="home">Back to Earth</button>
   </main>`;
 }
 
@@ -1803,10 +1859,12 @@ document.addEventListener("click", async e => {
     SFX("sunlight");
   }
   else if (act === "avatar") {
-    SFX("pop");
-    if (me()) updateUser(x => { x.avatar = t.dataset.id; }); else store.set("guestAvatar", t.dataset.id);
+    const id = t.dataset.id;
+    if (me()) updateUser(x => { x.avatar = id; }); else store.set("guestAvatar", id);
     render();
+    celebrateAvatar(id);
   }
+  else if (act === "device") { setDeviceMode(t.dataset.v); render(); }
   else if (act === "tab") { S.tab = t.dataset.tab; render(); }
   else if (act === "auth-mode") go("login", { mode: t.dataset.m });
   else if (act === "logout") { store.set("session", null); go("home"); }
@@ -1850,8 +1908,8 @@ document.addEventListener("submit", async e => {
       if (redeemed(u).includes(bundle.id)) { go("settings", { codeMsg: `You already unlocked ${bundle.name}.` }); return; }
       if (u) updateUser(x => { x.codes = (x.codes || []).concat(bundle.id); x.avatar = bundle.pick; });
       else { store.set("guestCodes", redeemed(null).concat(bundle.id)); store.set("guestAvatar", bundle.pick); }
-      SFX("hadal");
-      go("settings", { codeMsg: `Unlocked ${bundle.name}: 🐊 🦕 and both sea dragons.` });
+      go("settings", { codeMsg: `Unlocked ${bundle.name}: ☄️ 🌘 🪐 🌌` });
+      celebrateAvatar(bundle.pick);
       return;
     }
     const a = AVATARS.find(x => x.code === h);
@@ -1860,8 +1918,8 @@ document.addEventListener("submit", async e => {
     if (redeemed(u).includes(a.id)) { go("settings", { codeMsg: `You already have the ${a.name}.` }); return; }
     if (u) updateUser(x => { x.codes = (x.codes || []).concat(a.id); x.avatar = a.id; });
     else { store.set("guestCodes", redeemed(null).concat(a.id)); store.set("guestAvatar", a.id); }
-    SFX("hadal");
-    go("settings", { codeMsg: `Unlocked: ${a.e} ${a.name}${a.dev ? " (Developer)" : ""}. It's now your creature.` });
+    go("settings", { codeMsg: `Unlocked: ${a.e} ${a.name}${a.dev ? " (Developer)" : ""}. It's now your avatar.` });
+    celebrateAvatar(a.id);
     return;
   }
   else if (e.target.id === "rename-form" || e.target.id === "pw-form") {
@@ -1917,7 +1975,7 @@ if (!fromHash()) render();
 })();
 </script>
 <script>
-/* Attillion visual effects: the living deep-sea background and the reveal
+/* Attillion visual effects: the living outer-space background and the reveal
  * animation for each rarity zone. Exposes window.KrillionFX.
  */
 (function () {
@@ -1942,26 +2000,35 @@ function resize() {
 }
 resize(); window.addEventListener("resize", resize);
 
-const area = () => (W * H) / (1200 * 800);
-const snow = Array.from({ length: 140 }, () => ({ x: Math.random(), y: Math.random(), r: rand(0.4, 1.8), s: rand(0.006, 0.02), w: rand(0, TAU) }));
-const glows = Array.from({ length: 34 }, () => ({ x: Math.random(), y: rand(0.45, 1), r: rand(1, 2.6), p: rand(0, TAU), sp: rand(0.4, 1.4), hue: Math.random() < 0.7 ? 175 : 215 }));
-const bubbles = [];
-const fishes = [];
-const krill = Array.from({ length: 46 }, () => ({ x: rand(0.1, 0.9), y: rand(0.55, 0.9), vx: rand(-0.02, 0.02), vy: rand(-0.01, 0.01), a: rand(0, TAU), size: rand(3, 5.5) }));
-let swarmT = { x: 0.7, y: 0.72 };
+// stars in three layers that drift at different speeds (parallax)
+const stars = Array.from({ length: 260 }, () => { const l = Math.random(); return { x: Math.random(), y: Math.random(), r: l < 0.7 ? rand(0.3, 0.9) : l < 0.95 ? rand(0.9, 1.5) : rand(1.5, 2.2), l: l < 0.7 ? 0 : l < 0.95 ? 1 : 2, tw: rand(0, TAU), ts: rand(0.6, 2.4), hue: Math.random() < 0.15 ? rand(190, 230) : Math.random() < 0.1 ? rand(20, 45) : 0 }; });
+const nebulae = [
+  { x: 0.18, y: 0.28, r: 0.42, c: "120,80,255", p: rand(0, TAU) },
+  { x: 0.82, y: 0.55, r: 0.38, c: "255,110,170", p: rand(0, TAU) },
+  { x: 0.55, y: 0.9,  r: 0.5,  c: "60,140,255", p: rand(0, TAU) }
+];
+const shooting = [];
+const crafts = [];
 let depthTint = 0; let depthTarget = 0;
 
-function drawFish(ctx, x, y, s, dir, alpha) {
-  ctx.save(); ctx.translate(x, y); ctx.scale(dir * s, s); ctx.globalAlpha = alpha;
-  ctx.beginPath(); ctx.ellipse(0, 0, 14, 5, 0, 0, TAU);
-  ctx.moveTo(-11, 0); ctx.lineTo(-22, -7); ctx.lineTo(-20, 0); ctx.lineTo(-22, 7); ctx.closePath();
-  ctx.fill(); ctx.restore();
+function sparkle(ctx, x, y, s, color, alpha, rot) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(rot || 0); ctx.globalAlpha = alpha; ctx.fillStyle = color;
+  ctx.beginPath();
+  for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, rr = i % 2 ? s * 0.28 : s; ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+  ctx.closePath(); ctx.fill(); ctx.restore();
 }
-function drawKrill(ctx, k, alpha) {
-  ctx.save(); ctx.translate(k.x * W, k.y * H); ctx.rotate(k.a); ctx.globalAlpha = alpha;
-  ctx.strokeStyle = "#ff8a73"; ctx.lineWidth = k.size * 0.45; ctx.lineCap = "round";
-  ctx.beginPath(); ctx.arc(0, 0, k.size, Math.PI * 0.15, Math.PI * 1.05); ctx.stroke();
-  ctx.fillStyle = "#ffd2c6"; ctx.beginPath(); ctx.arc(k.size * 0.85, -k.size * 0.35, k.size * 0.22, 0, TAU); ctx.fill();
+function drawMeteor(ctx, x, y, len, ang, alpha, rgb) {
+  const tx = x - Math.cos(ang) * len, ty = y - Math.sin(ang) * len;
+  const g = ctx.createLinearGradient(x, y, tx, ty);
+  g.addColorStop(0, `rgba(${rgb},${alpha})`); g.addColorStop(1, `rgba(${rgb},0)`);
+  ctx.strokeStyle = g; ctx.lineWidth = 2; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(tx, ty); ctx.stroke();
+  ctx.fillStyle = `rgba(255,255,255,${alpha})`; ctx.beginPath(); ctx.arc(x, y, 1.8, 0, TAU); ctx.fill();
+}
+function drawSatellite(ctx, x, y, a, alpha) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(a); ctx.globalAlpha = alpha;
+  ctx.fillStyle = "#8ea3d8"; ctx.fillRect(-3, -3, 6, 6);
+  ctx.fillStyle = "#3d5fbf"; ctx.fillRect(-15, -2, 10, 4); ctx.fillRect(5, -2, 10, 4);
   ctx.restore();
 }
 
@@ -1971,74 +2038,62 @@ function frameBg(now) {
   depthTint += (depthTarget - depthTint) * Math.min(1, dt * 1.5);
   bx.clearRect(0, 0, W, H);
 
-  // light shafts from the surface, fading as the game goes deeper
-  const rayA = 0.07 * (1 - depthTint * 0.8);
+  // the glow of the atmosphere at the bottom fades as the game climbs higher
+  const hz = bx.createLinearGradient(0, H, 0, H * 0.45);
+  hz.addColorStop(0, `rgba(70,130,255,${0.22 * (1 - depthTint * 0.85)})`); hz.addColorStop(1, "rgba(70,130,255,0)");
+  bx.fillStyle = hz; bx.fillRect(0, H * 0.45, W, H * 0.55);
+
+  // soft nebula clouds
   bx.save(); bx.globalCompositeOperation = "lighter";
-  for (let i = 0; i < 6; i++) {
-    const cx = W * (0.08 + i * 0.18) + Math.sin(t * 0.25 + i * 1.7) * 40;
-    const g = bx.createLinearGradient(0, 0, 0, H * 0.75);
-    g.addColorStop(0, `rgba(160,230,230,${rayA})`); g.addColorStop(1, "rgba(160,230,230,0)");
-    bx.fillStyle = g;
-    bx.beginPath(); bx.moveTo(cx - 30, 0); bx.lineTo(cx + 40, 0); bx.lineTo(cx + 140 + i * 10, H * 0.75); bx.lineTo(cx - 60, H * 0.75); bx.closePath(); bx.fill();
-  }
-  // surface caustic shimmer
-  for (let i = 0; i < 24; i++) {
-    const x = (i / 24) * W + Math.sin(t * 0.8 + i) * 18, y = 6 + Math.sin(t * 1.3 + i * 2.1) * 4;
-    bx.fillStyle = `rgba(190,245,240,${0.05 * (1 - depthTint)})`; bx.beginPath(); bx.ellipse(x, y, 30, 3, 0, 0, TAU); bx.fill();
-  }
+  nebulae.forEach(n => {
+    n.p += dt * 0.08;
+    const x = (n.x + Math.sin(n.p) * 0.02) * W, y = (n.y + Math.cos(n.p * 0.8) * 0.02) * H, r = n.r * Math.max(W, H);
+    const g = bx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, `rgba(${n.c},${0.07 + depthTint * 0.04})`); g.addColorStop(1, `rgba(${n.c},0)`);
+    bx.fillStyle = g; bx.beginPath(); bx.arc(x, y, r, 0, TAU); bx.fill();
+  });
   bx.restore();
 
-  // marine snow
-  bx.fillStyle = "rgba(220,240,240,0.5)";
-  snow.forEach(p => {
-    p.y += p.s * dt * 3; p.w += dt * 0.6; if (p.y > 1.02) { p.y = -0.02; p.x = Math.random(); }
-    bx.globalAlpha = 0.25 + p.r * 0.15;
-    bx.beginPath(); bx.arc(p.x * W + Math.sin(p.w) * 8, p.y * H, p.r, 0, TAU); bx.fill();
-  });
-  bx.globalAlpha = 1;
+  // a ringed planet low on the right
+  const px = W * 0.86, py = H * (0.8 - depthTint * 0.12), pr = Math.min(W, H) * 0.09;
+  const pg = bx.createRadialGradient(px - pr * 0.4, py - pr * 0.4, pr * 0.1, px, py, pr);
+  pg.addColorStop(0, "rgba(255,190,150,.55)"); pg.addColorStop(1, "rgba(120,60,140,.35)");
+  bx.fillStyle = pg; bx.beginPath(); bx.arc(px, py, pr, 0, TAU); bx.fill();
+  bx.strokeStyle = "rgba(255,215,180,.35)"; bx.lineWidth = 3;
+  bx.beginPath(); bx.ellipse(px, py, pr * 1.8, pr * 0.42, -0.35, 0, TAU); bx.stroke();
 
-  // bioluminescence lower down, brighter when deep
-  glows.forEach(g => {
-    g.p += dt * g.sp; const a = Math.max(0, Math.sin(g.p)) * (0.35 + depthTint * 0.5);
-    if (a < 0.02) return;
-    const x = g.x * W, y = g.y * H;
-    const grd = bx.createRadialGradient(x, y, 0, x, y, g.r * 7);
-    grd.addColorStop(0, `hsla(${g.hue},90%,70%,${a})`); grd.addColorStop(1, `hsla(${g.hue},90%,70%,0)`);
-    bx.fillStyle = grd; bx.beginPath(); bx.arc(x, y, g.r * 7, 0, TAU); bx.fill();
+  // twinkling stars, brighter as you climb
+  stars.forEach(st => {
+    st.tw += dt * st.ts;
+    st.y += dt * (0.002 + st.l * 0.004); if (st.y > 1.01) { st.y = -0.01; st.x = Math.random(); }
+    const a = (0.35 + 0.65 * (0.5 + 0.5 * Math.sin(st.tw))) * (0.55 + depthTint * 0.45);
+    bx.fillStyle = st.hue ? `hsla(${st.hue},80%,80%,${a})` : `rgba(255,255,255,${a})`;
+    bx.beginPath(); bx.arc(st.x * W, st.y * H, st.r, 0, TAU); bx.fill();
+    if (st.l === 2 && a > 0.75) sparkle(bx, st.x * W, st.y * H, st.r * 3.2, "#ffffff", (a - 0.75) * 1.6);
   });
 
-  // passing fish silhouettes
-  if (fishes.length < 3 && Math.random() < dt * 0.12) {
-    const dir = Math.random() < 0.5 ? 1 : -1; const n = Math.floor(rand(1, 6));
-    const y = rand(0.2, 0.85) * H, sp = rand(25, 60), sc = rand(0.6, 1.4);
-    for (let i = 0; i < n; i++) fishes.push({ x: dir > 0 ? -40 - i * rand(25, 45) : W + 40 + i * rand(25, 45), y: y + rand(-30, 30), dir, sp, sc, wob: rand(0, TAU) });
+  // shooting stars now and then
+  if (shooting.length < 2 && Math.random() < dt * 0.25) {
+    const dir = Math.random() < 0.5 ? 1 : -1, ang = dir > 0 ? rand(0.3, 0.6) : Math.PI - rand(0.3, 0.6);
+    shooting.push({ x: dir > 0 ? rand(-0.1, 0.5) * W : rand(0.5, 1.1) * W, y: rand(-0.05, 0.4) * H, ang, sp: rand(500, 900), life: rand(0.6, 1.1) });
   }
-  bx.fillStyle = "#04121c";
-  for (let i = fishes.length - 1; i >= 0; i--) {
-    const f = fishes[i]; f.x += f.dir * f.sp * dt; f.wob += dt * 3;
-    drawFish(bx, f.x, f.y + Math.sin(f.wob) * 3, f.sc, f.dir, 0.55);
-    if ((f.dir > 0 && f.x > W + 80) || (f.dir < 0 && f.x < -80)) fishes.splice(i, 1);
+  for (let i = shooting.length - 1; i >= 0; i--) {
+    const m = shooting[i]; m.life -= dt; m.x += Math.cos(m.ang) * m.sp * dt; m.y += Math.sin(m.ang) * m.sp * dt;
+    drawMeteor(bx, m.x, m.y, 110, m.ang, Math.max(0, m.life) * 0.9, "200,220,255");
+    if (m.life <= 0) shooting.splice(i, 1);
   }
 
-  // rising bubbles
-  if (Math.random() < dt * 1.2) bubbles.push({ x: rand(0, W), y: H + 10, r: rand(1.5, 4), sp: rand(30, 70), w: rand(0, TAU) });
-  bx.strokeStyle = "rgba(200,240,240,0.35)"; bx.lineWidth = 1;
-  for (let i = bubbles.length - 1; i >= 0; i--) {
-    const b = bubbles[i]; b.y -= b.sp * dt; b.w += dt * 2;
-    bx.beginPath(); bx.arc(b.x + Math.sin(b.w) * 4, b.y, b.r, 0, TAU); bx.stroke();
-    if (b.y < -10) bubbles.splice(i, 1);
+  // a satellite drifting across
+  if (crafts.length < 1 && Math.random() < dt * 0.05) {
+    const dir = Math.random() < 0.5 ? 1 : -1;
+    crafts.push({ x: dir > 0 ? -30 : W + 30, y: rand(0.1, 0.6) * H, dir, sp: rand(18, 35), a: rand(0, TAU), blink: 0 });
   }
-
-  // the krill swarm wanders after a drifting target
-  if (Math.random() < dt * 0.15) swarmT = { x: rand(0.1, 0.9), y: rand(0.45, 0.92) };
-  krill.forEach(k => {
-    k.vx += (swarmT.x - k.x) * dt * 0.02 + rand(-1, 1) * dt * 0.02;
-    k.vy += (swarmT.y - k.y) * dt * 0.02 + rand(-1, 1) * dt * 0.02;
-    k.vx *= 0.985; k.vy *= 0.985;
-    k.x += k.vx * dt; k.y += k.vy * dt;
-    k.a = Math.atan2(k.vy, k.vx) + Math.PI / 2;
-    drawKrill(bx, k, 0.38);
-  });
+  for (let i = crafts.length - 1; i >= 0; i--) {
+    const c = crafts[i]; c.x += c.dir * c.sp * dt; c.y -= c.sp * 0.15 * dt; c.a += dt * 0.3; c.blink += dt;
+    drawSatellite(bx, c.x, c.y, c.a, 0.6);
+    if (Math.sin(c.blink * 4) > 0.9) { bx.fillStyle = "rgba(255,80,80,.9)"; bx.beginPath(); bx.arc(c.x, c.y, 1.6, 0, TAU); bx.fill(); }
+    if (c.x < -40 || c.x > W + 40) crafts.splice(i, 1);
+  }
 
   if (!reduce && !document.hidden) requestAnimationFrame(frameBg);
 }
@@ -2077,21 +2132,21 @@ const effects = {
     for (let i = 0; i < 16; i++) parts.push({
       x: x + rand(-40, 40), y: y + rand(-6, 6), r: rand(2, 6), vy: rand(-90, -40), w: rand(0, TAU), life: rand(1, 1.8), max: 1.8,
       update(p, dt) { p.y += p.vy * dt; p.w += dt * 6; },
-      draw(c, p) { c.strokeStyle = `rgba(243,237,224,${Math.min(1, p.life)})`; c.lineWidth = 1.5; c.beginPath(); c.arc(p.x + Math.sin(p.w) * 5, p.y, p.r, 0, TAU); c.stroke(); }
+      draw(c, p) { c.fillStyle = `rgba(143,216,255,${Math.min(0.7, p.life * 0.5)})`; c.beginPath(); c.arc(p.x + Math.sin(p.w) * 5, p.y, p.r, 0, TAU); c.fill(); }
     });
   },
   twilight(card) {
     const { r } = centerOf(card);
-    const y = r.top + r.height * 0.55, dir = Math.random() < 0.5 ? 1 : -1;
-    for (let i = 0; i < 14; i++) {
-      const ox = rand(0, 120), oy = rand(-30, 30);
+    const dir = Math.random() < 0.5 ? 1 : -1;
+    for (let i = 0; i < 9; i++) {
+      const y = r.top + rand(0.1, 0.9) * r.height, ang = dir > 0 ? rand(-0.35, -0.15) : Math.PI + rand(0.15, 0.35);
       parts.push({
-        x: dir > 0 ? r.left - 60 - ox : r.right + 60 + ox, y: y + oy, dir, life: 2.2, w: rand(0, TAU),
-        update(p, dt) { p.x += p.dir * (r.width + 240) / 1.9 * dt; p.w += dt * 9; },
-        draw(c, p) { c.fillStyle = "#5fc4c9"; drawFish(c, p.x, p.y + Math.sin(p.w) * 2, 0.55, p.dir, Math.min(0.9, p.life)); }
+        x: dir > 0 ? r.left - rand(40, 220) : r.right + rand(40, 220), y, ang, sp: rand(420, 700), life: 1.4, max: 1.4,
+        update(p, dt) { p.x += Math.cos(p.ang) * p.sp * dt; p.y += Math.sin(p.ang) * p.sp * dt; },
+        draw(c, p) { drawMeteor(c, p.x, p.y, 70, p.ang, Math.min(1, p.life), "122,162,255"); }
       });
     }
-    ring(card, "95,196,201", 1, 1.2);
+    ring(card, "122,162,255", 1, 1.2);
   },
   midnight(card) {
     const { x, y } = gaugePoint(card);
@@ -2102,26 +2157,26 @@ const effects = {
         update(p, dt) { p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.96; p.vy *= 0.96; p.tw += dt * 14; },
         draw(c, p) {
           const a2 = Math.min(1, p.life) * (0.5 + 0.5 * Math.sin(p.tw));
-          const g = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, 7); g.addColorStop(0, `rgba(143,179,240,${a2})`); g.addColorStop(1, "rgba(143,179,240,0)");
+          const g = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, 7); g.addColorStop(0, `rgba(165,139,255,${a2})`); g.addColorStop(1, "rgba(165,139,255,0)");
           c.fillStyle = g; c.beginPath(); c.arc(p.x, p.y, 7, 0, TAU); c.fill();
         }
       });
     }
   },
   abyss(card) {
-    ring(card, "183,165,240", 3, 1.6);
+    ring(card, "220,220,240", 3, 1.6);
     const { x, y } = gaugePoint(card);
-    parts.push({ // a small jellyfish drifts up from the depth marker
+    parts.push({ // a little moon rises from the altitude marker
       x, y, life: 2.4, ph: 0,
-      update(p, dt) { p.ph += dt * 4; p.y -= (18 + Math.max(0, Math.sin(p.ph)) * 50) * dt; },
+      update(p, dt) { p.ph += dt; p.y -= 38 * dt; },
       draw(c, p) {
-        const a = Math.min(1, p.life / 1.2), s = 1 + Math.sin(p.ph) * 0.12;
+        const a = Math.min(1, p.life / 1.2);
         c.save(); c.translate(p.x, p.y); c.globalAlpha = a;
-        const g = c.createRadialGradient(0, 0, 0, 0, 0, 40); g.addColorStop(0, "rgba(183,165,240,.35)"); g.addColorStop(1, "rgba(183,165,240,0)");
-        c.fillStyle = g; c.beginPath(); c.arc(0, 0, 40, 0, TAU); c.fill();
-        c.fillStyle = "rgba(205,190,255,.85)"; c.beginPath(); c.ellipse(0, 0, 16 * s, 12 / s, 0, Math.PI, 0); c.closePath(); c.fill();
-        c.strokeStyle = "rgba(205,190,255,.6)"; c.lineWidth = 1.5;
-        for (let i = -2; i <= 2; i++) { c.beginPath(); c.moveTo(i * 5, 0); c.quadraticCurveTo(i * 5 + Math.sin(p.ph + i) * 6, 14, i * 5, 26 / s); c.stroke(); }
+        const g = c.createRadialGradient(0, 0, 0, 0, 0, 44); g.addColorStop(0, "rgba(230,230,255,.35)"); g.addColorStop(1, "rgba(230,230,255,0)");
+        c.fillStyle = g; c.beginPath(); c.arc(0, 0, 44, 0, TAU); c.fill();
+        c.fillStyle = "#e6e6f5"; c.beginPath(); c.arc(0, 0, 15, 0, TAU); c.fill();
+        c.fillStyle = "rgba(160,160,190,.6)";
+        [[-5, -4, 3.5], [5, 3, 2.6], [-1, 7, 2], [6, -6, 1.8]].forEach(([cx, cy, cr]) => { c.beginPath(); c.arc(cx, cy, cr, 0, TAU); c.fill(); });
         c.restore();
       }
     });
@@ -2163,36 +2218,31 @@ function devTakeover(card, id) {
     draw(c, p) { if (p.delay > 0) return; const k = 1 - p.life / p.max; c.strokeStyle = gold ? `hsla(${40 + p.hue / 30},100%,62%,${(1 - k) * 0.9})` : `hsla(${(p.hue + k * 360) % 360},90%,65%,${(1 - k) * 0.9})`; c.lineWidth = 5 * (1 - k) + 1; c.beginPath(); c.arc(p.x, p.y, 20 + k * Math.max(W, H) * 0.7, 0, TAU); c.stroke(); }
   });
 }
-function krillion(card, who) {
+const escH = v => String(v == null ? "" : v).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+function krillion(card, who, opts) {
   const { x, y } = gaugePoint(card);
   document.body.classList.add("krillion-hit");
   const app = document.getElementById("app");
   if (app && !reduce) { app.classList.remove("shake"); void app.offsetWidth; app.classList.add("shake"); }
   const banner = document.createElement("div");
   banner.className = "krillion-banner";
-  banner.innerHTML = `<div class="kb-inner"><p class="kb-who">${who === "you" ? "You found it" : who + " found it"}</p><p class="kb-big"><span>1 in an</span> Attillion</p><p class="kb-pts">+100</p></div>`;
+  banner.innerHTML = `<div class="kb-inner"><p class="kb-who">${opts && opts.avatarHtml ? opts.avatarHtml + " " + escH(opts.label || "") : who === "you" ? "You found it" : escH(who) + " found it"}</p><p class="kb-big"><span>1 in an</span> Attillion</p>${opts && opts.avatarHtml ? "" : `<p class="kb-pts">+100</p>`}</div>`;
   document.body.appendChild(banner);
   const end = () => { banner.classList.add("out"); document.body.classList.remove("krillion-hit"); setTimeout(() => banner.remove(), 500); };
   const timer = setTimeout(end, 2600);
   banner.addEventListener("click", () => { clearTimeout(timer); end(); });
 
-  // a swarm of krill bursts from the depth marker and spirals out
-  for (let i = 0; i < 220; i++) {
+  // a burst of gold stars shoots out from the altitude marker and swirls
+  for (let i = 0; i < 200; i++) {
     const a = rand(0, TAU), sp = rand(120, 620);
     parts.push({
-      x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, a, spin: rand(-6, 6), size: rand(3, 7), life: rand(1.6, 3.2),
+      x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, rot: rand(0, TAU), spin: rand(-6, 6), size: rand(3, 8), life: rand(1.6, 3.2),
       update(p, dt) {
-        p.vx *= 0.975; p.vy = p.vy * 0.975 + 30 * dt; // drift down slowly
+        p.vx *= 0.975; p.vy = p.vy * 0.975 - 20 * dt; // drift upward
         const sw = 70; p.vx += -p.vy / sw * dt * 60 * 0.15; p.vy += p.vx / sw * dt * 60 * 0.15; // swirl
-        p.x += p.vx * dt; p.y += p.vy * dt; p.a = Math.atan2(p.vy, p.vx) + Math.PI / 2;
+        p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.spin * dt;
       },
-      draw(c, p) {
-        c.save(); c.translate(p.x, p.y); c.rotate(p.a); c.globalAlpha = Math.min(1, p.life);
-        c.strokeStyle = "#ffc93c"; c.lineWidth = p.size * 0.45; c.lineCap = "round";
-        c.beginPath(); c.arc(0, 0, p.size, Math.PI * 0.15, Math.PI * 1.05); c.stroke();
-        c.fillStyle = "#fff4cf"; c.beginPath(); c.arc(p.size * 0.85, -p.size * 0.35, p.size * 0.22, 0, TAU); c.fill();
-        c.restore();
-      }
+      draw(c, p) { sparkle(c, p.x, p.y, p.size, Math.random() < 0.1 ? "#fff4cf" : "#ffc93c", Math.min(1, p.life), p.rot); }
     });
   }
   // shockwave rings
@@ -2218,6 +2268,13 @@ window.KrillionFX = {
   clear() { parts.length = 0; },
   setDepth(v) { depthTarget = Math.max(0, Math.min(1, v)); },
   countUp,
+  // the full 1 in an Attillion moment, played when you pick a new avatar
+  celebrate(el, avatarId, avatarHtml, label) {
+    if (!el || reduce) return;
+    if (avatarId === "rdev" || avatarId === "gdev") devTakeover(el, avatarId);
+    else krillion(el, "", { avatarHtml, label });
+    runFx();
+  },
   reveal(card, zoneKey, who, opts) {
     if (!card) return;
     card.classList.add("fx-" + (zoneKey || "none"));

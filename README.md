@@ -1,5 +1,7 @@
 # Attillion
 
+A space-themed game: rarer answers launch your avatar higher, from the Sky through the Stratosphere, Orbit and the Moon, to **1 in an Attillion** past the Moon.
+
 Play it: https://bryandickinson-create.github.io/attilion/
 
 Name the answer nobody else will. 7 prompts, 30 seconds each, up to 100 points a round.
@@ -16,13 +18,13 @@ Quick match (live play against someone near your Elo) uses the live room of the 
 
 ## How rarity works (guess, open to change)
 - Each answer's share of players is estimated from its position in the list using a Zipf curve, assuming 92% of players give a valid answer.
-- Each list has a "familiar" part (first 65 answers). Answers from 75% of the way down that part, and everything past it, score 100 (1 in an Attillion); everything else is capped at 97. The most common answer → 2 points. In between, points follow a log scale of estimated share, shown as a depth from 0 m to 6,000 m.
+- Each list has a "familiar" part (first 65 answers). Answers from 75% of the way down that part, and everything past it, score 100 (1 in an Attillion); everything else is capped at 97. The most common answer → 2 points. In between, points follow a log scale of estimated share, shown as an altitude from the ground up past the Moon.
 - Answers players actually give are counted and blended into the estimate (the curated list counts as 200 virtual answers). In this build the counts live in each browser; with a server they'd be global.
 - The Daily Dive and friend challenges use the fixed list only, so both players face the same rarity.
 - Typos within 1 letter (2 for long words), plurals, "the", accents and punctuation are forgiven. Answers not on the list score 0.
 
 ## Computer opponents
-Average scores over 500 simulated games: see app.js BOTS (simulated averages listed in the thread) (out of 700). Elo: 800 / 1100 / 1400 / 1700.
+Average scores over 500 simulated games: see app.js BOTS (simulated averages listed in the thread) (out of 700). Asteroid / Comet / Star / Black Hole, Elo 800 / 1100 / 1400 / 1700.
 
 ## Elo
 Everyone starts at 1000. K = 40 for the first 10 games, then 24. Win/loss/tie decided by total points.

@@ -22,46 +22,49 @@ const SFX = (name, gain) => { if (window.KrillionSound) window.KrillionSound.pla
 
 const BOTS = {
   // pick() returns a position in the familiar answers: 0 = most common, 1 = rarest.
-  // lucky = chance of diving straight into the Attillion zone on a round.
-  minnow:    { name: "Minnow",    av: "🐟", elo: 800,  miss: 0.15, lucky: 0.04, pick: () => Math.pow(Math.random(), 2.2) * 0.15, blurb: "Says the first thing that swims by." },
-  fish:      { name: "Fish",      av: "🐠", elo: 1100, miss: 0.10, lucky: 0.07, pick: () => Math.pow(Math.random(), 1.5) * 0.35, blurb: "Knows the reef, rarely goes deeper." },
-  barracuda: { name: "Barracuda", av: "🐡", elo: 1400, miss: 0.07, lucky: 0.12, pick: () => 0.03 + Math.random() * 0.5,         blurb: "Fast, sharp, sometimes too clever." },
-  shark:     { name: "Shark",     av: "🦈", elo: 1700, miss: 0.04, lucky: 0.20, pick: () => 0.06 + Math.random() * 0.69,        blurb: "Lives in the trench. Hunts obscure answers." }
+  // lucky = chance of launching straight into the Attillion zone on a round.
+  minnow:    { name: "Asteroid",  av: "🪨", elo: 800,  miss: 0.15, lucky: 0.04, pick: () => Math.pow(Math.random(), 2.2) * 0.15, blurb: "Says the first thing that drifts by." },
+  fish:      { name: "Comet",     av: "☄️", elo: 1100, miss: 0.10, lucky: 0.07, pick: () => Math.pow(Math.random(), 1.5) * 0.35, blurb: "Goes around the block, rarely leaves orbit." },
+  barracuda: { name: "Star",      av: "🌟", elo: 1400, miss: 0.07, lucky: 0.12, pick: () => 0.03 + Math.random() * 0.5,         blurb: "Bright, fast, sometimes too clever." },
+  shark:     { name: "Black Hole", av: "🕳️", elo: 1700, miss: 0.04, lucky: 0.20, pick: () => 0.06 + Math.random() * 0.69,        blurb: "Pulls in answers nobody else can reach." }
 };
 
 // Avatars unlock by your best (peak) Elo, so a losing streak never takes one away.
 const AVATARS = [
-  { id: "krill",    e: "🦐", name: "Krill",          elo: 0 },
-  { id: "crab",     e: "🦀", name: "Crab",           elo: 0 },
-  { id: "reef",     e: "🐠", name: "Reef fish",      elo: 0 },
-  { id: "puffer",   e: "🐡", name: "Pufferfish",     elo: 1050 },
-  { id: "lobster",  e: "🦞", name: "Lobster",        elo: 1100 },
-  { id: "octopus",  e: "🐙", name: "Octopus",        elo: 1150 },
-  { id: "nautilus", e: "🐚", name: "Nautilus",       elo: 1200 },
-  { id: "turtle",   e: "🐢", name: "Sea turtle",     elo: 1275 },
-  { id: "seal",     e: "🦭", name: "Seal",           elo: 1350 },
-  { id: "dolphin",  e: "🐬", name: "Dolphin",        elo: 1425 },
-  { id: "squid",    e: "🦑", name: "Giant squid",    elo: 1500 },
-  { id: "shark",    e: "🦈", name: "Shark",          elo: 1600 },
-  { id: "whale",    e: "🐋", name: "Blue whale",     elo: 1750 },
-  { id: "spout",    e: "🐳", name: "Spouting whale", elo: 1900 },
-  // Secret creatures: only unlocked by typing a code in Settings. Codes are
-  // stored as hashes so they don't show up as plain text in the page source.
+  { id: "rocket",   e: "🚀", name: "Rocket",         elo: 0 },
+  { id: "satellite",e: "🛰️", name: "Satellite",      elo: 0 },
+  { id: "moon",     e: "🌙", name: "Crescent moon",  elo: 0 },
+  { id: "scope",    e: "🔭", name: "Telescope",      elo: 1050 },
+  { id: "astro",    e: "🧑‍🚀", name: "Astronaut",      elo: 1100 },
+  { id: "earth",    e: "🌍", name: "Earth",          elo: 1150 },
+  { id: "shoot",    e: "🌠", name: "Shooting star",  elo: 1200 },
+  { id: "robot",    e: "🤖", name: "Rover bot",      elo: 1275 },
+  { id: "fullmoon", e: "🌕", name: "Full moon",      elo: 1350 },
+  { id: "planet",   e: "🪐", name: "Ringed planet",  elo: 1425 },
+  { id: "star",     e: "⭐", name: "Star",           elo: 1500 },
+  { id: "sun",      e: "🌞", name: "Sun",            elo: 1600 },
+  { id: "galaxy",   e: "🌌", name: "Galaxy",         elo: 1750 },
+  { id: "hole",     e: "🕳️", name: "Black hole",     elo: 1900 },
   // Attillion trophies: unlocked by how many 1 in an Attillions you have found.
-  { id: "k10",      e: "🐊", name: "Saltwater croc",      krill: 10 },
-  { id: "k20",      e: "🦕", name: "Plesiosaur",          krill: 20 },
-  { id: "gdragon",  e: "🐉", name: "Gold sea dragon",     krill: 50 },
-  { id: "rdragon",  e: "🐉", name: "Rainbow sea dragon",  krill: 100 },
-  { id: "penguin",  e: "🐧", name: "Penguin",        code: 1891601023 },
-  { id: "otter",    e: "🦦", name: "Sea otter",      code: 633339391 },
-  { id: "mermaid",  e: "🧜", name: "Merfolk",        code: 1186902916 },
-  { id: "dragon",   e: "🐉", name: "Sea dragon",     code: 1780114088 },
+  { id: "k10",      e: "☄️", name: "Comet",           krill: 10 },
+  { id: "k20",      e: "🌘", name: "Eclipse",         krill: 20 },
+  { id: "gdragon",  e: "🪐", name: "Golden Saturn",   krill: 50 },
+  { id: "rdragon",  e: "🌌", name: "Rainbow Nebula",  krill: 100 },
+  // Secret avatars: only unlocked by typing a code in Settings. Codes are
+  // stored as hashes so they don't show up as plain text in the page source.
+  { id: "alien",    e: "👽", name: "Alien",          code: 32697793 },
+  { id: "ufo",      e: "🛸", name: "Flying saucer",  code: 477561382 },
+  { id: "spacedog", e: "🐕", name: "Space dog",      code: 1213739381 },
+  { id: "cheese",   e: "🧀", name: "Moon cheese",    code: 190172967 },
   { id: "dev",      e: "👾", name: "Developer",      code: 3929745284, dev: true },
   { id: "rdev",     e: "👾", name: "Rainbow Developer", code: 3751850430, dev: true },
   { id: "gdev",     e: "👾", name: "Gold Developer", code: 762634016, dev: true }
 ];
 // Bundle codes unlock a whole group at once.
-const BUNDLES = [{ id: "krill-all", code: 2284514118, name: "every Attillion trophy creature", pick: "rdragon" }];
+const BUNDLES = [
+  { id: "krill-all", code: 1175683394, name: "every Attillion trophy", pick: "rdragon" },
+  { id: "krill-all", code: 2284514118, name: "every Attillion trophy", pick: "rdragon" }   // the old code still works
+];
 function codeHash(raw) { return hashStr("krillion-code:" + String(raw).toUpperCase().replace(/[^A-Z0-9]/g, "")); }
 function redeemed(u) { return u ? (u.codes || []) : store.get("guestCodes", []); }
 function krillCount(u) { return u ? (u.krillions || []).length : store.get("guestKrillions", []).length; }
@@ -85,12 +88,35 @@ function perfElo(points, rounds) {
 }
 
 const ZONES = [
-  { key: "sunlight", name: "Sunlight zone", min: 0 },
-  { key: "twilight", name: "Twilight zone", min: 200 },
-  { key: "midnight", name: "Midnight zone", min: 1000 },
-  { key: "abyss",    name: "Abyss",         min: 4000 },
+  { key: "sunlight", name: "Sky",          min: 0 },
+  { key: "twilight", name: "Stratosphere", min: 200 },
+  { key: "midnight", name: "Orbit",        min: 1000 },
+  { key: "abyss",    name: "Moon",         min: 4000 },
   { key: "hadal",    name: "1 in an Attillion", min: HADAL_DEPTH }
 ];
+
+// Rarity is stored as a "depth" number (0 to 10,935) and shown as how high you climbed:
+// Sky 0-12 km, Stratosphere 12-100 km, Orbit 100-36,000 km, Moon 36,000-384,400 km,
+// then 1 in an Attillion: past the Moon toward the edge of the Solar System.
+const ALT_D = [0, 200, 1000, 4000, 6000, 10935];
+const ALT_KM = [0, 12, 100, 36000, 384400, 18e9];
+function altitudeKm(depth) {
+  for (let i = 0; i < ALT_D.length - 1; i++) {
+    if (depth <= ALT_D[i + 1] || i === ALT_D.length - 2) {
+      const f = Math.max(0, Math.min(1, (depth - ALT_D[i]) / (ALT_D[i + 1] - ALT_D[i])));
+      if (i === 0) return ALT_KM[1] * f;
+      return Math.exp(Math.log(ALT_KM[i]) + f * (Math.log(ALT_KM[i + 1]) - Math.log(ALT_KM[i])));
+    }
+  }
+  return ALT_KM[ALT_KM.length - 1];
+}
+function altText(depth) {
+  const km = altitudeKm(depth);
+  if (km >= 1e9) return (km / 1e9).toFixed(1).replace(/\.0$/, "") + " billion km";
+  if (km >= 1e6) return (km / 1e6).toFixed(1).replace(/\.0$/, "") + " million km";
+  if (km < 10) return km.toFixed(1).replace(/\.0$/, "") + " km";
+  return Math.round(km).toLocaleString() + " km";
+}
 
 /* ---------- safe storage ---------- */
 const mem = {};
@@ -310,7 +336,7 @@ function unlockedAvatars(u) { return AVATARS.filter(a => isOpen(a, u)); }
 function isDevAvatar(markup) { return /av-[rg]?dev"/.test(String(markup)); }
 function myAvatarObj() {
   const u = me();
-  const id = u ? u.avatar : store.get("guestAvatar", "krill");
+  const id = u ? u.avatar : store.get("guestAvatar", "rocket");
   return unlockedAvatars(u).find(x => x.id === id) || AVATARS[0];
 }
 function myAvatar() { return avMarkup(myAvatarObj()); }
@@ -320,8 +346,8 @@ function curOppName() {
 function oppAvatar() {
   if (S.mode === "bot") return BOTS[S.level].av;
   if (S.mode === "live" && S.live) return avMarkup(avatarById(S.live.opp.av) || AVATARS[0]);
-  if (S.mode === "challenge-guest") { const a = S.challenge && avatarById(S.challenge.av); return a ? avMarkup(a) : "🐟"; }
-  return "🐟";
+  if (S.mode === "challenge-guest") { const a = S.challenge && avatarById(S.challenge.av); return a ? avMarkup(a) : "🚀"; }
+  return "🚀";
 }
 function me() { const n = store.get("session", null); const u = users(); return n && u[n.toLowerCase()] ? u[n.toLowerCase()] : null; }
 async function hashPw(name, pw) {
@@ -475,7 +501,7 @@ function reveal() {
   S.scores[S.round] = S.lastMine; if (S.lastTheirs) S.oppScores[S.round] = S.lastTheirs;
   if (S.lastMine.points === 100) {
     const found = { q: prompt.twist ? prompt.baseQ + " " + prompt.twist : prompt.q, a: S.lastMine.display, depth: S.lastMine.depth, share: S.lastMine.share, when: Date.now(),
-      mode: S.mode === "bot" ? "vs " + BOTS[S.level].name : S.mode === "live" ? "Quick match" : S.mode === "daily" ? "Daily Dive" : "Friend challenge" };
+      mode: S.mode === "bot" ? "vs " + BOTS[S.level].name : S.mode === "live" ? "Quick match" : S.mode === "daily" ? "Daily Launch" : "Friend challenge" };
     const before = krillCount(me());
     if (me()) updateUser(x => { x.krillions = (x.krillions || []); x.krillions.unshift(found); x.krillions = x.krillions.slice(0, 500); });
     else { const g = store.get("guestKrillions", []); g.unshift(found); store.set("guestKrillions", g.slice(0, 500)); }
@@ -583,13 +609,13 @@ function getRoom() {
   }
   return roomP;
 }
-function myCard() { const u = me(); return { name: u ? u.name : "Guest diver", elo: u ? u.elo : START_ELO, av: myAvatarObj().id }; }
+function myCard() { const u = me(); return { name: u ? u.name : "Guest pilot", elo: u ? u.elo : START_ELO, av: myAvatarObj().id }; }
 function cleanCard(p, field) {   // everything in presence is untrusted
   const q = p && p.presence && p.presence[field];
   if (!q || typeof q !== "object") return null;
   const elo = Math.max(100, Math.min(3500, Math.round(+q.elo) || START_ELO));
-  const name = String(q.name || "").replace(/[^\p{L}\p{N} _.-]/gu, "").trim().slice(0, 20) || "Diver";
-  return { peer: p.peer, name, elo, av: avatarById(String(q.av)) ? String(q.av) : "krill", t: +q.t || 0, want: typeof q.want === "string" ? q.want : null };
+  const name = String(q.name || "").replace(/[^\p{L}\p{N} _.-]/gu, "").trim().slice(0, 20) || "Pilot";
+  return { peer: p.peer, name, elo, av: avatarById(String(q.av)) ? String(q.av) : "rocket", t: +q.t || 0, want: typeof q.want === "string" ? q.want : null };
 }
 function eloWindow(waitMs) { return Math.min(800, 150 + Math.floor(Math.max(0, waitMs) / 5000) * 75); }
 function pairUp(list, now) {
@@ -608,7 +634,7 @@ function pairUp(list, now) {
   return pairs;
 }
 let lobbyPeers = 0;
-function onlineText() { return lobbyPeers > 1 ? `${lobbyPeers} divers online` : lobbyPeers === 1 ? "Just you online" : ""; }
+function onlineText() { return lobbyPeers > 1 ? `${lobbyPeers} players online` : lobbyPeers === 1 ? "Just you online" : ""; }
 getRoom().then(room => {
   if (!room) return;
   room.onPeers(ch => {
@@ -674,7 +700,7 @@ function viewQueue() {
   return `${header()}<main class="queue">
     <div class="queue-card">
       <div class="sonar" aria-hidden="true"><i></i><i></i><i></i><span class="sonar-av">${myAvatar()}</span></div>
-      <h1 id="q-title">Finding a diver near ${c.elo}</h1>
+      <h1 id="q-title">Finding a player near ${c.elo}</h1>
       <p id="q-text" class="q-text">Connecting…</p>
       <div class="row center">
         <button class="btn ghost" data-act="quick-cancel">Cancel</button>
@@ -751,6 +777,18 @@ function liveStop(L) {
   L.room.leave().catch(() => {});
 }
 
+function deviceMode() { const v = store.get("device", "auto"); return ["auto", "phone", "ipad", "computer"].includes(v) ? v : "auto"; }
+function setDeviceMode(v) { store.set("device", v); applyDeviceMode(); }
+function applyDeviceMode() { const v = deviceMode(); if (v === "auto") delete document.documentElement.dataset.device; else document.documentElement.dataset.device = v; }
+applyDeviceMode();
+// picking an avatar plays the full 1 in an Attillion moment with it
+function celebrateAvatar(id) {
+  const a = avatarById(id); if (!a) return;
+  SFX("hadal");
+  const el = document.querySelector(`[data-act="avatar"][data-id="${id}"]`) || document.querySelector(".avbtn");
+  if (window.KrillionFX && window.KrillionFX.celebrate) window.KrillionFX.celebrate(el, a.id, avMarkup(a), a.name);
+}
+
 /* ---------- views ---------- */
 function header() {
   const u = me();
@@ -773,21 +811,21 @@ function viewHome() {
     <section class="hero">
       <p class="eyebrow">7 prompts · 30 seconds each · up to 100 points a round</p>
       <h1>Think of the answer <em>nobody else</em> will.</h1>
-      <p class="lede">Every prompt has hundreds of right answers. Common ones float near the surface and score almost nothing. Rare ones sink. Find one of the truly rare answers, the deepest few that almost nobody thinks of, and you hit the trench: <strong>1 in an Attillion</strong>, a full 100 points.</p>
+      <p class="lede">Every prompt has hundreds of right answers. Common ones barely leave the ground and score almost nothing. Rare ones launch higher. Find one of the truly rare answers, the few that almost nobody thinks of, and you break past the Moon: <strong>1 in an Attillion</strong>, a full 100 points.</p>
       ${depthLegend()}
     </section>
 
     <section class="modes">
       <article class="mode quick">
         <div class="mode-head"><h2>Quick match</h2><span class="tag" id="online">${onlineText()}</span></div>
-        <p>Get paired with a real diver near your Elo who is here right now. You both get the same 7 prompts at the same time, and answers are shown together at the end of each round.</p>
+        <p>Get paired with a real player near your Elo who is here right now. You both get the same 7 prompts at the same time, and answers are shown together at the end of each round.</p>
         <button class="btn primary" data-act="quick">Find a match</button>
       </article>
       <article class="mode daily">
-        <div class="mode-head"><h2>Daily Dive #${dailyNumber(key)}</h2><span class="tag">${esc(key)}</span></div>
+        <div class="mode-head"><h2>Daily Launch #${dailyNumber(key)}</h2><span class="tag">${esc(key)}</span></div>
         <p>Seven prompts, the same for everyone today. Rarity is locked for the day so every score is comparable.</p>
-        ${done ? `<p class="done">You scored <b>${done.score}</b> today. New dive at midnight.</p><button class="btn ghost" data-act="daily-view">See today's result</button>`
-               : `<button class="btn primary" data-act="daily">Start today's dive</button>`}
+        ${done ? `<p class="done">You scored <b>${done.score}</b> today. New launch at midnight.</p><button class="btn ghost" data-act="daily-view">See today's result</button>`
+               : `<button class="btn primary" data-act="daily">Start today's launch</button>`}
       </article>
 
       <article class="mode friends">
@@ -817,7 +855,7 @@ function viewHome() {
 
 function depthLegend() {
   return `<ol class="legend" aria-label="Depth zones">
-    ${ZONES.map((z, i) => `<li class="z-${z.key}"><span class="zn">${z.name}</span><span class="zd">${z.min.toLocaleString()} m${i === ZONES.length - 1 ? "+" : ""}</span></li>`).join("")}
+    ${ZONES.map((z, i) => `<li class="z-${z.key}"><span class="zn">${z.name}</span><span class="zd">${i === ZONES.length - 1 ? "past the Moon" : altText(z.min) + "+"}</span></li>`).join("")}
   </ol>`;
 }
 
@@ -840,7 +878,7 @@ function viewPlay() {
   const oppLabel = oppName || (S.mode === "challenge-host" ? "Your friend" : null);
   const scoreLine = `<div class="scoreboard ${oppLabel ? "duo" : "solo"}">
       ${pod("You", S.scores, "pod-me", prevMine, "me")}
-      <div class="sb-mid"><span class="sb-round">Round ${S.round + 1}/${ROUNDS}</span>${oppName ? `<span class="sb-lead" id="lead">${S.round === 0 && !revealing ? "First dive" : leadTextAt(oppName, prevMine, prevOpp)}</span>` : S.mode === "daily" ? `<span class="sb-lead">Daily Dive</span>` : ""}</div>
+      <div class="sb-mid"><span class="sb-round">Round ${S.round + 1}/${ROUNDS}</span>${oppName ? `<span class="sb-lead" id="lead">${S.round === 0 && !revealing ? "First launch" : leadTextAt(oppName, prevMine, prevOpp)}</span>` : S.mode === "daily" ? `<span class="sb-lead">Daily Launch</span>` : ""}</div>
       ${oppLabel ? pod(oppLabel, oppName ? S.oppScores : null, "pod-opp", prevOpp, "opp", oppName ? "" : "plays after you") : ""}
     </div>`;
   let body = "";
@@ -869,21 +907,22 @@ function viewPlay() {
 }
 
 function promptTitle(p) { return p.twist ? `${esc(p.baseQ)} <span class="twist">${esc(p.twist)}</span>` : esc(p.q); }
-// Where an answer's avatar ends up in the water column (percent from the top).
+// Where an answer's avatar ends up in the sky column (percent from the top).
+// Rarer answers climb higher; a miss stays on the launch pad at the bottom.
 function diveY(r) {
-  if (!r || !r.valid) return 7;
-  // each zone is a 20% band; stay below the band's label at the top
+  if (!r || !r.valid) return 93;
+  // each zone is a 20% band, the rarest at the top; stay below the band's label
   const bounds = [0, 200, 1000, 4000, 6000, MAX_DEPTH];
   for (let z = 0; z < 5; z++) {
     if (r.depth <= bounds[z + 1] || z === 4) {
       const f = Math.min(1, (r.depth - bounds[z]) / (bounds[z + 1] - bounds[z]));
-      return z * 20 + 7 + f * 9;
+      return (4 - z) * 20 + 16 - f * 9;
     }
   }
-  return 95;
+  return 8;
 }
 function diveColumn(oppName) {
-  const zones = ZONES.map(z => `<div class="band z-${z.key}"><span>${z.name}</span></div>`).join("");
+  const zones = ZONES.slice().reverse().map(z => `<div class="band z-${z.key}"><span>${z.name}</span></div>`).join("");
   // The Developer creature turns gold in the Attillion zone, and spins when tapped.
   const diver = (cls, av, label, r) => { const gold = isDevAvatar(av) && r && r.points === 100; return `<div class="diver ${cls} ${r && r.valid ? "" : "miss"} ${gold ? "golden" : ""}" style="--y:${diveY(r).toFixed(1)}%" ${gold ? `data-act="spin" title="Tap me"` : ""}><span class="av">${av}</span><span class="tag">${esc(label)}${isDevAvatar(av) ? ` <i class="devtag">DEV</i>` : ""}</span></div>`; };
   return `<div class="dive ${S.lastTheirs ? "duo" : "solo"}" aria-hidden="true">${zones}
@@ -902,7 +941,7 @@ function answerCard(label, r, me_) {
       ${norm(r.raw) !== norm(r.display) ? `<p class="matched">you typed “${esc(r.raw)}”</p>` : ""}
       <div class="gauge" aria-hidden="true"><span style="--d:${depthPct.toFixed(1)}%"></span></div>
       <p class="pts"><b>0</b> pts</p>
-      <p class="meta">${r.zone.name} · ${r.depth.toLocaleString()} m · ${oneIn(r.share)}</p>
+      <p class="meta">${r.zone.name} · ${altText(r.depth)} up · ${oneIn(r.share)}</p>
       <p class="played">Played like <b>${perfElo(r.points, 1).toLocaleString()}</b></p>`
     : `<p class="pts"><b>0</b> pts</p><p class="meta">${r.raw ? "Not on our list for this prompt" : "Time ran out"}</p><p class="played">Played like <b>${perfElo(0, 1).toLocaleString()}</b></p>`}
   </div>`;
@@ -926,7 +965,7 @@ function revealBlock(prompt, oppName) {
     </div>
     ${same ? `<p class="same">Same answer. You both score it.</p>` : ""}
     ${S.unlockNote ? `<p class="unlock-note">That's Attillion #${S.unlockNote.krill}! You unlocked the ${avMarkup(S.unlockNote)} <b>${S.unlockNote.name}</b>. <button class="link" data-go="settings">Use it</button></p>` : ""}
-    <p class="trench">Down in the trench: ${samples.map(esc).join(", ")}</p>
+    <p class="trench">Up among the stars: ${samples.map(esc).join(", ")}</p>
     <button class="btn primary" id="next" data-act="next">${S.round < ROUNDS - 1 ? "Next prompt" : "See results"}</button>
   </div>`;
 }
@@ -958,7 +997,7 @@ function viewResults() {
     extra += codeBox(`Send this back to ${esc(S.challenge.from)}`, res.code, "r", "Their game updates when they paste it under Enter a code.");
   }
   return `${header()}<main class="results">
-    <p class="eyebrow">${S.mode === "live" ? "Quick match" : S.mode === "daily" ? "Daily Dive #" + dailyNumber(S.dailyKey) : S.mode === "bot" ? "vs " + BOTS[S.level].name : S.mode === "challenge-host" ? "Challenge created" : "Challenge from " + esc(S.challenge.from)}</p>
+    <p class="eyebrow">${S.mode === "live" ? "Quick match" : S.mode === "daily" ? "Daily Launch #" + dailyNumber(S.dailyKey) : S.mode === "bot" ? "vs " + BOTS[S.level].name : S.mode === "challenge-host" ? "Challenge created" : "Challenge from " + esc(S.challenge.from)}</p>
     <h1>${verdict || `You scored ${res.my}`}</h1>
     <div class="totals">
       <div><span>${myAvatar()} You</span><b>${res.my}</b><em>played like ${perfElo(res.my, ROUNDS).toLocaleString()}</em></div>
@@ -970,7 +1009,7 @@ function viewResults() {
     <div class="row">
       ${S.mode === "live" ? `<button class="btn primary" data-act="quick">Find another match</button>` : ""}
       ${S.mode === "bot" ? `<button class="btn primary" data-act="bot" data-level="${S.level}">Rematch ${BOTS[S.level].name}</button>` : ""}
-      <button class="btn ghost" data-go="home">Back to the surface</button>
+      <button class="btn ghost" data-go="home">Back to Earth</button>
     </div>
   </main>`;
 }
@@ -987,9 +1026,9 @@ function codeBox(title, code, kind, note) {
 }
 
 function dailyShare(key, scores) {
-  const blocks = scores.map(s => !s.valid ? "⬛" : s.points === 100 ? "🦐" : s.depth >= 4000 ? "🟪" : s.depth >= 1000 ? "🟦" : s.depth >= 200 ? "🟩" : "⬜").join("");
+  const blocks = scores.map(s => !s.valid ? "⬛" : s.points === 100 ? "🌟" : s.depth >= 4000 ? "🟪" : s.depth >= 1000 ? "🟦" : s.depth >= 200 ? "🟩" : "⬜").join("");
   const krill = scores.filter(s => s.points === 100).length;
-  return `Attillion Daily Dive #${dailyNumber(key)}\n${blocks}\n${total(scores)}/700${krill ? ` · ${krill}× 1 in an Attillion` : ""}`;
+  return `Attillion Daily Launch #${dailyNumber(key)}\n${blocks}\n${total(scores)}/700${krill ? ` · ${krill}× 1 in an Attillion` : ""}`;
 }
 
 function viewDailyDone() {
@@ -999,13 +1038,13 @@ function viewDailyDone() {
   const prompts = pickPrompts(hashStr("daily:" + key));
   const scores = done.answers.map((a, i) => scoreAnswer(PROMPT_BY_ID[prompts[i]], a.raw, true));
   return `${header()}<main class="results">
-    <p class="eyebrow">Daily Dive #${dailyNumber(key)}</p>
+    <p class="eyebrow">Daily Launch #${dailyNumber(key)}</p>
     <h1>You scored ${done.score}</h1>
     <div class="share"><pre id="share-text">${esc(dailyShare(key, scores))}</pre><button class="btn ghost" data-act="copy" data-target="share-text">Copy result</button></div>
     <div class="table-wrap"><table class="breakdown"><thead><tr><th>Prompt</th><th>You</th><th>Depth</th><th>Pts</th></tr></thead><tbody>
-    ${prompts.map((id, i) => `<tr><td class="q">${esc(PROMPT_BY_ID[id].q)}</td><td>${esc(scores[i].raw || "–")}</td><td class="n">${scores[i].depth.toLocaleString()} m</td><td class="n">${scores[i].points}</td></tr>`).join("")}
+    ${prompts.map((id, i) => `<tr><td class="q">${esc(PROMPT_BY_ID[id].q)}</td><td>${esc(scores[i].raw || "–")}</td><td class="n">${altText(scores[i].depth)}</td><td class="n">${scores[i].points}</td></tr>`).join("")}
     </tbody></table></div>
-    <button class="btn ghost" data-go="home">Back to the surface</button>
+    <button class="btn ghost" data-go="home">Back to Earth</button>
   </main>`;
 }
 
@@ -1013,7 +1052,7 @@ function viewLogin() {
   const mode = S.mode || "login";
   return `${header()}<main class="narrow">
     <h1>${mode === "login" ? "Log in" : "Create an account"}</h1>
-    <p class="lede small">Your Elo, match history and Daily Dive scores are saved to your account.</p>
+    <p class="lede small">Your Elo, match history and Daily Launch scores are saved to your account.</p>
     <form id="auth-form" class="stack" autocomplete="on">
       <label for="auth-name">Username</label>
       <input id="auth-name" name="username" required minlength="2" maxlength="20" pattern="[A-Za-z0-9_\\-]+" autocomplete="username">
@@ -1031,13 +1070,13 @@ function viewProfile() {
   const u = me(); if (!u) return viewLogin();
   const dailies = Object.entries(u.daily).sort((a, b) => b[0].localeCompare(a[0]));
   return `${header()}<main class="narrow">
-    <p class="eyebrow">Diver profile</p>
+    <p class="eyebrow">Pilot profile</p>
     <h1>${esc(u.name)}</h1>
     <div class="stats">
       <div><span>Elo</span><b>${u.elo}</b></div>
       <div><span>Peak</span><b>${u.peak}</b></div>
       <div><span>Record</span><b>${u.wins}–${u.losses}${u.draws ? "–" + u.draws : ""}</b></div>
-      <div><span>Best dive</span><b>${dailies.length ? Math.max(...dailies.map(d => d[1].score)) : "–"}</b></div>
+      <div><span>Best launch</span><b>${dailies.length ? Math.max(...dailies.map(d => d[1].score)) : "–"}</b></div>
       <div class="gold"><span>Attillions</span><b>${(u.krillions || []).length}</b></div>
     </div>
     <h2>Your 1 in an Attillions</h2>
@@ -1045,13 +1084,13 @@ function viewProfile() {
       <div class="krill-card">
         <p class="kc-a">${esc(k.a)}</p>
         <p class="kc-q">${esc(k.q)}</p>
-        <p class="kc-m">${new Date(k.when).toLocaleDateString(undefined, { month: "short", day: "numeric" })} · ${esc(k.mode)} · ${Math.round(k.depth).toLocaleString()} m</p>
+        <p class="kc-m">${new Date(k.when).toLocaleDateString(undefined, { month: "short", day: "numeric" })} · ${esc(k.mode)} · ${altText(k.depth)}</p>
       </div>`).join("")}</div>` : `<p class="hint">None yet. Find an answer almost nobody would say and it will be saved here.</p>`}
     <h2>Recent matches</h2>
     ${u.history.length ? `<div class="table-wrap"><table class="breakdown"><thead><tr><th>Opponent</th><th>Score</th><th>Elo</th></tr></thead><tbody>
       ${u.history.slice(0, 15).map(h => `<tr><td>${esc(h.opp)}</td><td class="n">${h.me}–${h.them}</td><td class="n ${h.delta >= 0 ? "up" : "down"}">${h.delta >= 0 ? "+" : ""}${h.delta}</td></tr>`).join("")}
     </tbody></table></div>` : `<p class="hint">No matches yet. Try Minnow to warm up.</p>`}
-    <h2>Daily Dives</h2>
+    <h2>Daily Launches</h2>
     ${dailies.length ? `<ul class="dives">${dailies.slice(0, 10).map(([k, d]) => `<li><span>#${dailyNumber(k)} · ${k}</span><b>${d.score}</b></li>`).join("")}</ul>` : `<p class="hint">You haven't dived yet today.</p>`}
     <div class="row"><button class="btn ghost" data-go="settings">Settings</button><button class="btn ghost" data-act="logout">Log out</button></div>
   </main>`;
@@ -1063,9 +1102,9 @@ function viewSettings() {
   const current = myAvatarObj().e + myAvatarObj().id;
   return `${header()}<main class="narrow">
     <p class="eyebrow">Settings</p>
-    <h1>Your sea creature</h1>
-    <p class="lede small">This is you in the water. Rarer answers make it dive deeper. New creatures unlock as your best Elo climbs.${u ? ` Your best so far is <b>${peak}</b>.` : ""}</p>
-    ${u ? "" : `<p class="hint"><button class="link" data-go="login">Log in</button> to earn Elo and unlock more creatures.</p>`}
+    <h1>Your avatar</h1>
+    <p class="lede small">This is you on the launch tower. Rarer answers send it higher. New avatars unlock as your best Elo climbs.${u ? ` Your best so far is <b>${peak}</b>.` : ""}</p>
+    ${u ? "" : `<p class="hint"><button class="link" data-go="login">Log in</button> to earn Elo and unlock more avatars.</p>`}
     <div class="avatars">
       ${AVATARS.filter(a => !a.code || isOpen(a, u)).map(a => {
         const open = isOpen(a, u);
@@ -1082,6 +1121,12 @@ function viewSettings() {
       <button class="btn primary small" type="submit">Unlock</button>
     </form>
     <p class="error" id="code-msg" role="alert">${esc(S.codeMsg || "")}</p>
+
+    <h2>Screen</h2>
+    <div class="seg-pick" role="group" aria-label="Screen mode">
+      ${[["auto", "✨", "Auto"], ["phone", "📱", "Phone"], ["ipad", "📲", "iPad"], ["computer", "💻", "Computer"]].map(([v, ic, l]) => `<button data-act="device" data-v="${v}" aria-pressed="${deviceMode() === v}"><span aria-hidden="true">${ic}</span>${l}</button>`).join("")}
+    </div>
+    <p class="hint">Auto fits whatever screen you're on. Pick one to use that layout anywhere. Saved on this device.</p>
 
     <h2>Sound</h2>
     <div class="setting-row">
@@ -1127,15 +1172,15 @@ function viewLeaderboard() {
   } else {
     const list = all.filter(u => u.daily[key]).map(u => ({ name: u.name, val: u.daily[key].score })).sort((a, b) => b.val - a.val);
     rows = list.length ? list.map((r, i) => `<tr class="${me() && r.name === me().name ? "you" : ""}"><td class="n">${i + 1}</td><td>${esc(r.name)}</td><td></td><td class="n">${r.val}</td></tr>`).join("")
-      : `<tr><td colspan="4" class="empty">Nobody has finished today's dive yet.</td></tr>`;
+      : `<tr><td colspan="4" class="empty">Nobody has finished today's launch yet.</td></tr>`;
   }
   return `${header()}<main class="narrow">
     <h1>Leaderboard</h1>
     <div class="tabs" role="tablist">
       <button role="tab" aria-selected="${tab === "elo"}" data-act="tab" data-tab="elo">Elo rating</button>
-      <button role="tab" aria-selected="${tab === "daily"}" data-act="tab" data-tab="daily">Today's dive</button>
+      <button role="tab" aria-selected="${tab === "daily"}" data-act="tab" data-tab="daily">Today's launch</button>
     </div>
-    <div class="table-wrap"><table class="board"><thead><tr><th>#</th><th>Diver</th><th></th><th>${tab === "elo" ? "Elo" : "Score"}</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="table-wrap"><table class="board"><thead><tr><th>#</th><th>Player</th><th></th><th>${tab === "elo" ? "Elo" : "Score"}</th></tr></thead><tbody>${rows}</tbody></table></div>
     <p class="note">Preview build: this board lists accounts made in this browser, plus the four computer opponents for reference. A shared global board needs the online server.</p>
   </main>`;
 }
@@ -1181,12 +1226,12 @@ function viewReplyResult() {
   return `${header()}<main class="results">
     <p class="eyebrow">Challenge result</p>
     <h1>${verdict}</h1>
-    <div class="totals"><div><span>${myAvatar()} You</span><b>${my}</b><em>played like ${perfElo(my, ROUNDS).toLocaleString()}</em></div><div><span>${c.av && avatarById(c.av) ? avMarkup(avatarById(c.av)) : "🐟"} ${esc(c.from)}</span><b>${their}</b><em>played like ${perfElo(their, ROUNDS).toLocaleString()}</em></div><div class="of">out of 700</div></div>
+    <div class="totals"><div><span>${myAvatar()} You</span><b>${my}</b><em>played like ${perfElo(my, ROUNDS).toLocaleString()}</em></div><div><span>${c.av && avatarById(c.av) ? avMarkup(avatarById(c.av)) : "🚀"} ${esc(c.from)}</span><b>${their}</b><em>played like ${perfElo(their, ROUNDS).toLocaleString()}</em></div><div class="of">out of 700</div></div>
     ${eloLine}
     <div class="table-wrap"><table class="breakdown"><thead><tr><th>Prompt</th><th>You</th><th>Pts</th><th>${esc(c.from)}</th><th>Pts</th></tr></thead><tbody>
       ${prompts.map((p, i) => `<tr><td class="q">${esc(p.q)}</td><td>${esc(mine[i].raw || "–")}</td><td class="n">${mine[i].points}</td><td>${esc(theirs[i].raw || "–")}</td><td class="n">${theirs[i].points}</td></tr>`).join("")}
     </tbody></table></div>
-    <button class="btn ghost" data-go="home">Back to the surface</button>
+    <button class="btn ghost" data-go="home">Back to Earth</button>
   </main>`;
 }
 
@@ -1239,10 +1284,12 @@ document.addEventListener("click", async e => {
     SFX("sunlight");
   }
   else if (act === "avatar") {
-    SFX("pop");
-    if (me()) updateUser(x => { x.avatar = t.dataset.id; }); else store.set("guestAvatar", t.dataset.id);
+    const id = t.dataset.id;
+    if (me()) updateUser(x => { x.avatar = id; }); else store.set("guestAvatar", id);
     render();
+    celebrateAvatar(id);
   }
+  else if (act === "device") { setDeviceMode(t.dataset.v); render(); }
   else if (act === "tab") { S.tab = t.dataset.tab; render(); }
   else if (act === "auth-mode") go("login", { mode: t.dataset.m });
   else if (act === "logout") { store.set("session", null); go("home"); }
@@ -1286,8 +1333,8 @@ document.addEventListener("submit", async e => {
       if (redeemed(u).includes(bundle.id)) { go("settings", { codeMsg: `You already unlocked ${bundle.name}.` }); return; }
       if (u) updateUser(x => { x.codes = (x.codes || []).concat(bundle.id); x.avatar = bundle.pick; });
       else { store.set("guestCodes", redeemed(null).concat(bundle.id)); store.set("guestAvatar", bundle.pick); }
-      SFX("hadal");
-      go("settings", { codeMsg: `Unlocked ${bundle.name}: 🐊 🦕 and both sea dragons.` });
+      go("settings", { codeMsg: `Unlocked ${bundle.name}: ☄️ 🌘 🪐 🌌` });
+      celebrateAvatar(bundle.pick);
       return;
     }
     const a = AVATARS.find(x => x.code === h);
@@ -1296,8 +1343,8 @@ document.addEventListener("submit", async e => {
     if (redeemed(u).includes(a.id)) { go("settings", { codeMsg: `You already have the ${a.name}.` }); return; }
     if (u) updateUser(x => { x.codes = (x.codes || []).concat(a.id); x.avatar = a.id; });
     else { store.set("guestCodes", redeemed(null).concat(a.id)); store.set("guestAvatar", a.id); }
-    SFX("hadal");
-    go("settings", { codeMsg: `Unlocked: ${a.e} ${a.name}${a.dev ? " (Developer)" : ""}. It's now your creature.` });
+    go("settings", { codeMsg: `Unlocked: ${a.e} ${a.name}${a.dev ? " (Developer)" : ""}. It's now your avatar.` });
+    celebrateAvatar(a.id);
     return;
   }
   else if (e.target.id === "rename-form" || e.target.id === "pw-form") {
