@@ -471,3 +471,10 @@ h2 + .layout-bar { justify-content: flex-start; margin-top: 10px; }
 .subj-best { font-size: .8rem; opacity: .75; }
 @container app (max-width: 720px) { .subject-grid { grid-template-columns: repeat(3, 1fr); } }
 @container app (max-width: 420px) { .subject-grid { grid-template-columns: 1fr 1fr; } }
+.bot-dust .bot-name { color: #c9d4ff; }
+.bot-rover .bot-name { color: #7fe0c3; }
+.bot-nova .bot-name { color: #ff7a59; }
+.bot-quasar .bot-name { color: #ff5fd2; text-shadow: 0 0 10px rgba(255, 95, 210, .5); }
+.subject-grid { grid-template-columns: repeat(7, 1fr); }
+@container app (max-width: 900px) { .subject-grid { grid-template-columns: repeat(4, 1fr); } }
+@container app (max-width: 520px) { .subject-grid { grid-template-columns: repeat(2, 1fr); } }

@@ -23,10 +23,14 @@ const SFX = (name, gain) => { if (window.KrillionSound) window.KrillionSound.pla
 const BOTS = {
   // pick() returns a position in the familiar answers: 0 = most common, 1 = rarest.
   // lucky = chance of launching straight into the Attillion zone on a round.
+  dust:      { name: "Space Dust", av: "✨", elo: 500,  miss: 0.30, lucky: 0.02, pick: () => Math.pow(Math.random(), 3) * 0.08, blurb: "Floats around. Sometimes says nothing at all." },
   minnow:    { name: "Asteroid",  av: "🪨", elo: 800,  miss: 0.15, lucky: 0.04, pick: () => Math.pow(Math.random(), 2.2) * 0.15, blurb: "Says the first thing that drifts by." },
   fish:      { name: "Comet",     av: "☄️", elo: 1100, miss: 0.10, lucky: 0.07, pick: () => Math.pow(Math.random(), 1.5) * 0.35, blurb: "Goes around the block, rarely leaves orbit." },
+  rover:     { name: "Rover",     av: "🛻", elo: 1250, miss: 0.08, lucky: 0.09, pick: () => Math.pow(Math.random(), 1.2) * 0.45, blurb: "Explores a little further every round." },
   barracuda: { name: "Star",      av: "🌟", elo: 1400, miss: 0.07, lucky: 0.12, pick: () => 0.03 + Math.random() * 0.5,         blurb: "Bright, fast, sometimes too clever." },
-  shark:     { name: "Black Hole", av: "🕳️", elo: 1700, miss: 0.04, lucky: 0.20, pick: () => 0.06 + Math.random() * 0.69,        blurb: "Pulls in answers nobody else can reach." }
+  shark:     { name: "Black Hole", av: "🕳️", elo: 1700, miss: 0.04, lucky: 0.20, pick: () => 0.06 + Math.random() * 0.69,        blurb: "Pulls in answers nobody else can reach." },
+  nova:      { name: "Supernova", av: "💥", elo: 2000, miss: 0.03, lucky: 0.28, pick: () => 0.12 + Math.random() * 0.75,        blurb: "Explodes with rare answers. Hard to outshine." },
+  quasar:    { name: "Quasar",    av: "🌠", elo: 2300, miss: 0.02, lucky: 0.36, pick: () => 0.2 + Math.random() * 0.78,         blurb: "The brightest thing in the universe. Good luck." }
 };
 
 // Avatars unlock by your best (peak) Elo, so a losing streak never takes one away.
@@ -215,8 +219,12 @@ const SUBJECTS = [
   { key: "history", name: "History", icon: "🏛️" },
   { key: "geography", name: "Geography", icon: "🌍" },
   { key: "religion", name: "Religion", icon: "🕊️" },
-  { key: "movies", name: "Movies & TV", icon: "🎬" }
+  { key: "movies", name: "Movies & TV", icon: "🎬" },
+  { key: "seasonal", get name() { return SEASONS[seasonKey()].name; }, get icon() { return SEASONS[seasonKey()].icon; } }
 ];
+// Seasonal Launch: topics change with the time of year
+const SEASONS = { winter: { name: "Winter", icon: "❄️" }, spring: { name: "Spring", icon: "🌸" }, summer: { name: "Summer", icon: "☀️" }, fall: { name: "Fall", icon: "🍂" } };
+function seasonKey(d) { const m = (d || new Date()).getMonth(); return m === 11 || m < 2 ? "winter" : m < 5 ? "spring" : m < 8 ? "summer" : "fall"; }
 const SUBJECT_BY_KEY = Object.fromEntries(SUBJECTS.map(x => [x.key, x]));
 const CAT_OF = {
   sport: "sports", martial: "sports", athlete: "sports", sportsgear: "sports",
@@ -226,6 +234,8 @@ const CAT_OF = {
   uscity: "geography", island: "geography", water: "geography", mountain: "geography", europecity: "geography", asiacity: "geography",
   language: "geography",
   god: "religion",
+  beach: "season-summer", icecream: "season-summer", camping: "season-summer", carnival: "season-summer",
+  flower: "season-spring", insect: "season-spring", holiday: "season-winter",
   animated: "movies", superhero: "movies"
 };
 (window.KRILLION_PROMPTS || []).forEach(p => {
@@ -333,7 +343,8 @@ function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) | 0
 function pickSet(seed, seenList, cat) {
   const seen = new Set(seenList || []);
   const r = rng(seed);
-  const ids = BASES.filter(p => !cat || p.cats.includes(cat)).map(p => p.id);
+  const catWant = cat === "seasonal" ? "season-" + seasonKey() : cat;
+  const ids = BASES.filter(p => !catWant || p.cats.includes(catWant)).map(p => p.id);
   for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
   const bases = ids.filter(id => !seen.has(id)).concat(ids.filter(id => seen.has(id))).slice(0, ROUNDS);
   const twistable = bases.map((id, i) => i).filter(i => VARIANTS[bases[i]].length);
