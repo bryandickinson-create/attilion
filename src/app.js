@@ -435,7 +435,7 @@ function startMatch(opts) {
   });
   beginRound();
 }
-function fixedRarity() { return S.mode === "live" || S.mode === "daily" || S.mode === "challenge-host" || S.mode === "challenge-guest"; }
+function fixedRarity() { return S.mode === "live" || S.mode === "daily" || S.mode === "solo" || S.mode === "challenge-host" || S.mode === "challenge-guest"; }
 function beginRound() {
   S.phase = "answer"; S.deadline = Date.now() + ROUND_SECONDS * 1000; S.draft = "";
   S.botLockAt = S.mode === "bot" ? Date.now() + (3 + Math.random() * 19) * 1000 : null;
@@ -495,13 +495,13 @@ function reveal() {
   if (S.live) S.theirs[S.round] = liveOppAnswer(S.round);
   const fixed = fixedRarity();
   S.lastMine = scoreAnswer(prompt, S.mine[S.round], fixed);
-  S.lastTheirs = (S.mode === "daily" || S.mode === "challenge-host") ? null : scoreAnswer(prompt, S.theirs[S.round], fixed);
+  S.lastTheirs = (S.mode === "daily" || S.mode === "solo" || S.mode === "challenge-host") ? null : scoreAnswer(prompt, S.theirs[S.round], fixed);
   if (S.mode !== "daily") { recordAnswer(prompt.id, S.lastMine.idx); }
   S.scores = S.scores || []; S.oppScores = S.oppScores || [];
   S.scores[S.round] = S.lastMine; if (S.lastTheirs) S.oppScores[S.round] = S.lastTheirs;
   if (S.lastMine.points === 100) {
     const found = { q: prompt.twist ? prompt.baseQ + " " + prompt.twist : prompt.q, a: S.lastMine.display, depth: S.lastMine.depth, share: S.lastMine.share, when: Date.now(),
-      mode: S.mode === "bot" ? "vs " + BOTS[S.level].name : S.mode === "live" ? "Quick match" : S.mode === "daily" ? "Daily Launch" : "Friend challenge" };
+      mode: S.mode === "bot" ? "vs " + BOTS[S.level].name : S.mode === "live" ? "Quick match" : S.mode === "daily" ? "Daily Launch" : S.mode === "solo" ? "Free Launch" : "Friend challenge" };
     const before = krillCount(me());
     if (me()) updateUser(x => { x.krillions = (x.krillions || []); x.krillions.unshift(found); x.krillions = x.krillions.slice(0, 500); });
     else { const g = store.get("guestKrillions", []); g.unshift(found); store.set("guestKrillions", g.slice(0, 500)); }
@@ -570,6 +570,13 @@ function finishMatch() {
     res.forfeit = L.gone;
     L.done = true; L.at = ROUNDS; livePresence();
     setTimeout(() => liveStop(L), 5000);   // stay a moment so they get our last answer
+  } else if (S.mode === "solo") {
+    const before = soloStats().best;
+    const run = { score: my, when: Date.now() };
+    const upd = x => { x.best = Math.max(x.best || 0, my); x.plays = (x.plays || 0) + 1; x.runs = [run].concat(x.runs || []).slice(0, 20); };
+    if (me()) updateUser(x => { x.solo = x.solo || {}; upd(x.solo); });
+    else { const g = store.get("guestSolo", {}); upd(g); store.set("guestSolo", g); }
+    res.newBest = my > before; res.prevBest = before;
   } else if (S.mode === "daily") {
     const entry = { score: my, answers: S.scores.map(s => ({ raw: s.raw, points: s.points, depth: s.depth })), when: Date.now() };
     if (me()) updateUser(x => { if (!x.daily[S.dailyKey]) x.daily[S.dailyKey] = entry; });
@@ -828,6 +835,12 @@ function viewHome() {
                : `<button class="btn primary" data-act="daily">Start today's launch</button>`}
       </article>
 
+      <article class="mode solo">
+        <div class="mode-head"><h2>Free Launch</h2>${soloStats().best ? `<span class="tag">Best ${soloStats().best}</span>` : ""}</div>
+        <p>Seven new prompts every time, as many times as you like. Just you against your own high score.</p>
+        <button class="btn primary" data-act="solo">Launch</button>
+      </article>
+
       <article class="mode friends">
         <div class="mode-head"><h2>Play a friend</h2></div>
         <p>Play your 7 rounds, send the challenge, and your friend plays the same prompts. After each round they see what you said. Same answers are allowed.</p>
@@ -850,8 +863,15 @@ function viewHome() {
         ${u ? "" : `<p class="hint"><button class="link" data-go="login">Log in</button> to save your Elo. Guests can still play.</p>`}
       </article>
     </section>
+    ${layoutBar()}
   </main>`;
 }
+function layoutBar() {
+  return `<div class="layout-bar"><span>Layout</span><div class="seg-pick" role="group" aria-label="Screen layout">
+    ${[["auto", "✨", "Auto"], ["phone", "📱", "Phone"], ["ipad", "📲", "iPad"], ["computer", "💻", "Computer"]].map(([v, ic, l]) => `<button data-act="device" data-v="${v}" aria-pressed="${deviceMode() === v}"><span aria-hidden="true">${ic}</span>${l}</button>`).join("")}
+  </div></div>`;
+}
+function soloStats() { const u = me(); const x = (u ? u.solo : store.get("guestSolo", {})) || {}; return { best: x.best || 0, plays: x.plays || 0, runs: x.runs || [] }; }
 
 function depthLegend() {
   return `<ol class="legend" aria-label="Depth zones">
@@ -878,7 +898,7 @@ function viewPlay() {
   const oppLabel = oppName || (S.mode === "challenge-host" ? "Your friend" : null);
   const scoreLine = `<div class="scoreboard ${oppLabel ? "duo" : "solo"}">
       ${pod("You", S.scores, "pod-me", prevMine, "me")}
-      <div class="sb-mid"><span class="sb-round">Round ${S.round + 1}/${ROUNDS}</span>${oppName ? `<span class="sb-lead" id="lead">${S.round === 0 && !revealing ? "First launch" : leadTextAt(oppName, prevMine, prevOpp)}</span>` : S.mode === "daily" ? `<span class="sb-lead">Daily Launch</span>` : ""}</div>
+      <div class="sb-mid"><span class="sb-round">Round ${S.round + 1}/${ROUNDS}</span>${oppName ? `<span class="sb-lead" id="lead">${S.round === 0 && !revealing ? "First launch" : leadTextAt(oppName, prevMine, prevOpp)}</span>` : S.mode === "daily" ? `<span class="sb-lead">Daily Launch</span>` : S.mode === "solo" ? `<span class="sb-lead">Free Launch</span>` : ""}</div>
       ${oppLabel ? pod(oppLabel, oppName ? S.oppScores : null, "pod-opp", prevOpp, "opp", oppName ? "" : "plays after you") : ""}
     </div>`;
   let body = "";
@@ -986,6 +1006,12 @@ function viewResults() {
     extra += `<p class="hint"><button class="link" data-go="login">Log in</button> to have games count toward your Elo.</p>`;
   }
   if (S.mode === "live" && res.forfeit) extra += `<p class="hint">${esc(oppName)} left before the end, so their missing rounds scored 0.</p>`;
+  if (S.mode === "solo") {
+    const st = soloStats();
+    extra += res.newBest && res.prevBest > 0 ? `<p class="best-note">New personal best! Up from ${res.prevBest}.</p>`
+      : res.newBest ? `<p class="best-note">Your first Free Launch score. Now beat it.</p>`
+      : `<p class="hint">Your best Free Launch: <b>${st.best}</b> · ${st.plays} launch${st.plays === 1 ? "" : "es"} so far</p>`;
+  }
   if (S.mode === "daily") {
     extra += `<div class="share"><pre id="share-text">${esc(dailyShare(S.dailyKey, S.scores))}</pre><button class="btn ghost" data-act="copy" data-target="share-text">Copy result</button></div>`;
   }
@@ -997,7 +1023,7 @@ function viewResults() {
     extra += codeBox(`Send this back to ${esc(S.challenge.from)}`, res.code, "r", "Their game updates when they paste it under Enter a code.");
   }
   return `${header()}<main class="results">
-    <p class="eyebrow">${S.mode === "live" ? "Quick match" : S.mode === "daily" ? "Daily Launch #" + dailyNumber(S.dailyKey) : S.mode === "bot" ? "vs " + BOTS[S.level].name : S.mode === "challenge-host" ? "Challenge created" : "Challenge from " + esc(S.challenge.from)}</p>
+    <p class="eyebrow">${S.mode === "live" ? "Quick match" : S.mode === "solo" ? "Free Launch" : S.mode === "daily" ? "Daily Launch #" + dailyNumber(S.dailyKey) : S.mode === "bot" ? "vs " + BOTS[S.level].name : S.mode === "challenge-host" ? "Challenge created" : "Challenge from " + esc(S.challenge.from)}</p>
     <h1>${verdict || `You scored ${res.my}`}</h1>
     <div class="totals">
       <div><span>${myAvatar()} You</span><b>${res.my}</b><em>played like ${perfElo(res.my, ROUNDS).toLocaleString()}</em></div>
@@ -1008,6 +1034,7 @@ function viewResults() {
     <div class="table-wrap"><table class="breakdown"><thead><tr><th>Prompt</th><th>You</th><th>Pts</th>${oppName ? `<th>${esc(oppName)}</th><th>Pts</th>` : ""}</tr></thead><tbody>${rows}</tbody></table></div>
     <div class="row">
       ${S.mode === "live" ? `<button class="btn primary" data-act="quick">Find another match</button>` : ""}
+      ${S.mode === "solo" ? `<button class="btn primary" data-act="solo">Launch again</button>` : ""}
       ${S.mode === "bot" ? `<button class="btn primary" data-act="bot" data-level="${S.level}">Rematch ${BOTS[S.level].name}</button>` : ""}
       <button class="btn ghost" data-go="home">Back to Earth</button>
     </div>
@@ -1076,7 +1103,8 @@ function viewProfile() {
       <div><span>Elo</span><b>${u.elo}</b></div>
       <div><span>Peak</span><b>${u.peak}</b></div>
       <div><span>Record</span><b>${u.wins}–${u.losses}${u.draws ? "–" + u.draws : ""}</b></div>
-      <div><span>Best launch</span><b>${dailies.length ? Math.max(...dailies.map(d => d[1].score)) : "–"}</b></div>
+      <div><span>Best free launch</span><b>${(u.solo && u.solo.best) || "–"}</b></div>
+      <div><span>Best daily</span><b>${dailies.length ? Math.max(...dailies.map(d => d[1].score)) : "–"}</b></div>
       <div class="gold"><span>Attillions</span><b>${(u.krillions || []).length}</b></div>
     </div>
     <h2>Your 1 in an Attillions</h2>
@@ -1123,9 +1151,7 @@ function viewSettings() {
     <p class="error" id="code-msg" role="alert">${esc(S.codeMsg || "")}</p>
 
     <h2>Screen</h2>
-    <div class="seg-pick" role="group" aria-label="Screen mode">
-      ${[["auto", "✨", "Auto"], ["phone", "📱", "Phone"], ["ipad", "📲", "iPad"], ["computer", "💻", "Computer"]].map(([v, ic, l]) => `<button data-act="device" data-v="${v}" aria-pressed="${deviceMode() === v}"><span aria-hidden="true">${ic}</span>${l}</button>`).join("")}
-    </div>
+    ${layoutBar()}
     <p class="hint">Auto fits whatever screen you're on. Pick one to use that layout anywhere. Saved on this device.</p>
 
     <h2>Sound</h2>
@@ -1266,6 +1292,7 @@ document.addEventListener("click", async e => {
     startMatch({ mode: "daily", seed: hashStr("daily:" + key), prompts: pickPrompts(hashStr("daily:" + key)), dailyKey: key });
   }
   else if (act === "daily-view") go("daily-done");
+  else if (act === "solo") startMatch({ mode: "solo" });
   else if (act === "challenge-new") {
     const id = Math.random().toString(36).slice(2, 10);
     startMatch({ mode: "challenge-host", challenge: { id } });
