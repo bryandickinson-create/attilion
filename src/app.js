@@ -1080,6 +1080,21 @@ function viewDailyDone() {
 
 function viewLogin() {
   const mode = S.mode || "login";
+  if (mode === "reset") return `${header()}<main class="narrow">
+    <h1>Forgot your password?</h1>
+    <p class="lede small">Accounts are saved in this browser, so you can set a new password for any account made here.</p>
+    <form id="reset-form" class="stack" autocomplete="off">
+      <label for="reset-name">Username</label>
+      <input id="reset-name" required minlength="2" maxlength="20" autocomplete="username" value="${esc(S.resetName || "")}">
+      <label for="reset-pw">New password</label>
+      <span class="pw-wrap"><input id="reset-pw" type="password" required minlength="4" autocomplete="new-password"><button type="button" class="pw-eye" data-act="pw-eye" data-for="reset-pw" aria-label="Show password" aria-pressed="false">👁</button></span>
+      <label for="reset-pw2">Type it again</label>
+      <span class="pw-wrap"><input id="reset-pw2" type="password" required minlength="4" autocomplete="new-password"><button type="button" class="pw-eye" data-act="pw-eye" data-for="reset-pw2" aria-label="Show password" aria-pressed="false">👁</button></span>
+      <p class="error" role="alert">${esc(S.error || "")}</p>
+      <button class="btn primary" type="submit">Set new password and log in</button>
+    </form>
+    <p class="hint"><button class="link" data-act="auth-mode" data-m="login">Back to log in</button></p>
+  </main>`;
   return `${header()}<main class="narrow">
     <h1>${mode === "login" ? "Log in" : "Create an account"}</h1>
     <p class="lede small">Your Elo, match history and Daily Launch scores are saved to your account.</p>
@@ -1091,6 +1106,7 @@ function viewLogin() {
       <p class="error" id="auth-error" role="alert">${esc(S.error || "")}</p>
       <button class="btn primary" type="submit">${mode === "login" ? "Log in" : "Create account"}</button>
     </form>
+    ${mode === "login" ? `<p class="hint"><button class="link" data-act="auth-mode" data-m="reset">Forgot your password?</button></p>` : ""}
     <p class="hint">${mode === "login" ? `New here? <button class="link" data-act="auth-mode" data-m="signup">Create an account</button>` : `Have an account? <button class="link" data-act="auth-mode" data-m="login">Log in</button>`}</p>
     <p class="note">Preview build: accounts are saved in this browser only. Online accounts arrive when the game is connected to a server.</p>
   </main>`;
@@ -1184,7 +1200,19 @@ function viewSettings() {
       <span class="pw-wrap"><input id="new-pw" type="password" required minlength="4" autocomplete="new-password"><button type="button" class="pw-eye" data-act="pw-eye" data-for="new-pw" aria-label="Show password" aria-pressed="false">👁</button></span>
       <p class="error" role="alert">${esc(S.pwMsg || "")}</p>
       <button class="btn primary" type="submit">Change password</button>
-    </form>` : ""}
+    </form>
+    <details class="forgot"${S.forgotMsg ? " open" : ""}>
+      <summary>Don't know your current password?</summary>
+      <p class="hint">You're logged in on this device, so you can set a new one without it.</p>
+      <form id="forgot-form" class="stack">
+        <label for="forgot-pw">New password</label>
+        <span class="pw-wrap"><input id="forgot-pw" type="password" required minlength="4" autocomplete="new-password"><button type="button" class="pw-eye" data-act="pw-eye" data-for="forgot-pw" aria-label="Show password" aria-pressed="false">👁</button></span>
+        <label for="forgot-pw2">Type it again</label>
+        <span class="pw-wrap"><input id="forgot-pw2" type="password" required minlength="4" autocomplete="new-password"><button type="button" class="pw-eye" data-act="pw-eye" data-for="forgot-pw2" aria-label="Show password" aria-pressed="false">👁</button></span>
+        <p class="error" role="alert">${esc(S.forgotMsg || "")}</p>
+        <button class="btn primary" type="submit">Set new password</button>
+      </form>
+    </details>` : ""}
   </main>`;
 }
 
@@ -1460,6 +1488,22 @@ document.addEventListener("submit", async e => {
       all[oldKey].hash = await hashPw(u.name, newPw); saveUsers(all);
       SFX("lock"); go("settings", { pwMsg: "Password changed." });
     }
+  }
+  else if (e.target.id === "forgot-form") {
+    const u = me(); if (!u) return;
+    const a = document.getElementById("forgot-pw").value, b2 = document.getElementById("forgot-pw2").value;
+    if (a !== b2) { go("settings", { forgotMsg: "Those two passwords don't match." }); return; }
+    const all = users(); all[u.name.toLowerCase()].hash = await hashPw(u.name, a); saveUsers(all);
+    SFX("lock"); go("settings", { forgotMsg: "New password set. Use it next time you log in." });
+  }
+  else if (e.target.id === "reset-form") {
+    const name = document.getElementById("reset-name").value.trim();
+    const a = document.getElementById("reset-pw").value, b2 = document.getElementById("reset-pw2").value;
+    const all = users(); const rec = all[name.toLowerCase()];
+    if (!rec) { go("login", { mode: "reset", resetName: name, error: "There's no account with that username in this browser." }); return; }
+    if (a !== b2) { go("login", { mode: "reset", resetName: name, error: "Those two passwords don't match." }); return; }
+    rec.hash = await hashPw(rec.name, a); saveUsers(all); store.set("session", rec.name);
+    SFX("lock"); go("profile");
   }
   else if (e.target.id === "join-form") {
     const err = openCode(document.getElementById("join-code").value);
