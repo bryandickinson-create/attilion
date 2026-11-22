@@ -1628,13 +1628,13 @@ function viewProfile() {
 const SECTIONS = [["modes", "🚀", "Play", "Quick match, daily, endless, free, subjects and friends"], ["bots", "🤖", "Play bots", "The computer and this event's bots"], ["avatar", "👩‍🚀", "Avatar", "Pick your avatar and enter codes"], ["settings", "⚙️", "Settings", "Timer, screen, sound and account"]];
 // Inside a section: a way back to the main menu, plus quick hops to the other three.
 function tabsBar(active) {
-  return `<nav class="tabs" aria-label="Sections"><button data-go="home" class="tab back" aria-label="Main menu"><span aria-hidden="true">←</span>Menu</button>${SECTIONS.map(([v, ic, l]) => `<button data-go="${v}" class="tab ${active === v ? "on" : ""}" aria-current="${active === v ? "page" : "false"}"><span aria-hidden="true">${ic}</span>${l}</button>`).join("")}</nav>`;
+  return `<nav class="tabs" aria-label="Sections"><button data-go="home" class="tab back" aria-label="Main menu"><span aria-hidden="true">←</span>Menu</button>${SECTIONS.map(([v, ic, l]) => `<button data-go="${v}" class="tab ${active === v ? "on" : ""}" aria-current="${active === v ? "page" : "false"}"><span aria-hidden="true">${v === "avatar" ? avMarkup(myAvatarObj()) : ic}</span>${l}</button>`).join("")}</nav>`;
 }
 // The main menu: four big boxes that fill the screen.
 function viewHub() {
   return `${header()}<main class="hub">
     <div class="hub-grid">
-      ${SECTIONS.map(([v, ic, l, sub]) => `<button class="hub-box hub-${v}" data-go="${v}"><span class="hub-ic" aria-hidden="true">${ic}</span><span class="hub-name">${l}</span><span class="hub-sub">${sub}</span></button>`).join("")}
+      ${SECTIONS.map(([v, ic, l, sub]) => `<button class="hub-box hub-${v}" data-go="${v}"><span class="hub-ic" aria-hidden="true">${v === "avatar" ? avMarkup(myAvatarObj()) : ic}</span><span class="hub-name">${l}</span><span class="hub-sub">${sub}</span></button>`).join("")}
     </div>
   </main>`;
 }
