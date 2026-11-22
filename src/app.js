@@ -17,7 +17,7 @@ const PLAYER_PRIOR = 200;        // how many "virtual answers" the curated list 
 const START_ELO = 1000;
 // Only the owner's account may use a name starting with "Admin".
 // GUESS: the owner's username; change it here if Bryan wants a different one.
-const OWNER_NAME = "AdminBryan";
+const OWNER_NAME = "AdminAtticus";
 const SFX = (name, gain) => { if (window.KrillionSound) window.KrillionSound.play(name, gain); };
 
 const BOTS = {
