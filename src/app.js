@@ -10,7 +10,7 @@ const ROUNDS = 7;
 const ROUND_SECONDS = 30;
 const VALID_SHARE = 92;          // GUESS: % of players who give a valid answer
 const FAMILIAR = 65;             // the first 65 answers of a list are the ones a fair player could think of
-const KRILLION_FROM = 0.75;      // 1 in an Attillion starts 75% of the way down that familiar part
+const KRILLION_FROM = 0.85;      // 1 in an Attillion starts 85% of the way down that familiar part
 const HADAL_DEPTH = 6000;        // metres where the Attillion zone starts
 const MAX_DEPTH = 10935;         // Challenger Deep
 const PLAYER_PRIOR = 200;        // how many "virtual answers" the curated list is worth
@@ -174,7 +174,7 @@ function buildPrompt(id, q, entries, familiarCount, extra) {
   let H = 0; answers.forEach((_, r) => { H += 1 / (r + 1); });
   answers.forEach((a, r) => { a.base = VALID_SHARE * (1 / (r + 1)) / H; });
   // The most common answer sits at the surface (0 m). 1 in an Attillion starts
-  // 75% of the way down the familiar answers; anything past them also counts.
+  // 85% of the way down the familiar answers; anything past them also counts.
   const familiar = Math.max(4, Math.min(answers.length, familiarCount));
   const krillFrom = Math.min(answers.length - 1, Math.floor(familiar * KRILLION_FROM));
   const zeroShare = answers[0].base;
@@ -214,7 +214,8 @@ const SUBJECTS = [
   { key: "literature", name: "Literature", icon: "📚" },
   { key: "history", name: "History", icon: "🏛️" },
   { key: "geography", name: "Geography", icon: "🌍" },
-  { key: "religion", name: "Religion", icon: "🕊️" }
+  { key: "religion", name: "Religion", icon: "🕊️" },
+  { key: "movies", name: "Movies & TV", icon: "🎬" }
 ];
 const SUBJECT_BY_KEY = Object.fromEntries(SUBJECTS.map(x => [x.key, x]));
 const CAT_OF = {
@@ -224,7 +225,8 @@ const CAT_OF = {
   capital: "geography", africa: "geography", europe: "geography", asia: "geography", samerica: "geography", state: "geography",
   uscity: "geography", island: "geography", water: "geography", mountain: "geography", europecity: "geography", asiacity: "geography",
   language: "geography",
-  god: "religion"
+  god: "religion",
+  animated: "movies", superhero: "movies"
 };
 (window.KRILLION_PROMPTS || []).forEach(p => {
   const entries = p.a.split(";").map(e => ({ forms: e.split("|").map(s => s.trim()).filter(Boolean) })).filter(e => e.forms.length);
