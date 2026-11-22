@@ -541,6 +541,11 @@ h2 + .layout-bar { justify-content: flex-start; margin-top: 10px; }
 .skip-btn { margin: 12px auto 0; display: flex; }
 
 .menu-back { display: inline-block; margin: 0 0 6px; font-size: 16px; font-weight: 600; }
+
+/* Daily Launch box: a calendar page showing today's date */
+.cal { display: inline-flex; flex-direction: column; width: 1.05em; border-radius: .14em; overflow: hidden; background: #fff; box-shadow: 0 .05em .12em rgba(0,0,0,.4); font-family: var(--font-display); line-height: 1; }
+.cal-m { background: #e5484d; color: #fff; font-size: .24em; font-weight: 700; padding: .22em 0 .18em; text-transform: uppercase; letter-spacing: .04em; }
+.cal-d { color: #1b1b28; font-size: .5em; font-weight: 800; padding: .12em 0 .16em; }
 </style></head><body>
 <div id="app"></div>
 <script>
@@ -2262,13 +2267,15 @@ function viewHome() {
   const u = me();
   const key = todayKey();
   const done = u ? u.daily[key] : store.get("guestDaily", {})[key];
+  const now = new Date();
+  const cal = `<span class="cal"><span class="cal-m">${now.toLocaleString("en-US", { month: "short" })}</span><span class="cal-d">${now.getDate()}</span></span>`;
   const box = (cls, attrs, ic, name, sub, tag) => `<button class="hub-box play-box ${cls}" ${attrs}>${tag ? `<span class="pb-tag">${tag}</span>` : ""}<span class="hub-ic" aria-hidden="true">${ic}</span><span class="hub-name">${name}</span><span class="hub-sub">${sub}</span></button>`;
   return `${header()}${tabsBar("modes")}
   <main class="home">
     <div class="play-grid">
       ${box("pb-quick", `data-act="quick"`, "⚡", "Quick match", "Play a real person near your Elo, right now", `<span id="online">${onlineText()}</span>`)}
-      ${done ? box("pb-daily", `data-act="daily-view"`, "📅", "Daily Launch", `Done today: ${done.score}. New one at midnight`, "#" + dailyNumber(key))
-             : box("pb-daily", `data-act="daily"`, "📅", "Daily Launch", "Same 7 prompts for everyone today", "#" + dailyNumber(key))}
+      ${done ? box("pb-daily", `data-act="daily-view"`, cal, "Daily Launch", `Done today: ${done.score}. New one at midnight`, "#" + dailyNumber(key))
+             : box("pb-daily", `data-act="daily"`, cal, "Daily Launch", "Same 7 prompts for everyone today", "#" + dailyNumber(key))}
       ${box("pb-endless", `data-act="endless"`, "♾️", "Endless", "Never-ending prompts, one secret 1 in Attillion each", endlessStats().best ? "Best " + endlessStats().best : "")}
       ${box("pb-solo", `data-act="solo"`, "🎯", "Free Launch", "7 new prompts, beat your high score", soloStats().best ? "Best " + soloStats().best : "")}
       ${box("pb-subjects", `data-go="subjects"`, "📚", "Subjects", "Sports, movies, history, weather and more", "")}

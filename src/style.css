@@ -536,3 +536,8 @@ h2 + .layout-bar { justify-content: flex-start; margin-top: 10px; }
 .skip-btn { margin: 12px auto 0; display: flex; }
 
 .menu-back { display: inline-block; margin: 0 0 6px; font-size: 16px; font-weight: 600; }
+
+/* Daily Launch box: a calendar page showing today's date */
+.cal { display: inline-flex; flex-direction: column; width: 1.05em; border-radius: .14em; overflow: hidden; background: #fff; box-shadow: 0 .05em .12em rgba(0,0,0,.4); font-family: var(--font-display); line-height: 1; }
+.cal-m { background: #e5484d; color: #fff; font-size: .24em; font-weight: 700; padding: .22em 0 .18em; text-transform: uppercase; letter-spacing: .04em; }
+.cal-d { color: #1b1b28; font-size: .5em; font-weight: 800; padding: .12em 0 .16em; }
