@@ -483,6 +483,15 @@ h2 + .layout-bar { justify-content: flex-start; margin-top: 10px; }
 .subject-grid { grid-template-columns: repeat(7, 1fr); }
 @container app (max-width: 900px) { .subject-grid { grid-template-columns: repeat(4, 1fr); } }
 @container app (max-width: 520px) { .subject-grid { grid-template-columns: repeat(2, 1fr); } }
+
+/* seasonal event */
+.mode.event { grid-column: 1 / -1; background: linear-gradient(160deg, #3b1f4e, var(--sea-2) 70%); border-color: #8a5cff55; }
+.ev-progress { position: relative; height: 26px; border-radius: 13px; background: var(--sea); border: 1px solid var(--sea-3); overflow: hidden; margin: 12px 0 4px; }
+.ev-bar { position: absolute; inset: 0 auto 0 0; width: var(--p); background: linear-gradient(90deg, #8a5cff, #ffc93c); }
+.ev-progress span { position: relative; display: block; text-align: center; line-height: 24px; font: 600 13px var(--font-data); }
+.ev-bots { grid-template-columns: repeat(3, 1fr); }
+.ev-bot .bot-name { color: #ffc93c; }
+@container app (max-width: 720px) { .ev-bots { grid-template-columns: 1fr; } }
 </style></head><body>
 <div id="app"></div>
 <script>
@@ -923,6 +932,95 @@ const AVATARS = [
   { id: "gdev",     e: "👾", name: "Gold Developer", code: 762634016, dev: true },
   { id: "rdev",     e: "👾", name: "Rainbow Developer", code: 3751850430, dev: true }
 ];
+
+/* ---------- seasonal events ----------
+ * Every two weeks a new event starts, themed to the time of year. It brings three
+ * event bots (easy, medium, hard) and a token. Every game against them earns
+ * tokens (more for wins and tougher bots); collect enough in those two weeks and
+ * the event's avatar is yours for good. */
+const EVENT_EPOCH = new Date(2026, 10, 16);       // a Monday; events run Monday to Sunday-after-next
+const EVENT_DAYS = 14, EVENT_GOAL = 150;
+const EVENT_TIERS = [
+  { elo: 900,  miss: 0.10, lucky: 0.06, pick: () => Math.pow(Math.random(), 1.6) * 0.3, win: 12, draw: 7,  loss: 3 },
+  { elo: 1300, miss: 0.07, lucky: 0.11, pick: () => 0.03 + Math.random() * 0.45,       win: 20, draw: 12, loss: 5 },
+  { elo: 1800, miss: 0.04, lucky: 0.22, pick: () => 0.08 + Math.random() * 0.7,        win: 32, draw: 20, loss: 8 }
+];
+const EVENTS = {
+  fall: [
+    { key: "haunted", name: "Haunted Orbit", token: "👻", tokenName: "Ghost Dust", prize: { e: "🧛", name: "Space Vampire" },
+      bots: [["🎃", "Pumpkin Probe", "Glows in the dark, not much else."], ["🦇", "Bat Satellite", "Hangs upside down and sees answers you don't."], ["💀", "Skull Nebula", "Spooky good at rare answers."]] },
+    { key: "harvest", name: "Harvest Moon", token: "🌽", tokenName: "Moon Corn", prize: { e: "🦃", name: "Turkey Lander" },
+      bots: [["🥧", "Pie Planet", "Sweet, round and easy to beat."], ["🌾", "Wheat Comet", "Gathers answers from far fields."], ["🍂", "Autumn Storm", "Blows in the rarest answers of the season."]] },
+    { key: "leaves", name: "Falling Leaves", token: "🍁", tokenName: "Maple Stars", prize: { e: "🦔", name: "Hedgehog Cadet" },
+      bots: [["🐿️", "Squirrel Scout", "Busy collecting the obvious answers."], ["🦉", "Night Owl", "Wise, patient and quietly tricky."], ["🍄", "Mushroom Moon", "Pops up with answers from nowhere."]] }
+  ],
+  winter: [
+    { key: "frost", name: "Frost Comet", token: "❄️", tokenName: "Snowflakes", prize: { e: "☃️", name: "Snow Astronaut" },
+      bots: [["⛄", "Snow Rover", "Rolls slowly downhill."], ["🐧", "Penguin Pilot", "Can't fly, but can think."], ["🧊", "Ice Giant", "Cold, calculating, rare."]] },
+    { key: "holiday", name: "Holiday Star", token: "🎁", tokenName: "Gifts", prize: { e: "🎄", name: "Cosmic Tree" },
+      bots: [["🦌", "Reindeer Rocket", "Fast, but sticks to the usual route."], ["🧝", "Elf Engineer", "Builds clever answers in the workshop."], ["🎅", "Santa's Sleigh", "Knows every answer, naughty or nice."]] },
+    { key: "aurora", name: "Northern Lights", token: "💎", tokenName: "Aurora Gems", prize: { e: "🧣", name: "Starlight Scarf" },
+      bots: [["🦭", "Seal Sat", "Happy with the first answer it finds."], ["🐻‍❄️", "Polar Bear", "Big, strong and hard to surprise."], ["🌨️", "Blizzard", "Buries you in rare answers."]] }
+  ],
+  spring: [
+    { key: "bloom", name: "Bloom Belt", token: "🌸", tokenName: "Petals", prize: { e: "🌻", name: "Sun Flower" },
+      bots: [["🐝", "Buzz Drone", "Busy, but not very creative."], ["🦋", "Butterfly Probe", "Flits to unexpected answers."], ["🌷", "Tulip Titan", "Blooms with the rarest picks."]] },
+    { key: "egghunt", name: "Egg Hunt", token: "🥚", tokenName: "Star Eggs", prize: { e: "🐰", name: "Moon Bunny" },
+      bots: [["🐣", "Chick Capsule", "Just hatched. Still learning."], ["🥕", "Carrot Rocket", "Crunchy and surprisingly sharp."], ["🌈", "Rainbow Arc", "Finds the treasure at the end."]] },
+    { key: "showers", name: "Meteor Showers", token: "💧", tokenName: "Raindrops", prize: { e: "☂️", name: "Umbrella Ship" },
+      bots: [["🐌", "Snail Probe", "Slow and steady, mostly steady."], ["🐸", "Frog Lander", "Leaps past the common answers."], ["⛈️", "Storm Cell", "Thunders in with rare answers."]] }
+  ],
+  summer: [
+    { key: "flare", name: "Solar Flare", token: "☀️", tokenName: "Sunbeams", prize: { e: "😎", name: "Sun Pilot" },
+      bots: [["🍉", "Melon Moon", "Juicy, sweet, predictable."], ["🕶️", "Cool Comet", "Too cool for common answers."], ["🔥", "Flare Core", "Burns hot with rare answers."]] },
+    { key: "sparks", name: "Star-Spangled Sky", token: "🎆", tokenName: "Sparks", prize: { e: "🎇", name: "Sparkler" },
+      bots: [["🌭", "Hot Dog Hauler", "Goes with the classics."], ["🎈", "Balloon Probe", "Floats a little higher each round."], ["🦅", "Eagle Eye", "Spots answers from miles away."]] },
+    { key: "ocean", name: "Ocean Moons", token: "🐚", tokenName: "Shells", prize: { e: "🐙", name: "Space Octopus" },
+      bots: [["🦀", "Crab Crawler", "Scuttles sideways to easy answers."], ["🐬", "Dolphin Dart", "Smart and playful."], ["🦈", "Shark Comet", "Hunts down the rarest answers."]] }
+  ]
+};
+function eventWindow(d) { d = d || new Date(); return Math.floor((d - EVENT_EPOCH) / (EVENT_DAYS * 864e5)); }
+function eventFor(w) {
+  const start = new Date(EVENT_EPOCH.getTime() + w * EVENT_DAYS * 864e5);
+  // the event follows the month in the middle of its two weeks
+  const BY_MONTH = ["frost", "aurora", "showers", "egghunt", "bloom", "ocean", "sparks", "flare", "leaves", "haunted", "harvest", "holiday"];
+  const mid = new Date(start.getTime() + 7 * 864e5);
+  const ev = Object.values(EVENTS).flat().find(x => x.key === BY_MONTH[mid.getMonth()]);
+  return Object.assign({ w, start, end: new Date(start.getTime() + EVENT_DAYS * 864e5) }, ev);
+}
+const EVENT = eventFor(eventWindow());
+// every event's prize, so prizes from past events stay in your collection
+Object.values(EVENTS).flat().forEach(ev => AVATARS.splice(AVATARS.findIndex(a => a.code), 0, { id: "ev-" + ev.key, e: ev.prize.e, name: ev.prize.name, ev: ev.key }));
+EVENT.bots.forEach(([av, name, blurb], i) => { BOTS["ev" + i] = Object.assign({ name, av, blurb, event: true, tier: i }, EVENT_TIERS[i]); });
+function eventTokens(u) { const x = u ? (u.events || {}) : store.get("guestEvents", {}); return x[EVENT.w] || 0; }
+function evPrizes(u) { return u ? (u.evAvatars || []) : store.get("guestEvAvatars", []); }
+function awardTokens(n) {
+  const id = "ev-" + EVENT.key; let unlocked = false;
+  const upd = (ev, pz) => { ev[EVENT.w] = (ev[EVENT.w] || 0) + n; if (ev[EVENT.w] >= EVENT_GOAL && !pz.includes(id)) { pz.push(id); unlocked = true; } };
+  if (me()) updateUser(x => { x.events = x.events || {}; x.evAvatars = x.evAvatars || []; upd(x.events, x.evAvatars); });
+  else { const ev = store.get("guestEvents", {}), pz = store.get("guestEvAvatars", []); upd(ev, pz); store.set("guestEvents", ev); store.set("guestEvAvatars", pz); }
+  return unlocked;
+}
+function daysLeft() { return Math.max(1, Math.ceil((EVENT.end - Date.now()) / 864e5)); }
+function regularBots() { return Object.entries(BOTS).filter(([, b]) => !b.event); }
+function viewEventCard() {
+  const u = me(), have = eventTokens(u), prize = avatarById("ev-" + EVENT.key), got = evPrizes(u).includes(prize.id);
+  const pct = Math.min(100, Math.round(have / EVENT_GOAL * 100));
+  return `<article class="mode event">
+    <div class="mode-head"><h2>${EVENT.token} ${esc(EVENT.name)}</h2><span class="tag">${daysLeft()} day${daysLeft() === 1 ? "" : "s"} left</span></div>
+    <p>A two-week event. Play the event bots to collect <b>${EVENT.token} ${esc(EVENT.tokenName)}</b>. Wins earn more, and tougher bots pay more. Collect ${EVENT_GOAL} to unlock the ${avMarkup(prize)} <b>${esc(prize.name)}</b> avatar for good.</p>
+    <div class="ev-progress"><div class="ev-bar" style="--p:${pct}%"></div><span>${got ? `Unlocked! ${have} collected` : `${have} / ${EVENT_GOAL}`} ${EVENT.token}</span></div>
+    <div class="bots-grid ev-bots">
+      ${[0, 1, 2].map(i => { const b = BOTS["ev" + i]; return `
+        <button class="bot ev-bot" data-act="bot" data-level="ev${i}">
+          <span class="bot-name">${b.av} ${esc(b.name)}</span>
+          <span class="bot-elo">${b.elo}</span>
+          <span class="bot-blurb">${esc(b.blurb)} Win +${b.win}, lose +${b.loss}.</span>
+        </button>`; }).join("")}
+    </div>
+  </article>`;
+}
+
 // Bundle codes unlock a whole group at once.
 const BUNDLES = [
   { id: "krill-all", code: 1175683394, name: "every Attillion trophy", pick: "rdragon" },
@@ -932,6 +1030,7 @@ function codeHash(raw) { return hashStr("krillion-code:" + String(raw).toUpperCa
 function redeemed(u) { return u ? (u.codes || []) : store.get("guestCodes", []); }
 function krillCount(u) { return u ? (u.krillions || []).length : store.get("guestKrillions", []).length; }
 function isOpen(a, u) {
+  if (a.ev) return evPrizes(u).includes(a.id);
   if (a.code) return redeemed(u).includes(a.id);
   if (a.krill) return krillCount(u) >= a.krill || redeemed(u).includes("krill-all");
   return a.elo === 0 || (u && a.elo <= u.peak);
@@ -1470,6 +1569,7 @@ function finishMatch() {
   if (S.mode === "bot") {
     const b = BOTS[S.level];
     res.elo = applyMatchResult(b.name + " (computer)", b.elo, my, their, "computer");
+    if (b.event) { res.tokens = my > their ? b.win : my === their ? b.draw : b.loss; res.evUnlocked = awardTokens(res.tokens); }
   } else if (S.mode === "live") {
     const L = S.live;
     res.elo = applyMatchResult(L.opp.name, L.opp.elo, my, their, "quick", L.name);
@@ -1767,7 +1867,7 @@ function queueText() {
 }
 function viewQueue() {
   const c = myCard();
-  const near = Object.entries(BOTS).reduce((a, b) => Math.abs(b[1].elo - c.elo) < Math.abs(a[1].elo - c.elo) ? b : a);
+  const near = regularBots().reduce((a, b) => Math.abs(b[1].elo - c.elo) < Math.abs(a[1].elo - c.elo) ? b : a);
   setTimeout(() => { if (!Q) queueStart(); queueText(); }, 0);
   return `${header()}<main class="queue">
     <div class="queue-card">
@@ -1923,10 +2023,12 @@ function viewHome() {
         </div>
       </article>
 
+      ${viewEventCard()}
+
       <article class="mode bots">
         <div class="mode-head"><h2>Play the computer</h2></div>
         <div class="bots-grid">
-          ${Object.entries(BOTS).map(([k, b]) => `
+          ${regularBots().map(([k, b]) => `
             <button class="bot bot-${k}" data-act="bot" data-level="${k}">
               <span class="bot-name">${b.name}</span>
               <span class="bot-elo">${b.elo}</span>
@@ -2082,6 +2184,11 @@ function viewResults() {
     extra += `<p class="hint"><button class="link" data-go="login">Log in</button> to have games count toward your Elo.</p>`;
   }
   if (S.mode === "live" && res.forfeit) extra += `<p class="hint">${esc(oppName)} left before the end, so their missing rounds scored 0.</p>`;
+  if (res.tokens) {
+    const prize = avatarById("ev-" + EVENT.key);
+    extra += `<p class="best-note ev-note">+${res.tokens} ${EVENT.token} ${esc(EVENT.tokenName)} · ${eventTokens(me())} / ${EVENT_GOAL}</p>`;
+    if (res.evUnlocked) extra += `<p class="unlock-note">You collected ${EVENT_GOAL} ${EVENT.token} and unlocked the ${avMarkup(prize)} <b>${esc(prize.name)}</b>! <button class="link" data-go="settings">Use it</button></p>`;
+  }
   if (S.mode === "solo") {
     const st = soloStats();
     extra += res.newBest && res.prevBest > 0 ? `<p class="best-note">New personal best! Up from ${res.prevBest}.</p>`
@@ -2235,12 +2342,12 @@ function viewSettings() {
     <p class="lede small">This is you on the launch tower. Rarer answers send it higher. New avatars unlock as your best Elo climbs.${u ? ` Your best so far is <b>${peak}</b>.` : ""}</p>
     ${u ? "" : `<p class="hint"><button class="link" data-go="login">Log in</button> to earn Elo and unlock more avatars.</p>`}
     <div class="avatars">
-      ${AVATARS.filter(a => !a.code || isOpen(a, u)).map(a => {
+      ${AVATARS.filter(a => a.ev ? (isOpen(a, u) || a.ev === EVENT.key) : (!a.code || isOpen(a, u))).map(a => {
         const open = isOpen(a, u);
         const sel = a.e + a.id === current;
         return `<button class="avatar ${sel ? "on" : ""}" ${open ? `data-act="avatar" data-id="${a.id}"` : "disabled"} aria-pressed="${sel}">
           <span class="ae">${avMarkup(a)}</span><span class="an">${a.name}${a.dev ? ` <i class="devtag">DEV</i>` : a.code ? ` <i class="secrettag">secret</i>` : ""}</span>
-          <span class="al">${open ? (sel ? "Selected" : "Pick") : a.krill ? `🔒 ${a.krill} Attillions` : `🔒 ${a.elo} Elo`}</span>
+          <span class="al">${open ? (sel ? "Selected" : "Pick") : a.krill ? `🔒 ${a.krill} Attillions` : a.ev ? `🔒 ${EVENT_GOAL} ${EVENT.token}` : `🔒 ${a.elo} Elo`}</span>
         </button>`;
       }).join("")}
     </div>
@@ -2314,7 +2421,7 @@ function viewLeaderboard() {
   if (tab === "elo") {
     const avOf = u => avMarkup((u.online ? avatarById(u.avatar) : AVATARS.find(x => x.id === u.avatar && isOpen(x, u))) || AVATARS[0]);
     const list = all.filter(u => !u.onlyDaily).map(u => ({ av: avOf(u), name: u.name, raw: u.name, val: u.elo, sub: `${u.wins}–${u.losses}`, human: true }))
-      .concat(Object.values(BOTS).map(b => ({ av: b.av, name: b.name, raw: b.name, val: b.elo, sub: "computer", human: false })))
+      .concat(regularBots().map(([, b]) => b).map(b => ({ av: b.av, name: b.name, raw: b.name, val: b.elo, sub: "computer", human: false })))
       .sort((a, b) => b.val - a.val);
     rows = list.map((r, i) => `<tr class="${r.human ? "" : "botrow"} ${me() && r.raw === me().name ? "you" : ""}"><td class="n">${i + 1}</td><td>${r.av} ${esc(r.name)}</td><td class="sub">${esc(r.sub)}</td><td class="n">${r.val}</td></tr>`).join("");
   } else {
@@ -2642,7 +2749,7 @@ function fromHash() {
 }
 
 // test hook
-window.Krillion = { getRoom, PROMPTS, BASES, pickSet, noteUsed, state: () => S, scoreAnswer, matchAnswer, pickPrompts, depthFor, botAnswer, BOTS, todayKey };
+window.Krillion = { getRoom, awardTokens, EVENT, PROMPTS, BASES, pickSet, noteUsed, state: () => S, scoreAnswer, matchAnswer, pickPrompts, depthFor, botAnswer, BOTS, todayKey };
 
 if (!fromHash()) render();
 setTimeout(cloudPull, 500);

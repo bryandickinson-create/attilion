@@ -478,3 +478,12 @@ h2 + .layout-bar { justify-content: flex-start; margin-top: 10px; }
 .subject-grid { grid-template-columns: repeat(7, 1fr); }
 @container app (max-width: 900px) { .subject-grid { grid-template-columns: repeat(4, 1fr); } }
 @container app (max-width: 520px) { .subject-grid { grid-template-columns: repeat(2, 1fr); } }
+
+/* seasonal event */
+.mode.event { grid-column: 1 / -1; background: linear-gradient(160deg, #3b1f4e, var(--sea-2) 70%); border-color: #8a5cff55; }
+.ev-progress { position: relative; height: 26px; border-radius: 13px; background: var(--sea); border: 1px solid var(--sea-3); overflow: hidden; margin: 12px 0 4px; }
+.ev-bar { position: absolute; inset: 0 auto 0 0; width: var(--p); background: linear-gradient(90deg, #8a5cff, #ffc93c); }
+.ev-progress span { position: relative; display: block; text-align: center; line-height: 24px; font: 600 13px var(--font-data); }
+.ev-bots { grid-template-columns: repeat(3, 1fr); }
+.ev-bot .bot-name { color: #ffc93c; }
+@container app (max-width: 720px) { .ev-bots { grid-template-columns: 1fr; } }
