@@ -990,15 +990,73 @@ const EVENTS = {
       bots: [["🌭", "Hot Dog Hauler", "Goes with the classics."], ["🎈", "Balloon Probe", "Floats a little higher each round."], ["🦅", "Eagle Eye", "Spots answers from miles away."]] },
     { key: "ocean", name: "Ocean Moons", token: "🐚", tokenName: "Shells", prize: { e: "🐙", name: "Space Octopus" },
       bots: [["🦀", "Crab Crawler", "Scuttles sideways to easy answers."], ["🐬", "Dolphin Dart", "Smart and playful."], ["🦈", "Shark Comet", "Hunts down the rarest answers."]] }
+  ],
+  special: [
+    // inspired by big releases (original names, no borrowed characters or logos)
+    { key: "heist", name: "Neon Heist", token: "💰", tokenName: "Neon Cash", prize: { e: "🏎️", name: "Getaway Car" },
+      bots: [["🚕", "Cab Driver", "Knows the main streets, nothing fancy."], ["🚓", "Patrol Cruiser", "Always on your tail."], ["🕶️", "The Kingpin", "Runs the whole city's rarest answers."]] },
+    { key: "doomsday", name: "Doomsday", token: "🛡️", tokenName: "Hero Shields", prize: { e: "🦸", name: "Cosmic Hero" },
+      bots: [["🦹", "Henchbot", "Follows orders, not imagination."], ["⚡", "Thunder Knight", "Strikes with surprising answers."], ["☠️", "The Doom Engine", "Built to end the world, one rare answer at a time."]] },
+    { key: "biggame", name: "The Big Game", token: "🏈", tokenName: "Touchdowns", prize: { e: "🏆", name: "Galaxy Trophy" },
+      bots: [["🧢", "Benchwarmer", "Mostly here for the snacks."], ["📣", "Head Coach", "Has a play for every prompt."], ["🏟️", "The Dynasty", "Champions three years running."]] },
+    { key: "heart", name: "Heart Nebula", token: "💖", tokenName: "Heart Stars", prize: { e: "💘", name: "Cupid Comet" },
+      bots: [["🍫", "Chocolate Box", "Sweet and very predictable."], ["🌹", "Rose Rover", "Charming and a little clever."], ["💌", "Secret Admirer", "Full of answers you never saw coming."]] },
+    { key: "clover", name: "Lucky Clover", token: "🍀", tokenName: "Four-Leaf Clovers", prize: { e: "🌈", name: "Rainbow Road" },
+      bots: [["🥔", "Spud Probe", "Hearty, plain and easy."], ["🪙", "Gold Coin", "Lucky now and then."], ["🧙", "Leprechaun Lord", "Hides the rarest answers at the end of the rainbow."]] },
+    { key: "greenplanet", name: "Green Planet", token: "🌱", tokenName: "Seedlings", prize: { e: "🌳", name: "Planet Tree" },
+      bots: [["♻️", "Recycle Bot", "Reuses the same old answers."], ["🐢", "Sea Turtle", "Slow, steady, and wiser than you think."], ["🌋", "Mother Nature", "Unpredictable and powerful."]] },
+    { key: "arcade", name: "Galactic Arcade", token: "🎟️", tokenName: "Prize Tickets", prize: { e: "🕹️", name: "Joystick" },
+      bots: [["👻", "Maze Ghost", "Wanders the same paths."], ["🎮", "Button Masher", "Fast fingers, fair answers."], ["👑", "High Score", "Has never lost a game. Yet."]] },
+    { key: "deepdive", name: "Deep Dive", token: "🦪", tokenName: "Pearls", prize: { e: "🦑", name: "Giant Squid" },
+      bots: [["🐠", "Reef Fish", "Stays near the surface."], ["🐋", "Blue Whale", "Huge and patient."], ["🦈", "Megalodon", "From the deepest, rarest waters."]] },
+    { key: "spacecamp", name: "Space Camp", token: "🏅", tokenName: "Mission Patches", prize: { e: "🧪", name: "Star Chemist" },
+      bots: [["🔦", "Camp Counselor", "Knows the camp songs, not much else."], ["🧭", "Navigator", "Finds new paths every round."], ["🛰️", "Mission Control", "Calculates the rarest answer."]] },
+    { key: "games", name: "Summer Games", token: "🥉", tokenName: "Medals", prize: { e: "🥇", name: "Gold Medalist" },
+      bots: [["🏃", "Jogger", "Steady pace, safe answers."], ["🤸", "Gymnast", "Flips into unexpected answers."], ["🏊", "Champion", "Built for gold."]] },
+    { key: "academy", name: "Cosmic Academy", token: "✏️", tokenName: "Gold Pencils", prize: { e: "🎓", name: "Star Scholar" },
+      bots: [["🎒", "New Kid", "Still finding the classroom."], ["📚", "Bookworm", "Has read every list twice."], ["🧑‍🏫", "The Principal", "Knows every answer in the school."]] },
+    { key: "dino", name: "Dino Dig", token: "🦴", tokenName: "Fossils", prize: { e: "🦖", name: "Rocket Rex" },
+      bots: [["🥚", "Dino Egg", "Hasn't hatched any ideas yet."], ["🦕", "Long Neck", "Reaches a little higher."], ["☄️", "The Asteroid", "Wiped out everything before you."]] },
+    { key: "orchard", name: "Orchard Orbit", token: "🍎", tokenName: "Star Apples", prize: { e: "🍏", name: "Apple Moon" },
+      bots: [["🧃", "Juice Box", "Sweet and simple."], ["🥧", "Apple Pie", "Warm, and a little tricky."], ["🌳", "Ancient Tree", "Rooted in the rarest answers."]] },
+    { key: "monster", name: "Monster Mash", token: "🍬", tokenName: "Candy", prize: { e: "🧟", name: "Zombie Pilot" },
+      bots: [["🕸️", "Cobweb", "Hangs around the obvious answers."], ["🐺", "Werewolf", "Wild on a full moon."], ["🧙‍♀️", "Moon Witch", "Brews the rarest answers in her cauldron."]] }
   ]
 };
+// 26 two-week windows a year, each with its own event, starting Mon Nov 16 2026
+const EVENT_CALENDAR = [
+  "harvest",     // Nov 16  Thanksgiving
+  "heist",       // Nov 30  the big crime-city game launch
+  "holiday",     // Dec 14  Christmas
+  "doomsday",    // Dec 28  the big superhero movie
+  "frost",       // Jan 11
+  "biggame",     // Jan 25  football's big game
+  "heart",       // Feb 8   Valentine's Day
+  "aurora",      // Feb 22
+  "clover",      // Mar 8   St. Patrick's Day
+  "egghunt",     // Mar 22  Easter
+  "showers",     // Apr 5
+  "greenplanet", // Apr 19  Earth Day
+  "bloom",       // May 3
+  "arcade",      // May 17
+  "ocean",       // May 31
+  "flare",       // Jun 14  summer solstice
+  "sparks",      // Jun 28  Fourth of July
+  "deepdive",    // Jul 12
+  "spacecamp",   // Jul 26
+  "games",       // Aug 9
+  "academy",     // Aug 23  back to school
+  "dino",        // Sep 6
+  "orchard",     // Sep 20
+  "leaves",      // Oct 4
+  "monster",     // Oct 18  Halloween
+  "haunted"      // Nov 1
+];
 function eventWindow(d) { d = d || new Date(); return Math.floor((d - EVENT_EPOCH) / (EVENT_DAYS * 864e5)); }
 function eventFor(w) {
   const start = new Date(EVENT_EPOCH.getTime() + w * EVENT_DAYS * 864e5);
-  // the event follows the month in the middle of its two weeks
-  const BY_MONTH = ["frost", "aurora", "showers", "egghunt", "bloom", "ocean", "sparks", "flare", "leaves", "haunted", "harvest", "holiday"];
-  const mid = new Date(start.getTime() + 7 * 864e5);
-  const ev = Object.values(EVENTS).flat().find(x => x.key === BY_MONTH[mid.getMonth()]);
+  const key = EVENT_CALENDAR[((w % EVENT_CALENDAR.length) + EVENT_CALENDAR.length) % EVENT_CALENDAR.length];
+  const ev = Object.values(EVENTS).flat().find(x => x.key === key);
   return Object.assign({ w, start, end: new Date(start.getTime() + EVENT_DAYS * 864e5) }, ev);
 }
 const EVENT = eventFor(eventWindow());
