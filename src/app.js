@@ -1293,15 +1293,13 @@ ${inner}
   </main>`;
 }
 function viewSubjects() {
-  return playSubView(`
-      <article class="mode subjects">
-        <div class="mode-head"><h2>Subject Launches</h2><span class="tag">Unlimited</span></div>
-        <p>Pick a subject and get 7 prompts all about it. Play as often as you like and chase your best in each one.</p>
-        <div class="subject-grid">
-          ${SUBJECTS.map(x => { const b = subjectStats(x.key).best; return `<button class="subject" data-act="subject" data-cat="${x.key}"><span class="subj-icon" aria-hidden="true">${x.icon}</span><span class="subj-name">${x.name}</span><span class="subj-best">${b ? "Best " + b : "Not played"}</span></button>`; }).join("")}
-        </div>
-      </article>
-`);
+  const cols = ["#ff8a4c", "#7aa2ff", "#ffc93c", "#5fe08a", "#a58bff", "#ff5fa2", "#8fd8ff", "#e86bff", "#4cd6ff", "#ffb86b"];
+  return `${header()}<button class="link back-link menu-back" data-go="modes">← Back to Play</button>
+  <main class="home">
+    <div class="play-grid subj-grid">
+      ${SUBJECTS.map((x, i) => { const b = subjectStats(x.key).best; return `<button class="hub-box play-box subj-box" data-act="subject" data-cat="${x.key}" style="--hc:${cols[i % cols.length]}"><span class="pb-tag">${b ? "Best " + b : ""}</span><span class="hub-ic" aria-hidden="true">${x.icon}</span><span class="hub-name">${x.name}</span></button>`; }).join("")}
+    </div>
+  </main>`;
 }
 function viewFriends() {
   return playSubView(`
