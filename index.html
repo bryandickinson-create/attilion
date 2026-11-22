@@ -1467,10 +1467,64 @@ let roomP = null, Q = null;
 function getRoom() {
   if (!roomP) {
     const c = window.claude;
-    roomP = c && typeof c.use === "function" ? Promise.resolve(c.use("room")).catch(() => null) : Promise.resolve(null);
+    roomP = (c && typeof c.use === "function" ? Promise.resolve(c.use("room")).catch(() => null) : Promise.resolve(null))
+      .then(r => r || supaLobby());
   }
   return roomP;
 }
+
+/* On the public website there is no Claude room, so the same lobby/match-room
+ * interface runs on Supabase Realtime presence instead (no tables needed).
+ * The URL and publishable key are public client values. */
+const SUPA_URL = "https://ankwkrxetvwtbtfiawmw.supabase.co";
+const SUPA_KEY = "sb_publishable_d09tW8Ydb43XHhELn6JrgA_rUGurvVc";
+const SUPA_JS = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js";
+let supaP = null;
+function supaClient() {
+  if (!supaP) supaP = new Promise((res, rej) => {
+    if (window.supabase && window.supabase.createClient) return res(window.supabase.createClient(SUPA_URL, SUPA_KEY));
+    const sc = document.createElement("script"); sc.src = SUPA_JS; sc.async = true;
+    sc.onload = () => window.supabase && window.supabase.createClient ? res(window.supabase.createClient(SUPA_URL, SUPA_KEY)) : rej(new Error("no supabase"));
+    sc.onerror = () => rej(new Error("supabase blocked"));
+    document.head.appendChild(sc);
+  });
+  return supaP;
+}
+function deviceId() { let d = store.get("deviceId", null); if (!d) { d = Math.random().toString(36).slice(2, 12); store.set("deviceId", d); } return d; }
+const TAB_ID = Math.random().toString(36).slice(2, 12) + Date.now().toString(36);
+function supaRoom(client, name) {
+  const self = TAB_ID;   // same id in every room, like the Claude room
+  const dev = deviceId();
+  const ch = client.channel("attillion-" + name, { config: { presence: { key: self } } });
+  let state = { _dev: dev }, joined = false, closed = false;
+  const subs = new Set();
+  const list = () => Object.entries(ch.presenceState() || {}).map(([key, metas]) => {
+    const m = Object.assign({}, metas[metas.length - 1] || {}); delete m.presence_ref;
+    return { peer: key, kind: "viewer", sameTab: key === self, isMe: key !== self && m._dev === dev, presence: m };
+  });
+  const notify = () => { const peers = list(); subs.forEach(s => { try { s.cb({ peers }); } catch (e) {} }); };
+  const room = {
+    peer: self,
+    peers: list,
+    presence(obj) { Object.assign(state, obj); return joined && !closed ? ch.track(state) : Promise.resolve(); },
+    onPeers(cb, err) { const s = { cb, err }; subs.add(s); setTimeout(() => s.cb({ peers: list() }), 0); return () => subs.delete(s); },
+    join(n) { return openSupaRoom(client, n); },
+    leave() { closed = true; subs.clear(); return Promise.resolve(ch.untrack()).catch(() => {}).then(() => client.removeChannel(ch)).catch(() => {}); }
+  };
+  ch.on("presence", { event: "sync" }, notify);
+  return new Promise((res, rej) => {
+    const t = setTimeout(() => rej(new Error("timeout")), 10000);
+    ch.subscribe(status => {
+      if (status === "SUBSCRIBED") { clearTimeout(t); joined = true; ch.track(state).then(() => res(room), () => res(room)); }
+      else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+        if (!joined) { clearTimeout(t); rej(new Error(status)); }
+        else subs.forEach(s => { try { s.err && s.err(); } catch (e) {} });
+      }
+    });
+  });
+}
+function openSupaRoom(client, name) { return supaRoom(client, name); }
+function supaLobby() { return supaClient().then(c => supaRoom(c, "lobby")).catch(() => null); }
 function myCard() { const u = me(); return { name: u ? u.name : "Guest pilot", elo: u ? u.elo : START_ELO, av: myAvatarObj().id }; }
 function cleanCard(p, field) {   // everything in presence is untrusted
   const q = p && p.presence && p.presence[field];
@@ -1544,8 +1598,8 @@ function queueText() {
   const t = document.getElementById("q-text"), h = document.getElementById("q-title"), x = document.getElementById("q-extra");
   if (!t || !Q) return;
   if (Q.none) {
-    h.textContent = "Quick match needs the shared Attillion page";
-    t.textContent = "Live matches run through the Attillion page on Claude, where everyone it's shared with can play. This copy can't reach other players, but the computer and friend challenges still work.";
+    h.textContent = "Can’t reach the match server";
+    t.textContent = "Quick match couldn't connect to other players. Check your internet and try again. The computer and friend challenges still work.";
     if (x) x.hidden = false;
     return;
   }
@@ -2404,7 +2458,7 @@ function fromHash() {
 }
 
 // test hook
-window.Krillion = { PROMPTS, BASES, pickSet, noteUsed, state: () => S, scoreAnswer, matchAnswer, pickPrompts, depthFor, botAnswer, BOTS, todayKey };
+window.Krillion = { getRoom, PROMPTS, BASES, pickSet, noteUsed, state: () => S, scoreAnswer, matchAnswer, pickPrompts, depthFor, botAnswer, BOTS, todayKey };
 
 if (!fromHash()) render();
 })();
