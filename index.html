@@ -537,6 +537,8 @@ h2 + .layout-bar { justify-content: flex-start; margin-top: 10px; }
 .how .hero { margin-top: 10px; }
 .back-link { margin-top: 6px; }
 @container app (max-width: 620px) { .play-grid { grid-template-columns: 1fr 1fr; grid-auto-rows: minmax(150px, calc((100svh - 230px) / 3)); gap: 10px; } .play-box .hub-sub { display: block; font-size: 12px; } }
+
+.skip-btn { margin: 12px auto 0; display: flex; }
 </style></head><body>
 <div id="app"></div>
 <script>
@@ -1532,6 +1534,16 @@ function endlessAdjust(prompt, res) {
   const depth = Math.min(res.depth, HADAL_DEPTH - 1);
   return Object.assign({}, res, { points: Math.min(res.points, 95), depth, zone: zoneFor(depth) });
 }
+// Settings: how many prompts you may skip in one Endless run (-1 = unlimited).
+function skipLimit() { const v = store.get("endlessSkips", 3); return v === -1 ? Infinity : v; }
+function skipsLeft() { return Math.max(0, skipLimit() - (S.skipsUsed || 0)); }
+function endlessSkip() {
+  if (S.mode !== "endless" || S.phase !== "answer" || !skipsLeft()) return;
+  S.skipsUsed = (S.skipsUsed || 0) + 1;
+  S.prompts.splice(S.round, 1);
+  if (S.round >= S.prompts.length - 1) S.prompts = S.prompts.concat(endlessQueue(S.seed + S.prompts.length + 7));
+  beginRound();
+}
 function endlessStats() { const u = me(); return (u ? u.endless : store.get("guestEndless", null)) || {}; }
 function scoreAnswer(prompt, raw, fixed, useRepeats) {
   const idx = matchAnswer(prompt, raw);
@@ -2376,7 +2388,8 @@ function viewPlay() {
           <input id="answer" maxlength="60" placeholder="Type the rarest answer you can" autocapitalize="off" spellcheck="false">
           <button class="btn primary" type="submit">Lock in</button>
         </form>
-        <p class="answer-error" id="answer-error" role="alert"></p>` : `<p class="waiting">Locked in: <b>${esc(S.mine[S.round] || "(blank)")}</b>. Waiting for ${esc(oppName)}…</p>`}
+        <p class="answer-error" id="answer-error" role="alert"></p>
+        ${S.mode === "endless" && skipLimit() > 0 ? `<button class="btn ghost small skip-btn" data-act="skip" ${skipsLeft() ? "" : "disabled"}>⏭ Skip this one ${skipLimit() === Infinity ? "" : `(${skipsLeft()} left)`}</button>` : ""}` : `<p class="waiting">Locked in: <b>${esc(S.mine[S.round] || "(blank)")}</b>. Waiting for ${esc(oppName)}…</p>`}
         ${oppName ? `<p class="opp-status" id="opplock">${S.live && S.live.gone ? `${esc(oppName)} left the match. Finish your rounds and the win is yours.` : S.mode === "challenge-guest" ? `${esc(oppName)} already answered. You'll see it at the end of the round.` : `<span class="dot"></span>${esc(oppName)} is thinking`}</p>` : ""}
       </div>`;
   } else {
@@ -2682,6 +2695,12 @@ function viewSettings() {
     </div>
     <p class="hint">Only for Endless and Free Launch, which never change your Elo. Every other mode stays timed. Saved on this device.</p>
 
+    <h2>Endless skips</h2>
+    <div class="seg-pick" role="group" aria-label="Skips per Endless run">
+      ${[[0, "Off"], [3, "3"], [5, "5"], [10, "10"], [-1, "Unlimited"]].map(([v, l]) => `<button data-act="skips" data-v="${v}" aria-pressed="${store.get("endlessSkips", 3) === v}">${l}</button>`).join("")}
+    </div>
+    <p class="hint">How many prompts you can skip in one Endless run. Skipped prompts don't score and don't count as a round. Saved on this device.</p>
+
     <h2>Sound</h2>
     <div class="setting-row">
       <label for="vol">Volume</label>
@@ -2914,6 +2933,8 @@ document.addEventListener("click", async e => {
   else if (act === "quick") go("queue");
   else if (act === "quick-cancel") go("modes");
   else if (act === "sound-test") SFX("hadal");
+  else if (act === "skip") endlessSkip();
+  else if (act === "skips") { store.set("endlessSkips", Number(t.dataset.v)); render(); }
   else if (act === "untimed") { store.set("untimed", t.dataset.v === "1"); render(); }
   else if (act === "spin") {
     const av = t.querySelector(".av");
