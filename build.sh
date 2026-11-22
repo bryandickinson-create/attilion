@@ -16,6 +16,7 @@ FONTS='<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bri
   echo '<script>'; cat src/prompts3.js; echo '</script>'
   echo "<script>"; cat src/prompts4.js; echo "</script>"
   echo "<script>"; cat src/prompts5.js; echo "</script>"
+  echo "<script>"; cat src/prompts_more.js; echo "</script>"
   echo '<script>'; cat src/app.js; echo '</script>'
   echo '<script>'; cat src/fx.js; echo '</script>'
   echo '<script>'; cat src/sound.js; echo '</script>'
@@ -32,6 +33,7 @@ FONTS='<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bri
   echo '<script>'; cat src/prompts3.js; echo '</script>'
   echo "<script>"; cat src/prompts4.js; echo "</script>"
   echo "<script>"; cat src/prompts5.js; echo "</script>"
+  echo "<script>"; cat src/prompts_more.js; echo "</script>"
   echo '<script>'; cat src/app.js; echo '</script>'
   echo '<script>'; cat src/fx.js; echo '</script>'
   echo '<script>'; cat src/sound.js; echo '</script>'

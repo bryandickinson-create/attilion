@@ -189,26 +189,24 @@ function buildPrompt(id, q, entries, familiarCount, extra) {
 const letters = k => k.replace(/[^a-z]/g, "");
 const TWISTS = [
   ...["e", "a", "i", "o"].map(x => ({ key: "no" + x, fam: "no", test: k => !k.includes(x), label: `with no “${x.toUpperCase()}” in it` })),
-  { key: "noae", fam: "no", test: k => !/[ae]/.test(k), label: "with no “A” or “E” in it", hard: true },
   { key: "words2", fam: "words", test: k => k.includes(" "), label: "that's two or more words" },
   { key: "word1", fam: "words", test: k => !k.includes(" ") && letters(k).length >= 6, label: "that's one word, 6+ letters" },
   { key: "short", fam: "len", test: k => letters(k).length <= 5, label: "that's 5 letters or fewer" },
   { key: "long", fam: "len", test: k => letters(k).length >= 10, label: "that's 10+ letters long" },
-  { key: "len7", fam: "len", test: k => letters(k).length === 7, label: "with exactly 7 letters" },
   { key: "dbl", fam: "dbl", test: k => /([a-z])\1/.test(k), label: "with a double letter, like “LL” or “EE”" },
   { key: "uniq", fam: "dbl", test: k => { const l = letters(k); return new Set(l).size === l.length; }, label: "with no letter used twice" },
   { key: "vowel", fam: "start", test: k => /^[aeiou]/.test(k), label: "that starts with a vowel" },
+  { key: "am", fam: "start", test: k => /^[a-m]/.test(k), label: "that starts with a letter from A to M" },
+  { key: "len8", fam: "len", test: k => letters(k).length >= 8, label: "that's 8 or more letters" },
+  { key: "rare", fam: "rare", test: k => /[jkqxz]/.test(k), label: "with a J, K, Q, X or Z in it" },
   { key: "nz", fam: "start", test: k => /^[n-z]/.test(k), label: "that starts with a letter from N to Z" },
   ...["b", "c", "m", "p", "s", "t"].map(x => ({ key: "s" + x, fam: "start", test: k => k.startsWith(x), label: `that starts with “${x.toUpperCase()}”` })),
-  { key: "endv", fam: "end", test: k => /[aeiouy]$/.test(k), label: "that ends in a vowel or Y" },
-  { key: "endc", fam: "end", test: k => /[^aeiouy]$/.test(k), label: "that ends in a consonant", easy: true },
-  { key: "same", fam: "end", test: k => { const l = letters(k); return l.length > 2 && l[0] === l[l.length - 1]; }, label: "that starts and ends with the same letter", hard: true },
   { key: "vow3", fam: "vow", test: k => (k.match(/[aeiou]/g) || []).length >= 4, label: "with four or more vowels" },
   // "contains a ___": only letters that leave plenty of answers make it past the checks below
   ..."bcdfghkmpuvwyz".split("").map(x => ({ key: "has" + x, fam: "has", test: k => k.includes(x), label: `that contains the letter “${x.toUpperCase()}”` }))
 ];
 // a twist must leave this many answers, and this many familiar ones
-const TWIST_MIN = 30, TWIST_MIN_FAMILIAR = 18, TWIST_MIN_HARD = 18, TWIST_MIN_FAMILIAR_HARD = 10;
+const TWIST_MIN = 45, TWIST_MIN_FAMILIAR = 25, TWIST_MIN_HARD = 18, TWIST_MIN_FAMILIAR_HARD = 10;
 const BASES = []; const PROMPTS = []; const VARIANTS = {};
 // Subject Launches: which topics belong to which subject (new topics carry their own `cat`)
 const SUBJECTS = [
@@ -231,7 +229,8 @@ const CAT_OF = {
   animated: "movies", superhero: "movies"
 };
 (window.KRILLION_PROMPTS || []).forEach(p => {
-  const entries = p.a.split(";").map(e => ({ forms: e.split("|").map(s => s.trim()).filter(Boolean) })).filter(e => e.forms.length);
+  const more = (window.KRILLION_MORE || {})[p.id];
+  const entries = (more ? p.a + ";" + more : p.a).split(";").map(e => ({ forms: e.split("|").map(s => s.trim()).filter(Boolean) })).filter(e => e.forms.length);
   const base = buildPrompt(p.id, p.q, entries, FAMILIAR, { baseId: p.id });
   base.cats = ((p.cat || "") + " " + (CAT_OF[p.id] || "")).split(/[ ,]+/).filter(Boolean);
   BASES.push(base); PROMPTS.push(base); VARIANTS[p.id] = [];
