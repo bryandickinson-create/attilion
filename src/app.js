@@ -1087,7 +1087,7 @@ function viewLogin() {
       <label for="auth-name">Username</label>
       <input id="auth-name" name="username" required minlength="2" maxlength="20" pattern="[A-Za-z0-9_\\-]+" autocomplete="username">
       <label for="auth-pw">Password</label>
-      <input id="auth-pw" name="password" type="password" required minlength="4" autocomplete="${mode === "login" ? "current-password" : "new-password"}">
+      <span class="pw-wrap"><input id="auth-pw" name="password" type="password" required minlength="4" autocomplete="${mode === "login" ? "current-password" : "new-password"}"><button type="button" class="pw-eye" data-act="pw-eye" data-for="auth-pw" aria-label="Show password" aria-pressed="false">👁</button></span>
       <p class="error" id="auth-error" role="alert">${esc(S.error || "")}</p>
       <button class="btn primary" type="submit">${mode === "login" ? "Log in" : "Create account"}</button>
     </form>
@@ -1173,15 +1173,15 @@ function viewSettings() {
       <label for="new-name">New username</label>
       <input id="new-name" required minlength="2" maxlength="20" value="${esc(u.name)}" autocomplete="username">
       <label for="rename-pw">Current password</label>
-      <input id="rename-pw" type="password" required autocomplete="current-password">
+      <span class="pw-wrap"><input id="rename-pw" type="password" required autocomplete="current-password"><button type="button" class="pw-eye" data-act="pw-eye" data-for="rename-pw" aria-label="Show password" aria-pressed="false">👁</button></span>
       <p class="error" role="alert">${esc(S.renameMsg || "")}</p>
       <button class="btn primary" type="submit">Change username</button>
     </form>
     <form id="pw-form" class="stack">
       <label for="old-pw">Current password</label>
-      <input id="old-pw" type="password" required autocomplete="current-password">
+      <span class="pw-wrap"><input id="old-pw" type="password" required autocomplete="current-password"><button type="button" class="pw-eye" data-act="pw-eye" data-for="old-pw" aria-label="Show password" aria-pressed="false">👁</button></span>
       <label for="new-pw">New password</label>
-      <input id="new-pw" type="password" required minlength="4" autocomplete="new-password">
+      <span class="pw-wrap"><input id="new-pw" type="password" required minlength="4" autocomplete="new-password"><button type="button" class="pw-eye" data-act="pw-eye" data-for="new-pw" aria-label="Show password" aria-pressed="false">👁</button></span>
       <p class="error" role="alert">${esc(S.pwMsg || "")}</p>
       <button class="btn primary" type="submit">Change password</button>
     </form>` : ""}
@@ -1376,6 +1376,12 @@ document.addEventListener("click", async e => {
     if (me()) updateUser(x => { x.avatar = id; }); else store.set("guestAvatar", id);
     render();
     celebrateAvatar(id);
+  }
+  else if (act === "pw-eye") {
+    const inp = document.getElementById(t.dataset.for); if (!inp) return;
+    const show = inp.type === "password"; inp.type = show ? "text" : "password";
+    t.setAttribute("aria-pressed", String(show)); t.setAttribute("aria-label", show ? "Hide password" : "Show password");
+    t.textContent = show ? "🙈" : "👁"; inp.focus();
   }
   else if (act === "device") { setDeviceMode(t.dataset.v); render(); }
   else if (act === "tab") { S.tab = t.dataset.tab; render(); }

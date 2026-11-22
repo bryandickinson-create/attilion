@@ -454,3 +454,8 @@ h2 + .layout-bar { justify-content: flex-start; margin-top: 10px; }
 .dev-takeover.plain { background: radial-gradient(circle at var(--ox) var(--oy), rgba(160,110,255,.16), rgba(3,4,14,.55) 70%); }
 .dev-takeover.plain .dev-giant { animation: devgrow 2.9s cubic-bezier(.5,0,.3,1) forwards; }
 .dev-takeover.plain .dev-label { color: #d9c6ff; text-shadow: 0 0 22px rgba(160,110,255,.8), 0 4px 0 rgba(0,0,0,.4); }
+/* show / hide password */
+.pw-wrap { position: relative; display: block; }
+.pw-wrap input { width: 100%; padding-right: 48px; }
+.pw-eye { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: 0; font-size: 18px; line-height: 1; padding: 6px 8px; border-radius: 8px; opacity: .8; }
+.pw-eye:hover, .pw-eye[aria-pressed="true"] { opacity: 1; background: rgba(255,255,255,.06); }
