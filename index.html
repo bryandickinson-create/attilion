@@ -546,6 +546,17 @@ h2 + .layout-bar { justify-content: flex-start; margin-top: 10px; }
 .cal { display: inline-flex; flex-direction: column; width: 1.05em; border-radius: .14em; overflow: hidden; background: #fff; box-shadow: 0 .05em .12em rgba(0,0,0,.4); font-family: var(--font-display); line-height: 1; }
 .cal-m { background: #e5484d; color: #fff; font-size: .24em; font-weight: 700; padding: .22em 0 .18em; text-transform: uppercase; letter-spacing: .04em; }
 .cal-d { color: #1b1b28; font-size: .5em; font-weight: 800; padding: .12em 0 .16em; }
+
+/* Play bots: two big boxes, then big bot boxes */
+.hub-grid.two { grid-template-rows: 1fr; grid-template-columns: 1fr 1fr; }
+.hub-computer { --hc: var(--twilight); }
+.hub-event { --hc: var(--hadal); }
+.bot-grid { grid-template-columns: repeat(4, 1fr); grid-auto-rows: minmax(170px, calc((100svh - 200px) / 2)); }
+.ev-grid { grid-template-columns: repeat(3, 1fr); grid-auto-rows: minmax(200px, calc(100svh - 330px)); }
+.bot-box .hub-name { font-size: clamp(18px, 3cqi, 26px); }
+.bot-box .hub-sub { font-size: 13px; }
+.ev-blurb { color: var(--kelp); margin: 4px 0 10px; }
+@container app (max-width: 620px) { .hub-grid.two { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; } .bot-grid { grid-template-columns: 1fr 1fr; grid-auto-rows: minmax(150px, auto); } .ev-grid { grid-template-columns: 1fr; grid-auto-rows: minmax(140px, auto); } }
 </style></head><body>
 <div id="app"></div>
 <script>
@@ -2325,25 +2336,35 @@ function viewFriends() {
 `);
 }
 function viewBots() {
-  const u = me();
+  const u = me(), have = eventTokens(u);
   return `${header()}${tabsBar("bots")}
+  <main class="hub">
+    <div class="hub-grid two">
+      <button class="hub-box hub-computer" data-go="computer"><span class="hub-ic" aria-hidden="true">🤖</span><span class="hub-name">Play the computer</span><span class="hub-sub">${regularBots().length} opponents from ${regularBots()[0][1].elo} to ${regularBots()[regularBots().length - 1][1].elo} Elo</span></button>
+      <button class="hub-box hub-event" data-go="event"><span class="pb-tag">${daysLeft()} day${daysLeft() === 1 ? "" : "s"} left</span><span class="hub-ic" aria-hidden="true">${EVENT.token}</span><span class="hub-name">${esc(EVENT.name)}</span><span class="hub-sub">Event bots · ${have} / ${EVENT_GOAL} ${esc(EVENT.tokenName)}</span></button>
+    </div>
+  </main>`;
+}
+const BOT_COLORS = ["#8fd8ff", "#7aa2ff", "#5fe08a", "#ffc93c", "#ff8a4c", "#ff5fa2", "#a58bff", "#e86bff"];
+function botBox(k, b, i, extra) {
+  return `<button class="hub-box play-box bot-box bot-${k}" data-act="bot" data-level="${k}" style="--hc:${BOT_COLORS[i % BOT_COLORS.length]}"><span class="pb-tag">${b.elo} Elo</span><span class="hub-ic" aria-hidden="true">${b.av || "🤖"}</span><span class="hub-name">${esc(b.name)}</span><span class="hub-sub">${esc(b.blurb)}${extra || ""}</span></button>`;
+}
+function viewComputer() {
+  const u = me();
+  return `${header()}<button class="link back-link menu-back" data-go="bots">← Back to Play bots</button>
   <main class="home">
-    <section class="modes one">
-      ${viewEventCard()}
-
-      <article class="mode bots">
-        <div class="mode-head"><h2>Play the computer</h2></div>
-        <div class="bots-grid">
-          ${regularBots().map(([k, b]) => `
-            <button class="bot bot-${k}" data-act="bot" data-level="${k}">
-              <span class="bot-name">${b.name}</span>
-              <span class="bot-elo">${b.elo}</span>
-              <span class="bot-blurb">${esc(b.blurb)}</span>
-            </button>`).join("")}
-        </div>
-        ${u ? "" : `<p class="hint"><button class="link" data-go="login">Log in</button> to save your Elo. Guests can still play.</p>`}
-      </article>
-    </section>
+    <div class="play-grid bot-grid">${regularBots().map(([k, b], i) => botBox(k, b, i)).join("")}</div>
+    ${u ? "" : `<p class="hint"><button class="link" data-go="login">Log in</button> to save your Elo. Guests can still play.</p>`}
+  </main>`;
+}
+function viewEventBots() {
+  const u = me(), have = eventTokens(u), prize = avatarById("ev-" + EVENT.key), got = evPrizes(u).includes(prize.id);
+  const pct = Math.min(100, Math.round(have / EVENT_GOAL * 100));
+  return `${header()}<button class="link back-link menu-back" data-go="bots">← Back to Play bots</button>
+  <main class="home">
+    <p class="ev-blurb">Beat the event bots to collect <b>${EVENT.token} ${esc(EVENT.tokenName)}</b>. Collect ${EVENT_GOAL} to unlock the ${avMarkup(prize)} <b>${esc(prize.name)}</b> avatar. ${daysLeft()} day${daysLeft() === 1 ? "" : "s"} left.</p>
+    <div class="ev-progress"><div class="ev-bar" style="--p:${pct}%"></div><span>${got ? `Unlocked! ${have} collected` : `${have} / ${EVENT_GOAL}`} ${EVENT.token}</span></div>
+    <div class="play-grid ev-grid">${[0, 1, 2].map(i => { const b = BOTS["ev" + i]; return botBox("ev" + i, b, 3 + i * 2, ` Win +${b.win}, lose +${b.loss}.`); }).join("")}</div>
   </main>`;
 }
 function layoutBar() {
@@ -2542,7 +2563,7 @@ function viewResults() {
       ${S.mode === "endless" ? `<button class="btn primary" data-act="endless">Start a new endless run</button>` : ""}
       ${S.mode === "subject" ? `<button class="btn primary" data-act="subject" data-cat="${S.cat}">Play ${subjName()} again</button>` : ""}
       ${S.mode === "bot" ? `<button class="btn primary" data-act="bot" data-level="${S.level}">Rematch ${BOTS[S.level].name}</button>` : ""}
-      <button class="btn ghost" data-go="modes">Back to Earth</button>
+      <button class="btn ghost" data-go="${S.mode === "bot" ? (BOTS[S.level].event ? "event" : "computer") : "modes"}">Back to Earth</button>
     </div>
   </main>`;
 }
@@ -2897,7 +2918,7 @@ function fillDescriptions() {
 function render() {
   const v = S.view;
   const html = v === "play" ? viewPlay() : v === "results" ? viewResults() : v === "login" ? viewLogin()
-    : v === "settings" ? viewSettings() : v === "avatar" ? viewAvatar() : v === "bots" ? viewBots() : v === "modes" ? viewHome() : v === "subjects" ? viewSubjects() : v === "friends" ? viewFriends() : v === "profile" ? viewProfile() : v === "leaderboard" ? viewLeaderboard() : v === "join" ? viewJoin()
+    : v === "settings" ? viewSettings() : v === "avatar" ? viewAvatar() : v === "bots" ? viewBots() : v === "modes" ? viewHome() : v === "computer" ? viewComputer() : v === "event" ? viewEventBots() : v === "subjects" ? viewSubjects() : v === "friends" ? viewFriends() : v === "profile" ? viewProfile() : v === "leaderboard" ? viewLeaderboard() : v === "join" ? viewJoin()
     : v === "queue" ? viewQueue() : v === "challenge" ? viewChallengeIntro() : v === "reply" ? viewReplyResult() : v === "daily-done" ? viewDailyDone() : viewHub();
   $app().innerHTML = html;
   document.body.dataset.view = v;
