@@ -460,3 +460,14 @@ h2 + .layout-bar { justify-content: flex-start; margin-top: 10px; }
 .pw-eye { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: 0; font-size: 18px; line-height: 1; padding: 6px 8px; border-radius: 8px; opacity: .8; }
 .pw-eye:hover, .pw-eye[aria-pressed="true"] { opacity: 1; background: rgba(255,255,255,.06); }
 .forgot { margin-top: 18px; } .forgot summary { cursor: pointer; color: var(--krill); } .forgot[open] summary { margin-bottom: 6px; }
+
+/* Subject Launches */
+.mode.subjects { grid-column: 1 / -1; background: linear-gradient(160deg, #123a4e, var(--sea-2) 70%); }
+.subject-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 14px; }
+.subject { background: var(--sea); border: 1px solid var(--sea-3); border-radius: 12px; padding: 14px 8px; display: grid; justify-items: center; gap: 4px; min-width: 0; transition: border-color .15s, transform .15s; }
+.subject:hover { border-color: var(--accent, #7cc4ff); transform: translateY(-2px); }
+.subj-icon { font-size: 1.8rem; line-height: 1; }
+.subj-name { font-weight: 700; }
+.subj-best { font-size: .8rem; opacity: .75; }
+@container app (max-width: 720px) { .subject-grid { grid-template-columns: repeat(3, 1fr); } }
+@container app (max-width: 420px) { .subject-grid { grid-template-columns: 1fr 1fr; } }

@@ -208,9 +208,28 @@ const TWISTS = [
 // a twist must leave this many answers, and this many familiar ones
 const TWIST_MIN = 30, TWIST_MIN_FAMILIAR = 18, TWIST_MIN_HARD = 18, TWIST_MIN_FAMILIAR_HARD = 10;
 const BASES = []; const PROMPTS = []; const VARIANTS = {};
+// Subject Launches: which topics belong to which subject (new topics carry their own `cat`)
+const SUBJECTS = [
+  { key: "sports", name: "Sports", icon: "⚽" },
+  { key: "literature", name: "Literature", icon: "📚" },
+  { key: "history", name: "History", icon: "🏛️" },
+  { key: "geography", name: "Geography", icon: "🌍" },
+  { key: "religion", name: "Religion", icon: "🕊️" }
+];
+const SUBJECT_BY_KEY = Object.fromEntries(SUBJECTS.map(x => [x.key, x]));
+const CAT_OF = {
+  sport: "sports", martial: "sports", athlete: "sports", sportsgear: "sports",
+  shakespeare: "literature", author: "literature", myth: "literature",
+  president: "history", scientist: "history", painter: "history", composer: "history", landmark: "history geography",
+  capital: "geography", africa: "geography", europe: "geography", asia: "geography", samerica: "geography", state: "geography",
+  uscity: "geography", island: "geography", water: "geography", mountain: "geography", europecity: "geography", asiacity: "geography",
+  language: "geography",
+  god: "religion"
+};
 (window.KRILLION_PROMPTS || []).forEach(p => {
   const entries = p.a.split(";").map(e => ({ forms: e.split("|").map(s => s.trim()).filter(Boolean) })).filter(e => e.forms.length);
   const base = buildPrompt(p.id, p.q, entries, FAMILIAR, { baseId: p.id });
+  base.cats = ((p.cat || "") + " " + (CAT_OF[p.id] || "")).split(/[ ,]+/).filter(Boolean);
   BASES.push(base); PROMPTS.push(base); VARIANTS[p.id] = [];
   TWISTS.forEach(t => {
     let familiarHits = 0;
@@ -295,10 +314,10 @@ function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h
 function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 // Picks 7 different topics; 2 or 3 of them get a twist ("...with no E in it").
 // Topics this player saw recently are skipped when possible.
-function pickSet(seed, seenList) {
+function pickSet(seed, seenList, cat) {
   const seen = new Set(seenList || []);
   const r = rng(seed);
-  const ids = BASES.map(p => p.id);
+  const ids = BASES.filter(p => !cat || p.cats.includes(cat)).map(p => p.id);
   for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
   const bases = ids.filter(id => !seen.has(id)).concat(ids.filter(id => seen.has(id))).slice(0, ROUNDS);
   const twistable = bases.map((id, i) => i).filter(i => VARIANTS[bases[i]].length);
@@ -325,7 +344,7 @@ function markSeen(ids) {
   const seen = store.get("seenPrompts", []).map(id => id.split("~")[0]).filter(id => !baseIds.includes(id)).concat(baseIds);
   store.set("seenPrompts", seen.slice(-Math.floor(BASES.length * 0.8)));
 }
-function pickFresh(seed) { return pickSet(seed, store.get("seenPrompts", [])); }
+function pickFresh(seed, cat) { return pickSet(seed, store.get("seenPrompts", []), cat); }
 function todayKey(d) { d = d || new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
 function dailyNumber(key) { return Math.floor((Date.parse(key + "T12:00:00") - Date.parse("2026-11-21T12:00:00")) / 864e5) + 1; }
 
@@ -427,17 +446,17 @@ function go(view, extra) {
 function startMatch(opts) {
   // opts: { mode: "bot"|"daily"|"challenge-host"|"challenge-guest", level, seed, prompts, opp }
   const seed = opts.seed != null ? opts.seed : Math.floor(Math.random() * 2 ** 31);
-  const prompts = opts.prompts || pickFresh(seed);
+  const prompts = opts.prompts || pickFresh(seed, opts.cat);
   markSeen(prompts);
   go("play", {
     mode: opts.mode, level: opts.level, seed, prompts, round: 0,
     mine: [], theirs: opts.theirsRaw ? opts.theirsRaw.slice() : [],
-    opp: opts.opp || null, live: opts.live || null, challenge: opts.challenge || null, dailyKey: opts.dailyKey || null,
+    opp: opts.opp || null, live: opts.live || null, challenge: opts.challenge || null, dailyKey: opts.dailyKey || null, cat: opts.cat || null,
     phase: "answer"
   });
   beginRound();
 }
-function fixedRarity() { return S.mode === "live" || S.mode === "daily" || S.mode === "solo" || S.mode === "challenge-host" || S.mode === "challenge-guest"; }
+function fixedRarity() { return S.mode === "live" || S.mode === "daily" || S.mode === "solo" || S.mode === "subject" || S.mode === "challenge-host" || S.mode === "challenge-guest"; }
 function beginRound() {
   S.phase = "answer"; S.deadline = Date.now() + ROUND_SECONDS * 1000; S.draft = "";
   S.botLockAt = S.mode === "bot" ? Date.now() + (3 + Math.random() * 19) * 1000 : null;
@@ -497,13 +516,13 @@ function reveal() {
   if (S.live) S.theirs[S.round] = liveOppAnswer(S.round);
   const fixed = fixedRarity();
   S.lastMine = scoreAnswer(prompt, S.mine[S.round], fixed);
-  S.lastTheirs = (S.mode === "daily" || S.mode === "solo" || S.mode === "challenge-host") ? null : scoreAnswer(prompt, S.theirs[S.round], fixed);
+  S.lastTheirs = (S.mode === "daily" || S.mode === "solo" || S.mode === "subject" || S.mode === "challenge-host") ? null : scoreAnswer(prompt, S.theirs[S.round], fixed);
   if (S.mode !== "daily") { recordAnswer(prompt.id, S.lastMine.idx); }
   S.scores = S.scores || []; S.oppScores = S.oppScores || [];
   S.scores[S.round] = S.lastMine; if (S.lastTheirs) S.oppScores[S.round] = S.lastTheirs;
   if (S.lastMine.points === 100) {
     const found = { q: prompt.twist ? prompt.baseQ + " " + prompt.twist : prompt.q, a: S.lastMine.display, depth: S.lastMine.depth, share: S.lastMine.share, when: Date.now(),
-      mode: S.mode === "bot" ? "vs " + BOTS[S.level].name : S.mode === "live" ? "Quick match" : S.mode === "daily" ? "Daily Launch" : S.mode === "solo" ? "Free Launch" : "Friend challenge" };
+      mode: S.mode === "bot" ? "vs " + BOTS[S.level].name : S.mode === "live" ? "Quick match" : S.mode === "daily" ? "Daily Launch" : S.mode === "solo" ? "Free Launch" : S.mode === "subject" ? subjName() + " Launch" : "Friend challenge" };
     const before = krillCount(me());
     if (me()) updateUser(x => { x.krillions = (x.krillions || []); x.krillions.unshift(found); x.krillions = x.krillions.slice(0, 500); });
     else { const g = store.get("guestKrillions", []); g.unshift(found); store.set("guestKrillions", g.slice(0, 500)); }
@@ -578,6 +597,13 @@ function finishMatch() {
     const upd = x => { x.best = Math.max(x.best || 0, my); x.plays = (x.plays || 0) + 1; x.runs = [run].concat(x.runs || []).slice(0, 20); };
     if (me()) updateUser(x => { x.solo = x.solo || {}; upd(x.solo); });
     else { const g = store.get("guestSolo", {}); upd(g); store.set("guestSolo", g); }
+    res.newBest = my > before; res.prevBest = before;
+  } else if (S.mode === "subject") {
+    const before = subjectStats(S.cat).best;
+    const run = { score: my, when: Date.now() };
+    const upd = x => { x[S.cat] = x[S.cat] || {}; const y = x[S.cat]; y.best = Math.max(y.best || 0, my); y.plays = (y.plays || 0) + 1; y.runs = [run].concat(y.runs || []).slice(0, 20); };
+    if (me()) updateUser(x => { x.subjects = x.subjects || {}; upd(x.subjects); });
+    else { const g = store.get("guestSubjects", {}); upd(g); store.set("guestSubjects", g); }
     res.newBest = my > before; res.prevBest = before;
   } else if (S.mode === "daily") {
     const entry = { score: my, answers: S.scores.map(s => ({ raw: s.raw, points: s.points, depth: s.depth })), when: Date.now() };
@@ -843,6 +869,14 @@ function viewHome() {
         <button class="btn primary" data-act="solo">Launch</button>
       </article>
 
+      <article class="mode subjects">
+        <div class="mode-head"><h2>Subject Launches</h2><span class="tag">Unlimited</span></div>
+        <p>Pick a subject and get 7 prompts all about it. Play as often as you like and chase your best in each one.</p>
+        <div class="subject-grid">
+          ${SUBJECTS.map(x => { const b = subjectStats(x.key).best; return `<button class="subject" data-act="subject" data-cat="${x.key}"><span class="subj-icon" aria-hidden="true">${x.icon}</span><span class="subj-name">${x.name}</span><span class="subj-best">${b ? "Best " + b : "Not played"}</span></button>`; }).join("")}
+        </div>
+      </article>
+
       <article class="mode friends">
         <div class="mode-head"><h2>Play a friend</h2></div>
         <p>Play your 7 rounds, send the challenge, and your friend plays the same prompts. After each round they see what you said. Same answers are allowed.</p>
@@ -873,6 +907,8 @@ function layoutBar() {
     ${[["auto", "✨", "Auto"], ["phone", "📱", "Phone"], ["ipad", "📲", "iPad"], ["computer", "💻", "Computer"]].map(([v, ic, l]) => `<button data-act="device" data-v="${v}" aria-pressed="${deviceMode() === v}"><span aria-hidden="true">${ic}</span>${l}</button>`).join("")}
   </div></div>`;
 }
+function subjectStats(cat) { const u = me(); const all = (u ? u.subjects : store.get("guestSubjects", {})) || {}; const x = all[cat] || {}; return { best: x.best || 0, plays: x.plays || 0, runs: x.runs || [] }; }
+function subjName() { return (SUBJECT_BY_KEY[S.cat] || {}).name || "Subject"; }
 function soloStats() { const u = me(); const x = (u ? u.solo : store.get("guestSolo", {})) || {}; return { best: x.best || 0, plays: x.plays || 0, runs: x.runs || [] }; }
 
 function depthLegend() {
@@ -900,7 +936,7 @@ function viewPlay() {
   const oppLabel = oppName || (S.mode === "challenge-host" ? "Your friend" : null);
   const scoreLine = `<div class="scoreboard ${oppLabel ? "duo" : "solo"}">
       ${pod("You", S.scores, "pod-me", prevMine, "me")}
-      <div class="sb-mid"><span class="sb-round">Round ${S.round + 1}/${ROUNDS}</span>${oppName ? `<span class="sb-lead" id="lead">${S.round === 0 && !revealing ? "First launch" : leadTextAt(oppName, prevMine, prevOpp)}</span>` : S.mode === "daily" ? `<span class="sb-lead">Daily Launch</span>` : S.mode === "solo" ? `<span class="sb-lead">Free Launch</span>` : ""}</div>
+      <div class="sb-mid"><span class="sb-round">Round ${S.round + 1}/${ROUNDS}</span>${oppName ? `<span class="sb-lead" id="lead">${S.round === 0 && !revealing ? "First launch" : leadTextAt(oppName, prevMine, prevOpp)}</span>` : S.mode === "daily" ? `<span class="sb-lead">Daily Launch</span>` : S.mode === "solo" ? `<span class="sb-lead">Free Launch</span>` : S.mode === "subject" ? `<span class="sb-lead">${subjName()} Launch</span>` : ""}</div>
       ${oppLabel ? pod(oppLabel, oppName ? S.oppScores : null, "pod-opp", prevOpp, "opp", oppName ? "" : "plays after you") : ""}
     </div>`;
   let body = "";
@@ -1015,6 +1051,12 @@ function viewResults() {
       : res.newBest ? `<p class="best-note">Your first Free Launch score. Now beat it.</p>`
       : `<p class="hint">Your best Free Launch: <b>${st.best}</b> · ${st.plays} launch${st.plays === 1 ? "" : "es"} so far</p>`;
   }
+  if (S.mode === "subject") {
+    const st = subjectStats(S.cat);
+    extra += res.newBest && res.prevBest > 0 ? `<p class="best-note">New ${subjName()} best! Up from ${res.prevBest}.</p>`
+      : res.newBest ? `<p class="best-note">Your first ${subjName()} Launch score. Now beat it.</p>`
+      : `<p class="hint">Your best ${subjName()} Launch: <b>${st.best}</b> · ${st.plays} launch${st.plays === 1 ? "" : "es"} so far</p>`;
+  }
   if (S.mode === "daily") {
     extra += `<div class="share"><pre id="share-text">${esc(dailyShare(S.dailyKey, S.scores))}</pre><button class="btn ghost" data-act="copy" data-target="share-text">Copy result</button></div>`;
   }
@@ -1026,7 +1068,7 @@ function viewResults() {
     extra += codeBox(`Send this back to ${esc(S.challenge.from)}`, res.code, "r", "Their game updates when they paste it under Enter a code.");
   }
   return `${header()}<main class="results">
-    <p class="eyebrow">${S.mode === "live" ? "Quick match" : S.mode === "solo" ? "Free Launch" : S.mode === "daily" ? "Daily Launch #" + dailyNumber(S.dailyKey) : S.mode === "bot" ? "vs " + BOTS[S.level].name : S.mode === "challenge-host" ? "Challenge created" : "Challenge from " + esc(S.challenge.from)}</p>
+    <p class="eyebrow">${S.mode === "live" ? "Quick match" : S.mode === "solo" ? "Free Launch" : S.mode === "subject" ? subjName() + " Launch" : S.mode === "daily" ? "Daily Launch #" + dailyNumber(S.dailyKey) : S.mode === "bot" ? "vs " + BOTS[S.level].name : S.mode === "challenge-host" ? "Challenge created" : "Challenge from " + esc(S.challenge.from)}</p>
     <h1>${verdict || `You scored ${res.my}`}</h1>
     <div class="totals">
       <div><span>${myAvatar()} You</span><b>${res.my}</b><em>played like ${perfElo(res.my, ROUNDS).toLocaleString()}</em></div>
@@ -1038,6 +1080,7 @@ function viewResults() {
     <div class="row">
       ${S.mode === "live" ? `<button class="btn primary" data-act="quick">Find another match</button>` : ""}
       ${S.mode === "solo" ? `<button class="btn primary" data-act="solo">Launch again</button>` : ""}
+      ${S.mode === "subject" ? `<button class="btn primary" data-act="subject" data-cat="${S.cat}">Play ${subjName()} again</button>` : ""}
       ${S.mode === "bot" ? `<button class="btn primary" data-act="bot" data-level="${S.level}">Rematch ${BOTS[S.level].name}</button>` : ""}
       <button class="btn ghost" data-go="home">Back to Earth</button>
     </div>
@@ -1123,6 +1166,7 @@ function viewProfile() {
       <div><span>Peak</span><b>${u.peak}</b></div>
       <div><span>Record</span><b>${u.wins}–${u.losses}${u.draws ? "–" + u.draws : ""}</b></div>
       <div><span>Best free launch</span><b>${(u.solo && u.solo.best) || "–"}</b></div>
+      ${SUBJECTS.map(x => `<div><span>Best ${x.name.toLowerCase()}</span><b>${(u.subjects && u.subjects[x.key] && u.subjects[x.key].best) || "–"}</b></div>`).join("")}
       <div><span>Best daily</span><b>${dailies.length ? Math.max(...dailies.map(d => d[1].score)) : "–"}</b></div>
       <div class="gold"><span>Attillions</span><b>${(u.krillions || []).length}</b></div>
     </div>
@@ -1382,6 +1426,7 @@ document.addEventListener("click", async e => {
   }
   else if (act === "daily-view") go("daily-done");
   else if (act === "solo") startMatch({ mode: "solo" });
+  else if (act === "subject" && SUBJECT_BY_KEY[t.dataset.cat]) startMatch({ mode: "subject", cat: t.dataset.cat });
   else if (act === "challenge-new") {
     const id = Math.random().toString(36).slice(2, 10);
     startMatch({ mode: "challenge-host", challenge: { id } });
@@ -1532,7 +1577,7 @@ function fromHash() {
 }
 
 // test hook
-window.Krillion = { PROMPTS, scoreAnswer, matchAnswer, pickPrompts, depthFor, botAnswer, BOTS, todayKey };
+window.Krillion = { PROMPTS, BASES, pickSet, state: () => S, scoreAnswer, matchAnswer, pickPrompts, depthFor, botAnswer, BOTS, todayKey };
 
 if (!fromHash()) render();
 })();
