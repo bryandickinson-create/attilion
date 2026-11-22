@@ -946,7 +946,9 @@ const TWISTS = [
   { key: "endv", fam: "end", test: k => /[aeiouy]$/.test(k), label: "that ends in a vowel or Y" },
   { key: "endc", fam: "end", test: k => /[^aeiouy]$/.test(k), label: "that ends in a consonant", easy: true },
   { key: "same", fam: "end", test: k => { const l = letters(k); return l.length > 2 && l[0] === l[l.length - 1]; }, label: "that starts and ends with the same letter", hard: true },
-  { key: "vow3", fam: "vow", test: k => (k.match(/[aeiou]/g) || []).length >= 4, label: "with four or more vowels" }
+  { key: "vow3", fam: "vow", test: k => (k.match(/[aeiou]/g) || []).length >= 4, label: "with four or more vowels" },
+  // "contains a ___": only letters that leave plenty of answers make it past the checks below
+  ..."bcdfghkmpuvwyz".split("").map(x => ({ key: "has" + x, fam: "has", test: k => k.includes(x), label: `that contains the letter “${x.toUpperCase()}”` }))
 ];
 // a twist must leave this many answers, and this many familiar ones
 const TWIST_MIN = 30, TWIST_MIN_FAMILIAR = 18, TWIST_MIN_HARD = 18, TWIST_MIN_FAMILIAR_HARD = 10;
