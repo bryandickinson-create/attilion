@@ -1273,7 +1273,7 @@ function nameProblem(name, currentKey) {
 function newUser(name, hash) {
   return { name, hash, elo: START_ELO, peak: START_ELO, games: 0, wins: 0, losses: 0, draws: 0, daily: {}, history: [], created: Date.now() };
 }
-function updateUser(fn) { const u = me(); if (!u) return null; const all = users(); fn(all[u.name.toLowerCase()]); saveUsers(all); return all[u.name.toLowerCase()]; }
+function updateUser(fn) { const u = me(); if (!u) return null; const all = users(); const rec = all[u.name.toLowerCase()]; fn(rec); rec.updated = Date.now(); saveUsers(all); if (rec.cloud) cloudPush(); return rec; }
 function eloDelta(mine, theirs, result, games) {
   const k = games < 10 ? 40 : 24;
   const expected = 1 / (1 + Math.pow(10, (theirs - mine) / 400));
@@ -1583,6 +1583,104 @@ function supaRoom(client, name) {
 }
 function openSupaRoom(client, name) { return supaRoom(client, name); }
 function supaLobby() { return supaClient().then(c => supaRoom(c, "lobby")).catch(() => null); }
+
+/* ---------- cloud accounts (Supabase) ----------
+ * Accounts still live in this browser's storage; when Supabase is reachable they
+ * are also saved to the "profiles" table so the same username and password work
+ * on any device. Logins use a made-up email built from the username, because
+ * Supabase Auth needs an email. Nothing here is secret: the key is public and
+ * row-level security only lets a signed-in player change their own row. */
+const CLOUD_DOMAIN = "players.attillion.app";
+function cloudEmail(name) { return "p" + Array.from(new TextEncoder().encode(name.toLowerCase())).map(b => b.toString(16).padStart(2, "0")).join("") + "@" + CLOUD_DOMAIN; }
+function cloudPw(pw) { return "attillion:" + pw; }   // Supabase wants 6+ characters
+let cloudP = null;
+function cloud() { if (!cloudP) cloudP = supaClient().catch(() => null); return cloudP; }
+function withTimeout(p, ms) { return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), ms))]); }
+function authBusy(on) {
+  const b = document.querySelector("#auth-form button[type=submit]"); if (!b) return;
+  if (on) { b.dataset.label = b.textContent; b.textContent = "Connecting…"; b.disabled = true; }
+  else { b.textContent = b.dataset.label || b.textContent; b.disabled = false; }
+}
+function cloudData(u) { const d = Object.assign({}, u); delete d.hash; delete d.cloud; return d; }
+function cloudRow(u, id, email) {
+  const t = u.daily && u.daily[todayKey()];
+  const row = { name: u.name, elo: u.elo, peak: u.peak, avatar: u.avatar || null, wins: u.wins || 0, losses: u.losses || 0,
+    today_key: t ? todayKey() : null, today_score: t ? t.score : null, data: cloudData(u), updated_at: new Date().toISOString() };
+  if (id) row.id = id; if (email) row.login_email = email;
+  return row;
+}
+async function cloudUserId(c) { try { const { data } = await c.auth.getSession(); return data && data.session ? data.session.user.id : null; } catch (e) { return null; } }
+async function cloudFindName(c, name) {
+  const { data, error } = await c.from("profiles").select("id,name,login_email").ilike("name", name.replace(/[_%\\]/g, "\\$&")).limit(1);
+  if (error) throw error;
+  return data && data[0] ? data[0] : null;
+}
+// Sign up online. Returns "" on success, an error message, or null if the cloud is unreachable.
+async function cloudSignUp(u, pw) {
+  const c = await cloud(); if (!c) return null;
+  try {
+    if (await withTimeout(cloudFindName(c, u.name), 8000)) return "That username is taken.";
+    const email = cloudEmail(u.name);
+    const { data, error } = await withTimeout(c.auth.signUp({ email, password: cloudPw(pw) }), 10000);
+    if (error) return /registered|exists/i.test(error.message) ? "That username is taken." : null;
+    if (!data.session) return null;   // email confirmation is still on: stay local
+    const ins = await c.from("profiles").insert(cloudRow(u, data.session.user.id, email));
+    if (ins.error) { await c.auth.signOut(); return /duplicate|unique/i.test(ins.error.message) ? "That username is taken." : null; }
+    return "";
+  } catch (e) { return null; }
+}
+// Log in online. Returns { user } on success, { wrong: true } for a bad password, or null if unreachable / no such account.
+async function cloudLogIn(name, pw) {
+  const c = await cloud(); if (!c) return null;
+  try {
+    const found = await withTimeout(cloudFindName(c, name), 8000);
+    if (!found) return null;
+    const { data, error } = await withTimeout(c.auth.signInWithPassword({ email: found.login_email, password: cloudPw(pw) }), 10000);
+    if (error) return /invalid/i.test(error.message) ? { wrong: true } : null;
+    const r = await c.from("profiles").select("*").eq("id", data.user.id).single();
+    if (r.error || !r.data) return null;
+    return { user: Object.assign(newUser(r.data.name, ""), r.data.data || {}, { name: r.data.name, elo: r.data.elo, peak: r.data.peak }) };
+  } catch (e) { return null; }
+}
+let pushTimer = null;
+function cloudPush() {
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(async () => {
+    const u = me(); if (!u || !u.cloud) return;
+    const c = await cloud(); if (!c) return;
+    const id = await cloudUserId(c); if (!id) return;
+    try { await c.from("profiles").update(cloudRow(u)).eq("id", id); } catch (e) {}
+  }, 1500);
+}
+// On load: pick up progress made on another device.
+async function cloudPull() {
+  const u = me(); if (!u || !u.cloud) return;
+  const c = await cloud(); if (!c) return;
+  const id = await cloudUserId(c); if (!id) return;
+  try {
+    const r = await c.from("profiles").select("*").eq("id", id).single();
+    if (r.error || !r.data || r.data.name.toLowerCase() !== u.name.toLowerCase()) return;
+    const remote = r.data.data || {};
+    if ((remote.updated || 0) <= (u.updated || 0)) { if ((u.updated || 0) > (remote.updated || 0)) cloudPush(); return; }
+    const all = users(); const key = u.name.toLowerCase();
+    all[key] = Object.assign({}, all[key], remote, { hash: all[key].hash, cloud: true, elo: r.data.elo, peak: r.data.peak });
+    saveUsers(all); render();
+  } catch (e) {}
+}
+async function cloudSetPw(pw) { const u = me(); if (!u || !u.cloud) return; const c = await cloud(); if (!c) return; try { await c.auth.updateUser({ password: cloudPw(pw) }); } catch (e) {} }
+async function cloudSignOut() { const c = await cloud(); if (c) try { await c.auth.signOut(); } catch (e) {} }
+async function cloudBoard() {
+  const c = await cloud(); if (!c) return null;
+  try {
+    const [a, b] = await withTimeout(Promise.all([
+      c.from("profiles").select("name,elo,avatar,wins,losses").order("elo", { ascending: false }).limit(100),
+      c.from("profiles").select("name,today_score").eq("today_key", todayKey()).order("today_score", { ascending: false }).limit(100)
+    ]), 8000);
+    if (a.error || b.error) return null;
+    return { elo: a.data, daily: b.data, at: Date.now() };
+  } catch (e) { return null; }
+}
+
 function myCard() { const u = me(); return { name: u ? u.name : "Guest pilot", elo: u ? u.elo : START_ELO, av: myAvatarObj().id }; }
 function cleanCard(p, field) {   // everything in presence is untrusted
   const q = p && p.presence && p.presence[field];
@@ -2199,14 +2297,23 @@ function viewSettings() {
   </main>`;
 }
 
+let BOARD = null, boardLoading = false;
+function loadBoard() {
+  if (boardLoading || (BOARD && Date.now() - BOARD.at < 30000)) return;
+  boardLoading = true;
+  cloudBoard().then(b => { boardLoading = false; if (b) { BOARD = b; if (S.view === "leaderboard") render(); } });
+}
 function viewLeaderboard() {
   const tab = S.tab || "elo";
-  const all = Object.values(users());
+  loadBoard();
+  const local = Object.values(users());
+  const all = BOARD ? BOARD.elo.map(r => ({ online: true, name: r.name, elo: r.elo, avatar: r.avatar, wins: r.wins, losses: r.losses, daily: {} })) : local;
+  if (BOARD) BOARD.daily.forEach(r => { const x = all.find(u => u.name === r.name); if (x) x.daily[todayKey()] = { score: r.today_score }; else all.push({ name: r.name, elo: 0, avatar: null, wins: 0, losses: 0, daily: { [todayKey()]: { score: r.today_score } }, onlyDaily: true }); });
   const key = todayKey();
   let rows;
   if (tab === "elo") {
-    const avOf = u => avMarkup(AVATARS.find(x => x.id === u.avatar && isOpen(x, u)) || AVATARS[0]);
-    const list = all.map(u => ({ av: avOf(u), name: u.name, raw: u.name, val: u.elo, sub: `${u.wins}–${u.losses}`, human: true }))
+    const avOf = u => avMarkup((u.online ? avatarById(u.avatar) : AVATARS.find(x => x.id === u.avatar && isOpen(x, u))) || AVATARS[0]);
+    const list = all.filter(u => !u.onlyDaily).map(u => ({ av: avOf(u), name: u.name, raw: u.name, val: u.elo, sub: `${u.wins}–${u.losses}`, human: true }))
       .concat(Object.values(BOTS).map(b => ({ av: b.av, name: b.name, raw: b.name, val: b.elo, sub: "computer", human: false })))
       .sort((a, b) => b.val - a.val);
     rows = list.map((r, i) => `<tr class="${r.human ? "" : "botrow"} ${me() && r.raw === me().name ? "you" : ""}"><td class="n">${i + 1}</td><td>${r.av} ${esc(r.name)}</td><td class="sub">${esc(r.sub)}</td><td class="n">${r.val}</td></tr>`).join("");
@@ -2222,7 +2329,7 @@ function viewLeaderboard() {
       <button role="tab" aria-selected="${tab === "daily"}" data-act="tab" data-tab="daily">Today's launch</button>
     </div>
     <div class="table-wrap"><table class="board"><thead><tr><th>#</th><th>Player</th><th></th><th>${tab === "elo" ? "Elo" : "Score"}</th></tr></thead><tbody>${rows}</tbody></table></div>
-    <p class="note">Preview build: this board lists accounts made in this browser, plus the four computer opponents for reference. A shared global board needs the online server.</p>
+    <p class="note">${BOARD ? "Worldwide board: every player with an online account, plus the computer opponents for reference." : "Showing accounts made in this browser, plus the computer opponents. The worldwide board appears when the game can reach the server."}</p>
   </main>`;
 }
 
@@ -2398,7 +2505,7 @@ document.addEventListener("click", async e => {
   else if (act === "device") { setDeviceMode(t.dataset.v); render(); }
   else if (act === "tab") { S.tab = t.dataset.tab; render(); }
   else if (act === "auth-mode") go("login", { mode: t.dataset.m });
-  else if (act === "logout") { store.set("session", null); go("home"); }
+  else if (act === "logout") { cloudSignOut(); store.set("session", null); go("home"); }
   else if (act === "copy") {
     const el = document.getElementById(t.dataset.target);
     const text = el.value != null && el.tagName === "TEXTAREA" ? el.value : el.textContent;
@@ -2418,14 +2525,28 @@ document.addEventListener("submit", async e => {
     if ((S.mode || "login") === "signup") {
       const bad = nameProblem(name, null);
       if (bad) { go("login", { mode: "signup", error: bad }); return; }
-      all[key] = newUser(name, h); saveUsers(all);
+      authBusy(true);
+      const fresh = newUser(name, h);
+      const cloudErr = await cloudSignUp(fresh, pw);
+      authBusy(false);
+      if (cloudErr) { go("login", { mode: "signup", error: cloudErr }); return; }
+      fresh.cloud = cloudErr === "";
+      all[key] = fresh; saveUsers(all);
       // carry over today's guest dive
       const g = store.get("guestDaily", {});
       if (g[todayKey()]) { all[key].daily[todayKey()] = g[todayKey()]; saveUsers(all); }
       const gk = store.get("guestKrillions", []);
       if (gk.length) { all[key].krillions = gk; saveUsers(all); store.set("guestKrillions", []); }
     } else {
-      if (!all[key] || all[key].hash !== h) { go("login", { mode: "login", error: "Username or password doesn't match." }); return; }
+      authBusy(true);
+      const res = await cloudLogIn(name, pw);
+      if (res && res.user) {
+        all[key] = Object.assign(res.user, { hash: h, cloud: true }); saveUsers(all);
+      } else if (all[key] && all[key].hash === h) {
+        // an account made before cloud saves: move it online now if the name is free
+        if (!all[key].cloud && !(res && res.wrong)) { const err = await cloudSignUp(all[key], pw); if (err === "") { all[key].cloud = true; saveUsers(all); } }
+      } else { authBusy(false); go("login", { mode: "login", error: "Username or password doesn't match." }); return; }
+      authBusy(false);
     }
     store.set("session", all[key].name);
     go("home");
@@ -2462,14 +2583,19 @@ document.addEventListener("submit", async e => {
       if ((await hashPw(u.name, pw)) !== all[oldKey].hash) { go("settings", { renameMsg: "That password doesn't match." }); return; }
       const bad = nameProblem(name, oldKey);
       if (bad) { go("settings", { renameMsg: bad }); return; }
+      if (all[oldKey].cloud && name.toLowerCase() !== oldKey) {
+        const c = await cloud();
+        try { const f = c && await withTimeout(cloudFindName(c, name), 8000); if (f) { go("settings", { renameMsg: "That username is taken." }); return; } } catch (err) {}
+      }
       const rec = all[oldKey]; delete all[oldKey];
       rec.name = name; rec.hash = await hashPw(name, pw);
-      all[name.toLowerCase()] = rec; saveUsers(all); store.set("session", name);
+      rec.updated = Date.now(); all[name.toLowerCase()] = rec; saveUsers(all); store.set("session", name);
+      if (rec.cloud) cloudPush();
       SFX("lock"); go("settings", { renameMsg: "Username changed to " + name + "." });
     } else {
       const oldPw = document.getElementById("old-pw").value, newPw = document.getElementById("new-pw").value;
       if ((await hashPw(u.name, oldPw)) !== all[oldKey].hash) { go("settings", { pwMsg: "Your current password doesn't match." }); return; }
-      all[oldKey].hash = await hashPw(u.name, newPw); saveUsers(all);
+      all[oldKey].hash = await hashPw(u.name, newPw); saveUsers(all); cloudSetPw(newPw);
       SFX("lock"); go("settings", { pwMsg: "Password changed." });
     }
   }
@@ -2477,7 +2603,7 @@ document.addEventListener("submit", async e => {
     const u = me(); if (!u) return;
     const a = document.getElementById("forgot-pw").value, b2 = document.getElementById("forgot-pw2").value;
     if (a !== b2) { go("settings", { forgotMsg: "Those two passwords don't match." }); return; }
-    const all = users(); all[u.name.toLowerCase()].hash = await hashPw(u.name, a); saveUsers(all);
+    const all = users(); all[u.name.toLowerCase()].hash = await hashPw(u.name, a); saveUsers(all); cloudSetPw(a);
     SFX("lock"); go("settings", { forgotMsg: "New password set. Use it next time you log in." });
   }
   else if (e.target.id === "reset-form") {
@@ -2519,6 +2645,7 @@ function fromHash() {
 window.Krillion = { getRoom, PROMPTS, BASES, pickSet, noteUsed, state: () => S, scoreAnswer, matchAnswer, pickPrompts, depthFor, botAnswer, BOTS, todayKey };
 
 if (!fromHash()) render();
+setTimeout(cloudPull, 500);
 })();
 </script>
 <script>
