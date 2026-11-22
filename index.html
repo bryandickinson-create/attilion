@@ -18,7 +18,7 @@
   --twilight: #7aa2ff;
   --midnight: #a58bff;
   --abyss: #dcdcf0;
-  --hadal: #ffc93c;          /* 1 in an Attillion: gold */
+  --hadal: #ffc93c;          /* 1 in Attillion: gold */
   --bad: #c86a6a;
   --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
   --font-body: "Figtree", "Segoe UI", system-ui, -apple-system, sans-serif;
@@ -265,7 +265,7 @@ body::after { /* darkens the water as the game goes deeper */
 @keyframes krillcard { 0% { transform: scale(.9); } 20% { transform: scale(1.06); box-shadow: 0 0 80px rgba(255,201,60,.8); } 100% { transform: none; box-shadow: 0 0 24px rgba(255,201,60,.25); } }
 .ans.z-hadal .pts b { text-shadow: 0 0 18px rgba(255,201,60,.8); }
 
-/* 1 in an Attillion takeover */
+/* 1 in Attillion takeover */
 body.krillion-hit::after { background: radial-gradient(ellipse at center, rgba(40,30,4,.35), rgba(0,0,0,.75)); transition: background .3s; }
 .krillion-banner { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; cursor: pointer; pointer-events: auto; background: radial-gradient(ellipse at center, rgba(24,18,4,.82), rgba(3,4,14,.9) 70%); animation: dim .3s both;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
@@ -446,7 +446,7 @@ body.krillion-hit::after { background: radial-gradient(ellipse at center, rgba(4
 .dive::after { background-image: radial-gradient(2.6px 2.6px at 44.8% 1.1%, #fff 50%, transparent 51%), radial-gradient(2.6px 2.6px at 18.9% 16.8%, #fff 50%, transparent 51%), radial-gradient(2.6px 2.6px at 56.9% 3.6%, #fff 50%, transparent 51%), radial-gradient(2.6px 2.6px at 36.8% 63.1%, #fff 50%, transparent 51%), radial-gradient(2.6px 2.6px at 96.1% 39.9%, #fff 50%, transparent 51%), radial-gradient(2.6px 2.6px at 68.4% 33.5%, #fff 50%, transparent 51%), radial-gradient(2.6px 2.6px at 15.5% 0.5%, #fff 50%, transparent 51%), radial-gradient(2.6px 2.6px at 3.7% 65.1%, #fff 50%, transparent 51%), radial-gradient(2.6px 2.6px at 69.3% 70.9%, #fff 50%, transparent 51%), radial-gradient(2.6px 2.6px at 4.0% 38.1%, #fff 50%, transparent 51%), radial-gradient(2.6px 2.6px at 48.3% 46.8%, #fff 50%, transparent 51%), radial-gradient(2.6px 2.6px at 32.6% 74.9%, #fff 50%, transparent 51%), radial-gradient(2.6px 2.6px at 9.2% 30.3%, #fff 50%, transparent 51%), radial-gradient(2.6px 2.6px at 72.8% 64.1%, #fff 50%, transparent 51%), radial-gradient(2.6px 2.6px at 72.8% 44.3%, #fff 50%, transparent 51%), radial-gradient(2.6px 2.6px at 78.2% 65.6%, #fff 50%, transparent 51%), radial-gradient(2.6px 2.6px at 35.8% 42.5%, #fff 50%, transparent 51%), radial-gradient(2.6px 2.6px at 88.5% 61.0%, #fff 50%, transparent 51%), radial-gradient(2.6px 2.6px at 42.0% 52.7%, #fff 50%, transparent 51%), radial-gradient(2.6px 2.6px at 84.9% 32.5%, #fff 50%, transparent 51%), radial-gradient(2.6px 2.6px at 62.0% 17.7%, #fff 50%, transparent 51%), radial-gradient(2.6px 2.6px at 57.9% 35.6%, #fff 50%, transparent 51%), radial-gradient(2.6px 2.6px at 9.7% 38.3%, #fff 50%, transparent 51%), radial-gradient(2.6px 2.6px at 97.4% 61.9%, #fff 50%, transparent 51%), radial-gradient(3px 3px at 71.9% 14.5%, #ffe39a 50%, transparent 51%), radial-gradient(3px 3px at 72.6% 26.6%, #ffe39a 50%, transparent 51%), radial-gradient(3px 3px at 44.3% 46.1%, #ffe39a 50%, transparent 51%), radial-gradient(3px 3px at 10.0% 39.0%, #ffe39a 50%, transparent 51%), radial-gradient(3px 3px at 4.9% 28.0%, #ffe39a 50%, transparent 51%), radial-gradient(3px 3px at 48.2% 6.6%, #ffe39a 50%, transparent 51%), radial-gradient(3px 3px at 69.0% 21.0%, #ffe39a 50%, transparent 51%), radial-gradient(3px 3px at 61.0% 53.0%, #ffe39a 50%, transparent 51%), radial-gradient(2.8px 2.8px at 26.6% 0.1%, #bcd2ff 50%, transparent 51%), radial-gradient(2.8px 2.8px at 30.9% 39.1%, #bcd2ff 50%, transparent 51%), radial-gradient(2.8px 2.8px at 21.4% 4.9%, #bcd2ff 50%, transparent 51%), radial-gradient(2.8px 2.8px at 88.9% 37.5%, #bcd2ff 50%, transparent 51%), radial-gradient(2.8px 2.8px at 44.4% 58.9%, #bcd2ff 50%, transparent 51%), radial-gradient(2.8px 2.8px at 33.4% 38.0%, #bcd2ff 50%, transparent 51%), radial-gradient(2.8px 2.8px at 21.1% 19.8%, #bcd2ff 50%, transparent 51%), radial-gradient(2.8px 2.8px at 79.4% 61.2%, #bcd2ff 50%, transparent 51%); filter: drop-shadow(0 0 4px rgba(255,255,255,.9)); animation: twinkle 2.1s ease-in-out .7s infinite alternate-reverse; }
 @keyframes twinkle { from { opacity: .5; } to { opacity: 1; } }
 .band span { position: relative; z-index: 2; }
-/* "What is it?" blurb on 1 in an Attillion answers */
+/* "What is it?" blurb on 1 in Attillion answers */
 .what { margin: 12px 0 0; padding-top: 10px; border-top: 1px solid rgba(255,201,60,.25); font-size: 13px; line-height: 1.45; color: var(--foam); text-align: left; }
 .what b { color: var(--hadal); font-weight: 700; }
 .what a { color: var(--kelp); font-size: 12px; }
@@ -753,7 +753,7 @@ const ROUNDS = 7;
 const ROUND_SECONDS = 30;
 const VALID_SHARE = 92;          // GUESS: % of players who give a valid answer
 const FAMILIAR = 65;             // the first 65 answers of a list are the ones a fair player could think of
-const KRILLION_FROM = 0.85;      // 1 in an Attillion starts 85% of the way down that familiar part
+const KRILLION_FROM = 0.85;      // 1 in Attillion starts 85% of the way down that familiar part
 const HADAL_DEPTH = 6000;        // metres where the Attillion zone starts
 const MAX_DEPTH = 10935;         // Challenger Deep
 const PLAYER_PRIOR = 200;        // how many "virtual answers" the curated list is worth
@@ -788,7 +788,7 @@ const AVATARS = [
   { id: "sun",      e: "🌞", name: "Sun",            elo: 1600 },
   { id: "galaxy",   e: "🌌", name: "Nebula",         elo: 1750 },
   { id: "hole",     e: "🕳️", name: "Black hole",     elo: 1900 },
-  // Attillion trophies: unlocked by how many 1 in an Attillions you have found.
+  // Attillion trophies: unlocked by how many 1 in Attillions you have found.
   { id: "k10",      e: "☄️", name: "Comet",           krill: 10 },
   { id: "k20",      e: "🌘", name: "Eclipse",         krill: 20 },
   { id: "gdragon",  e: "🪐", name: "Golden Saturn",   krill: 50 },
@@ -837,12 +837,12 @@ const ZONES = [
   { key: "twilight", name: "Stratosphere", min: 200 },
   { key: "midnight", name: "Orbit",        min: 1000 },
   { key: "abyss",    name: "Moon",         min: 4000 },
-  { key: "hadal",    name: "1 in an Attillion", min: HADAL_DEPTH }
+  { key: "hadal",    name: "1 in Attillion", min: HADAL_DEPTH }
 ];
 
 // Rarity is stored as a "depth" number (0 to 10,935) and shown as how high you climbed:
 // Sky 0-12 km, Stratosphere 12-100 km, Orbit 100-36,000 km, Moon 36,000-384,400 km,
-// then 1 in an Attillion: past the Moon toward the edge of the Solar System.
+// then 1 in Attillion: past the Moon toward the edge of the Solar System.
 const ALT_D = [0, 200, 1000, 4000, 6000, 10935];
 const ALT_KM = [0, 12, 100, 36000, 384400, 18e9];
 function altitudeKm(depth) {
@@ -916,7 +916,7 @@ function buildPrompt(id, q, entries, familiarCount, extra) {
   });
   let H = 0; answers.forEach((_, r) => { H += 1 / (r + 1); });
   answers.forEach((a, r) => { a.base = VALID_SHARE * (1 / (r + 1)) / H; });
-  // The most common answer sits at the surface (0 m). 1 in an Attillion starts
+  // The most common answer sits at the surface (0 m). 1 in Attillion starts
   // 85% of the way down the familiar answers; anything past them also counts.
   const familiar = Math.max(4, Math.min(answers.length, familiarCount));
   const krillFrom = Math.min(answers.length - 1, Math.floor(familiar * KRILLION_FROM));
@@ -1575,7 +1575,7 @@ function deviceMode() { const v = store.get("device", "auto"); return ["auto", "
 function setDeviceMode(v) { store.set("device", v); applyDeviceMode(); }
 function applyDeviceMode() { const v = deviceMode(); if (v === "auto") delete document.documentElement.dataset.device; else document.documentElement.dataset.device = v; }
 applyDeviceMode();
-// picking an avatar plays the full 1 in an Attillion moment with it
+// picking an avatar plays the full 1 in Attillion moment with it
 function celebrateAvatar(id) {
   const a = avatarById(id); if (!a) return;
   SFX("hadal");
@@ -1605,7 +1605,7 @@ function viewHome() {
     <section class="hero">
       <p class="eyebrow">7 prompts · 30 seconds each · up to 100 points a round</p>
       <h1>Think of the answer <em>nobody else</em> will.</h1>
-      <p class="lede">Every prompt has hundreds of right answers. Common ones barely leave the ground and score almost nothing. Rare ones launch higher. Find one of the truly rare answers, the few that almost nobody thinks of, and you break past the Moon: <strong>1 in an Attillion</strong>, a full 100 points.</p>
+      <p class="lede">Every prompt has hundreds of right answers. Common ones barely leave the ground and score almost nothing. Rare ones launch higher. Find one of the truly rare answers, the few that almost nobody thinks of, and you break past the Moon: <strong>1 in Attillion</strong>, a full 100 points.</p>
       ${depthLegend()}
     </section>
 
@@ -1860,7 +1860,7 @@ function codeBox(title, code, kind, note) {
 function dailyShare(key, scores) {
   const blocks = scores.map(s => !s.valid ? "⬛" : s.points === 100 ? "🌟" : s.depth >= 4000 ? "🟪" : s.depth >= 1000 ? "🟦" : s.depth >= 200 ? "🟩" : "⬜").join("");
   const krill = scores.filter(s => s.points === 100).length;
-  return `Attillion Daily Launch #${dailyNumber(key)}\n${blocks}\n${total(scores)}/700${krill ? ` · ${krill}× 1 in an Attillion` : ""}`;
+  return `Attillion Daily Launch #${dailyNumber(key)}\n${blocks}\n${total(scores)}/700${krill ? ` · ${krill}× 1 in Attillion` : ""}`;
 }
 
 function viewDailyDone() {
@@ -1929,7 +1929,7 @@ function viewProfile() {
       <div><span>Best daily</span><b>${dailies.length ? Math.max(...dailies.map(d => d[1].score)) : "–"}</b></div>
       <div class="gold"><span>Attillions</span><b>${(u.krillions || []).length}</b></div>
     </div>
-    <h2>Your 1 in an Attillions</h2>
+    <h2>Your 1 in Attillions</h2>
     ${(u.krillions || []).length ? `<div class="krill-wall">${u.krillions.slice(0, 60).map(k => `
       <div class="krill-card">
         <p class="kc-a">${esc(k.a)}</p>
@@ -2096,7 +2096,7 @@ function viewReplyResult() {
   </main>`;
 }
 
-/* ---------- "What is it?" blurbs for 1 in an Attillion answers ----------
+/* ---------- "What is it?" blurbs for 1 in Attillion answers ----------
  * Looked up live from Wikipedia (search for the answer plus the prompt's topic),
  * cached in this browser. If the lookup is blocked or finds nothing, the blurb
  * just doesn't show. */
@@ -2565,7 +2565,7 @@ function ring(card, rgb, n, dur) {
   });
 }
 
-/* the big one: 1 in an Attillion */
+/* the big one: 1 in Attillion */
 /* Rainbow Developer's own Attillion: the creature grows from tiny until it fills
    the screen, then vanishes. */
 function devTakeover(card, id) {
@@ -2574,7 +2574,7 @@ function devTakeover(card, id) {
   const el = document.createElement("div");
   el.className = "dev-takeover" + (gold ? " gold" : plain ? " plain" : "");
   el.style.setProperty("--ox", x + "px"); el.style.setProperty("--oy", y + "px");
-  el.innerHTML = `<span class="dev-giant avg av-${gold ? "gdev" : plain ? "dev" : "rdev"}">👾</span><p class="dev-label">1 in an Attillion</p>`;
+  el.innerHTML = `<span class="dev-giant avg av-${gold ? "gdev" : plain ? "dev" : "rdev"}">👾</span><p class="dev-label">1 in Attillion</p>`;
   document.body.appendChild(el);
   const end = () => el.remove();
   const t = setTimeout(end, 2900);
@@ -2593,7 +2593,7 @@ function krillion(card, who, opts) {
   if (app && !reduce) { app.classList.remove("shake"); void app.offsetWidth; app.classList.add("shake"); }
   const banner = document.createElement("div");
   banner.className = "krillion-banner";
-  banner.innerHTML = `<div class="kb-inner"><p class="kb-who">${opts && opts.avatarHtml ? opts.avatarHtml + " " + escH(opts.label || "") : who === "you" ? "You found it" : escH(who) + " found it"}</p><p class="kb-big"><span>1 in an</span> Attillion</p>${opts && opts.avatarHtml ? "" : `<p class="kb-pts">+100</p>`}</div>`;
+  banner.innerHTML = `<div class="kb-inner"><p class="kb-who">${opts && opts.avatarHtml ? opts.avatarHtml + " " + escH(opts.label || "") : who === "you" ? "You found it" : escH(who) + " found it"}</p><p class="kb-big"><span>1 in</span> Attillion</p>${opts && opts.avatarHtml ? "" : `<p class="kb-pts">+100</p>`}</div>`;
   document.body.appendChild(banner);
   const end = () => { banner.classList.add("out"); document.body.classList.remove("krillion-hit"); setTimeout(() => banner.remove(), 500); };
   const timer = setTimeout(end, 2600);
@@ -2635,7 +2635,7 @@ window.KrillionFX = {
   clear() { parts.length = 0; },
   setDepth(v) { depthTarget = Math.max(0, Math.min(1, v)); },
   countUp,
-  // the full 1 in an Attillion moment, played when you pick a new avatar
+  // the full 1 in Attillion moment, played when you pick a new avatar
   celebrate(el, avatarId, avatarHtml, label) {
     if (!el || reduce) return;
     if (avatarId === "dev" || avatarId === "rdev" || avatarId === "gdev") devTakeover(el, avatarId);
@@ -2711,7 +2711,7 @@ const SOUNDS = {
   twilight() { tone(N(72), 0, 0.25, "triangle", 0.25); tone(N(76), 0.12, 0.3, "triangle", 0.25); noise(0, 0.5, 0.05, 2000, 400); },
   midnight() { [84, 88, 91, 96].forEach((n, i) => tone(N(n), i * 0.06, 0.35, "sine", 0.16)); tone(N(60), 0, 0.5, "sine", 0.18); },
   abyss()    { tone(N(40), 0, 1.2, "sine", 0.4, N(33)); noise(0, 1.1, 0.12, 600, 80); tone(N(79), 0.25, 0.6, "sine", 0.08); },
-  hadal() {   // 1 in an Attillion: deep boom, then a golden fanfare and shimmer
+  hadal() {   // 1 in Attillion: deep boom, then a golden fanfare and shimmer
     tone(N(31), 0, 1.4, "sine", 0.6, N(26)); noise(0, 0.6, 0.25, 900, 60);
     [72, 76, 79, 84].forEach((n, i) => { tone(N(n), 0.18 + i * 0.11, 0.5, "triangle", 0.28); tone(N(n + 12), 0.18 + i * 0.11, 0.4, "sine", 0.08); });
     tone(N(84), 0.65, 1.1, "triangle", 0.3); tone(N(88), 0.65, 1.1, "sine", 0.14); tone(N(91), 0.65, 1.1, "sine", 0.12);

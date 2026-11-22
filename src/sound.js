@@ -56,7 +56,7 @@ const SOUNDS = {
   twilight() { tone(N(72), 0, 0.25, "triangle", 0.25); tone(N(76), 0.12, 0.3, "triangle", 0.25); noise(0, 0.5, 0.05, 2000, 400); },
   midnight() { [84, 88, 91, 96].forEach((n, i) => tone(N(n), i * 0.06, 0.35, "sine", 0.16)); tone(N(60), 0, 0.5, "sine", 0.18); },
   abyss()    { tone(N(40), 0, 1.2, "sine", 0.4, N(33)); noise(0, 1.1, 0.12, 600, 80); tone(N(79), 0.25, 0.6, "sine", 0.08); },
-  hadal() {   // 1 in an Attillion: deep boom, then a golden fanfare and shimmer
+  hadal() {   // 1 in Attillion: deep boom, then a golden fanfare and shimmer
     tone(N(31), 0, 1.4, "sine", 0.6, N(26)); noise(0, 0.6, 0.25, 900, 60);
     [72, 76, 79, 84].forEach((n, i) => { tone(N(n), 0.18 + i * 0.11, 0.5, "triangle", 0.28); tone(N(n + 12), 0.18 + i * 0.11, 0.4, "sine", 0.08); });
     tone(N(84), 0.65, 1.1, "triangle", 0.3); tone(N(88), 0.65, 1.1, "sine", 0.14); tone(N(91), 0.65, 1.1, "sine", 0.12);

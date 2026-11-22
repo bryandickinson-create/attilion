@@ -221,7 +221,7 @@ function ring(card, rgb, n, dur) {
   });
 }
 
-/* the big one: 1 in an Attillion */
+/* the big one: 1 in Attillion */
 /* Rainbow Developer's own Attillion: the creature grows from tiny until it fills
    the screen, then vanishes. */
 function devTakeover(card, id) {
@@ -230,7 +230,7 @@ function devTakeover(card, id) {
   const el = document.createElement("div");
   el.className = "dev-takeover" + (gold ? " gold" : plain ? " plain" : "");
   el.style.setProperty("--ox", x + "px"); el.style.setProperty("--oy", y + "px");
-  el.innerHTML = `<span class="dev-giant avg av-${gold ? "gdev" : plain ? "dev" : "rdev"}">👾</span><p class="dev-label">1 in an Attillion</p>`;
+  el.innerHTML = `<span class="dev-giant avg av-${gold ? "gdev" : plain ? "dev" : "rdev"}">👾</span><p class="dev-label">1 in Attillion</p>`;
   document.body.appendChild(el);
   const end = () => el.remove();
   const t = setTimeout(end, 2900);
@@ -249,7 +249,7 @@ function krillion(card, who, opts) {
   if (app && !reduce) { app.classList.remove("shake"); void app.offsetWidth; app.classList.add("shake"); }
   const banner = document.createElement("div");
   banner.className = "krillion-banner";
-  banner.innerHTML = `<div class="kb-inner"><p class="kb-who">${opts && opts.avatarHtml ? opts.avatarHtml + " " + escH(opts.label || "") : who === "you" ? "You found it" : escH(who) + " found it"}</p><p class="kb-big"><span>1 in an</span> Attillion</p>${opts && opts.avatarHtml ? "" : `<p class="kb-pts">+100</p>`}</div>`;
+  banner.innerHTML = `<div class="kb-inner"><p class="kb-who">${opts && opts.avatarHtml ? opts.avatarHtml + " " + escH(opts.label || "") : who === "you" ? "You found it" : escH(who) + " found it"}</p><p class="kb-big"><span>1 in</span> Attillion</p>${opts && opts.avatarHtml ? "" : `<p class="kb-pts">+100</p>`}</div>`;
   document.body.appendChild(banner);
   const end = () => { banner.classList.add("out"); document.body.classList.remove("krillion-hit"); setTimeout(() => banner.remove(), 500); };
   const timer = setTimeout(end, 2600);
@@ -291,7 +291,7 @@ window.KrillionFX = {
   clear() { parts.length = 0; },
   setDepth(v) { depthTarget = Math.max(0, Math.min(1, v)); },
   countUp,
-  // the full 1 in an Attillion moment, played when you pick a new avatar
+  // the full 1 in Attillion moment, played when you pick a new avatar
   celebrate(el, avatarId, avatarHtml, label) {
     if (!el || reduce) return;
     if (avatarId === "dev" || avatarId === "rdev" || avatarId === "gdev") devTakeover(el, avatarId);

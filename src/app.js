@@ -10,7 +10,7 @@ const ROUNDS = 7;
 const ROUND_SECONDS = 30;
 const VALID_SHARE = 92;          // GUESS: % of players who give a valid answer
 const FAMILIAR = 65;             // the first 65 answers of a list are the ones a fair player could think of
-const KRILLION_FROM = 0.85;      // 1 in an Attillion starts 85% of the way down that familiar part
+const KRILLION_FROM = 0.85;      // 1 in Attillion starts 85% of the way down that familiar part
 const HADAL_DEPTH = 6000;        // metres where the Attillion zone starts
 const MAX_DEPTH = 10935;         // Challenger Deep
 const PLAYER_PRIOR = 200;        // how many "virtual answers" the curated list is worth
@@ -45,7 +45,7 @@ const AVATARS = [
   { id: "sun",      e: "🌞", name: "Sun",            elo: 1600 },
   { id: "galaxy",   e: "🌌", name: "Nebula",         elo: 1750 },
   { id: "hole",     e: "🕳️", name: "Black hole",     elo: 1900 },
-  // Attillion trophies: unlocked by how many 1 in an Attillions you have found.
+  // Attillion trophies: unlocked by how many 1 in Attillions you have found.
   { id: "k10",      e: "☄️", name: "Comet",           krill: 10 },
   { id: "k20",      e: "🌘", name: "Eclipse",         krill: 20 },
   { id: "gdragon",  e: "🪐", name: "Golden Saturn",   krill: 50 },
@@ -94,12 +94,12 @@ const ZONES = [
   { key: "twilight", name: "Stratosphere", min: 200 },
   { key: "midnight", name: "Orbit",        min: 1000 },
   { key: "abyss",    name: "Moon",         min: 4000 },
-  { key: "hadal",    name: "1 in an Attillion", min: HADAL_DEPTH }
+  { key: "hadal",    name: "1 in Attillion", min: HADAL_DEPTH }
 ];
 
 // Rarity is stored as a "depth" number (0 to 10,935) and shown as how high you climbed:
 // Sky 0-12 km, Stratosphere 12-100 km, Orbit 100-36,000 km, Moon 36,000-384,400 km,
-// then 1 in an Attillion: past the Moon toward the edge of the Solar System.
+// then 1 in Attillion: past the Moon toward the edge of the Solar System.
 const ALT_D = [0, 200, 1000, 4000, 6000, 10935];
 const ALT_KM = [0, 12, 100, 36000, 384400, 18e9];
 function altitudeKm(depth) {
@@ -173,7 +173,7 @@ function buildPrompt(id, q, entries, familiarCount, extra) {
   });
   let H = 0; answers.forEach((_, r) => { H += 1 / (r + 1); });
   answers.forEach((a, r) => { a.base = VALID_SHARE * (1 / (r + 1)) / H; });
-  // The most common answer sits at the surface (0 m). 1 in an Attillion starts
+  // The most common answer sits at the surface (0 m). 1 in Attillion starts
   // 85% of the way down the familiar answers; anything past them also counts.
   const familiar = Math.max(4, Math.min(answers.length, familiarCount));
   const krillFrom = Math.min(answers.length - 1, Math.floor(familiar * KRILLION_FROM));
@@ -832,7 +832,7 @@ function deviceMode() { const v = store.get("device", "auto"); return ["auto", "
 function setDeviceMode(v) { store.set("device", v); applyDeviceMode(); }
 function applyDeviceMode() { const v = deviceMode(); if (v === "auto") delete document.documentElement.dataset.device; else document.documentElement.dataset.device = v; }
 applyDeviceMode();
-// picking an avatar plays the full 1 in an Attillion moment with it
+// picking an avatar plays the full 1 in Attillion moment with it
 function celebrateAvatar(id) {
   const a = avatarById(id); if (!a) return;
   SFX("hadal");
@@ -862,7 +862,7 @@ function viewHome() {
     <section class="hero">
       <p class="eyebrow">7 prompts · 30 seconds each · up to 100 points a round</p>
       <h1>Think of the answer <em>nobody else</em> will.</h1>
-      <p class="lede">Every prompt has hundreds of right answers. Common ones barely leave the ground and score almost nothing. Rare ones launch higher. Find one of the truly rare answers, the few that almost nobody thinks of, and you break past the Moon: <strong>1 in an Attillion</strong>, a full 100 points.</p>
+      <p class="lede">Every prompt has hundreds of right answers. Common ones barely leave the ground and score almost nothing. Rare ones launch higher. Find one of the truly rare answers, the few that almost nobody thinks of, and you break past the Moon: <strong>1 in Attillion</strong>, a full 100 points.</p>
       ${depthLegend()}
     </section>
 
@@ -1117,7 +1117,7 @@ function codeBox(title, code, kind, note) {
 function dailyShare(key, scores) {
   const blocks = scores.map(s => !s.valid ? "⬛" : s.points === 100 ? "🌟" : s.depth >= 4000 ? "🟪" : s.depth >= 1000 ? "🟦" : s.depth >= 200 ? "🟩" : "⬜").join("");
   const krill = scores.filter(s => s.points === 100).length;
-  return `Attillion Daily Launch #${dailyNumber(key)}\n${blocks}\n${total(scores)}/700${krill ? ` · ${krill}× 1 in an Attillion` : ""}`;
+  return `Attillion Daily Launch #${dailyNumber(key)}\n${blocks}\n${total(scores)}/700${krill ? ` · ${krill}× 1 in Attillion` : ""}`;
 }
 
 function viewDailyDone() {
@@ -1186,7 +1186,7 @@ function viewProfile() {
       <div><span>Best daily</span><b>${dailies.length ? Math.max(...dailies.map(d => d[1].score)) : "–"}</b></div>
       <div class="gold"><span>Attillions</span><b>${(u.krillions || []).length}</b></div>
     </div>
-    <h2>Your 1 in an Attillions</h2>
+    <h2>Your 1 in Attillions</h2>
     ${(u.krillions || []).length ? `<div class="krill-wall">${u.krillions.slice(0, 60).map(k => `
       <div class="krill-card">
         <p class="kc-a">${esc(k.a)}</p>
@@ -1353,7 +1353,7 @@ function viewReplyResult() {
   </main>`;
 }
 
-/* ---------- "What is it?" blurbs for 1 in an Attillion answers ----------
+/* ---------- "What is it?" blurbs for 1 in Attillion answers ----------
  * Looked up live from Wikipedia (search for the answer plus the prompt's topic),
  * cached in this browser. If the lookup is blocked or finds nothing, the blurb
  * just doesn't show. */

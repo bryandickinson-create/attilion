@@ -1,11 +1,11 @@
 # Attillion
 
-A space-themed game: rarer answers launch your avatar higher, from the Sky through the Stratosphere, Orbit and the Moon, to **1 in an Attillion** past the Moon.
+A space-themed game: rarer answers launch your avatar higher, from the Sky through the Stratosphere, Orbit and the Moon, to **1 in Attillion** past the Moon.
 
 Play it: https://bryandickinson-create.github.io/attilion/
 
 Name the answer nobody else will. 7 prompts, 30 seconds each, up to 100 points a round.
-Only the rarer, still-reasonable answers land in the **1 in an Attillion** zone and score 100.
+Only the rarer, still-reasonable answers land in the **1 in Attillion** zone and score 100.
 
 ## Files
 - `src/prompts.js`, `src/prompts2.js`: 87 topics with answers listed from most to least common. app.js also builds twist versions ("...with no E in it", "...that's two or more words", "...with a double letter") from them, keeping only twists that leave at least 30 answers.
@@ -18,7 +18,7 @@ Quick match (live play against someone near your Elo) uses the live room of the 
 
 ## How rarity works (guess, open to change)
 - Each answer's share of players is estimated from its position in the list using a Zipf curve, assuming 92% of players give a valid answer.
-- Each list has a "familiar" part (first 65 answers). Answers from 75% of the way down that part, and everything past it, score 100 (1 in an Attillion); everything else is capped at 97. The most common answer → 2 points. In between, points follow a log scale of estimated share, shown as an altitude from the ground up past the Moon.
+- Each list has a "familiar" part (first 65 answers). Answers from 85% of the way down that part, and everything past it, score 100 (1 in Attillion); everything else is capped at 97. The most common answer → 2 points. In between, points follow a log scale of estimated share, shown as an altitude from the ground up past the Moon.
 - Answers players actually give are counted and blended into the estimate (the curated list counts as 200 virtual answers). In this build the counts live in each browser; with a server they'd be global.
 - The Daily Dive and friend challenges use the fixed list only, so both players face the same rarity.
 - Typos within 1 letter (2 for long words), plurals, "the", accents and punctuation are forgiven. Answers not on the list score 0.
