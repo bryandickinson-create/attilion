@@ -330,7 +330,7 @@ function buildPrompt(id, q, entries, familiarCount, extra) {
   // The most common answer sits at the surface (0 m). 1 in Attillion starts
   // 85% of the way down the familiar answers; anything past them also counts.
   const familiar = Math.max(4, Math.min(answers.length, familiarCount));
-  const krillFrom = Math.min(answers.length - 1, Math.floor(familiar * KRILLION_FROM));
+  const krillFrom = Math.min(answers.length - 1, Math.floor(familiar * ((extra && extra.krillFrac) || KRILLION_FROM)));
   const zeroShare = answers[0].base;
   const krillShare = answers[krillFrom].base;
   return Object.assign({ id, q, answers, index, zeroShare, krillShare, familiar, krillFrom }, extra || {});
@@ -412,6 +412,21 @@ const CAT_OF = {
     PROMPTS.push(v); VARIANTS[p.id].push(v.id);
   });
 });
+/* ---------- Little Kid Mode ----------
+   Its own prompts (no twists), 1 in Attillion much easier to reach, and its own
+   Elo, daily launch and leaderboard. Switched in Settings, saved on this device. */
+const KID_FAMILIAR = 40, KID_KRILL_FROM = 0.55;
+const KID_EXTRA = { "k-fruit": "fruit", "k-color": "color", "k-ocean": "ocean", "k-body": "body", "k-dino": "dino", "k-pet": "pet", "k-bug": "insect", "k-vehicle": "vehicle", "k-clothes": "clothing", "k-sport": "sport", "k-dessert": "dessert", "k-animal": "mammal", "k-weather": "weather", "k-music": "instrument" };
+(window.KRILLION_KIDS || []).forEach(p => {
+  const src = KID_EXTRA[p.id];
+  const more = src ? [window.KRILLION_MORE, window.KRILLION_MORE3, window.KRILLION_MORE2].map(m => (m || {})[src]).filter(Boolean) : [];
+  const entries = [p.a].concat(more).join(";").split(";").map(e => ({ forms: e.split("|").map(s => s.trim()).filter(Boolean) })).filter(e => e.forms.length);
+  const base = buildPrompt(p.id, p.q, entries, KID_FAMILIAR, { baseId: p.id, kid: true, krillFrac: KID_KRILL_FROM });
+  base.cats = ["kids"];
+  BASES.push(base); PROMPTS.push(base); VARIANTS[p.id] = [];
+});
+function kidMode() { return !!store.get("kidMode", false); }
+function modeBases() { const k = kidMode(); return BASES.filter(p => !!p.kid === k); }
 const PROMPT_BY_ID = Object.fromEntries(PROMPTS.map(p => [p.id, p]));
 
 // Extra words around a real answer still count: "Yellowstone National Park",
@@ -545,7 +560,7 @@ function repeatsCount() { return S.mode === "solo" || S.mode === "subject" || S.
    the 1 in Attillion. Everything else tops out just below it. */
 function endlessQueue(seed) {
   const r = rng(seed);
-  const ids = BASES.map(p => p.id);
+  const ids = modeBases().map(p => p.id);
   for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
   return ids;
 }
@@ -596,11 +611,11 @@ function pickSet(seed, seenList, cat) {
   const seen = new Set(seenList || []);
   const r = rng(seed);
   const catWant = cat === "seasonal" ? "season-" + seasonKey() : cat;
-  const ids = BASES.filter(p => !catWant || p.cats.includes(catWant)).map(p => p.id);
+  const ids = modeBases().filter(p => !catWant || p.cats.includes(catWant)).map(p => p.id);
   for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
   const bases = ids.filter(id => !seen.has(id)).concat(ids.filter(id => seen.has(id))).slice(0, ROUNDS);
   const twistable = bases.map((id, i) => i).filter(i => VARIANTS[bases[i]].length);
-  const want = r() < 0.5 ? 2 : 3;
+  const want = kidMode() ? 0 : r() < 0.5 ? 2 : 3;
   const twistSlots = new Set();
   while (twistSlots.size < Math.min(want, twistable.length)) twistSlots.add(twistable[Math.floor(r() * twistable.length)]);
   // no two twists of the same kind in one game
@@ -625,7 +640,8 @@ function markSeen(ids) {
 }
 function pickFresh(seed, cat) { return pickSet(seed, store.get("seenPrompts", []), cat); }
 function todayKey(d) { d = d || new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
-function dailyNumber(key) { return Math.floor((Date.parse(key + "T12:00:00") - Date.parse("2026-11-21T12:00:00")) / 864e5) + 1; }
+function dailyKeyNow() { return (kidMode() ? "kids-" : "") + todayKey(); }
+function dailyNumber(key) { key = String(key).replace(/^kids-/, ""); return Math.floor((Date.parse(key + "T12:00:00") - Date.parse("2026-11-21T12:00:00")) / 864e5) + 1; }
 
 /* ---------- accounts + Elo ---------- */
 // Local accounts: stored in this browser only. Replace with Supabase auth
@@ -678,14 +694,19 @@ function applyMatchResult(oppName, oppElo, myTotal, oppTotal, kind, matchId, noL
   const u = me(); if (!u) return null;
   const result = myTotal > oppTotal ? 1 : myTotal < oppTotal ? 0 : 0.5;
   let delta = 0;
+  const kid = kidMode();
   updateUser(x => {
-    if (matchId && x.history.some(h => h.id === matchId)) return;
-    delta = eloDelta(x.elo, oppElo, result, x.games);
+    // Little Kid Mode keeps a completely separate rating and record
+    const r = kid ? (x.kid = x.kid || { elo: START_ELO, peak: START_ELO, games: 0, wins: 0, losses: 0, draws: 0, history: [] }) : x;
+    r.history = r.history || [];
+    if (matchId && r.history.some(h => h.id === matchId)) return;
+    delta = eloDelta(r.elo, oppElo, result, r.games || 0);
     if (noLoss) delta = Math.max(0, delta);   // event bots can only raise your Elo
-    x.elo += delta; x.peak = Math.max(x.peak, x.elo); x.games++;
-    if (result === 1) x.wins++; else if (result === 0) x.losses++; else x.draws++;
-    x.history.unshift({ id: matchId || String(Date.now()), when: Date.now(), kind, opp: oppName, oppElo, me: myTotal, them: oppTotal, delta });
-    x.history = x.history.slice(0, 50);
+    r.elo += delta; r.peak = Math.max(r.peak || START_ELO, r.elo); r.games = (r.games || 0) + 1;
+    if (result === 1) r.wins = (r.wins || 0) + 1; else if (result === 0) r.losses = (r.losses || 0) + 1; else r.draws = (r.draws || 0) + 1;
+    r.history.unshift({ id: matchId || String(Date.now()), when: Date.now(), kind, opp: oppName, oppElo, me: myTotal, them: oppTotal, delta });
+    r.history = r.history.slice(0, 50);
+    if (kid) x.kidElo = r.elo;   // copied up so the kids leaderboard can sort on it
   });
   return { delta, result };
 }
@@ -912,14 +933,14 @@ function finishMatch() {
     else { const g = store.get("guestDaily", {}); if (!g[S.dailyKey]) g[S.dailyKey] = entry; store.set("guestDaily", g); }
   } else if (S.mode === "challenge-host") {
     const u = me();
-    const code = b64e({ v: 1, id: S.challenge.id, seed: S.seed, p: S.prompts, from: u ? u.name : (S.challenge.name || "A friend"), elo: u ? u.elo : null, av: myAvatarObj().id, a: S.mine });
+    const code = b64e({ v: 1, id: S.challenge.id, seed: S.seed, p: S.prompts, from: u ? u.name : (S.challenge.name || "A friend"), elo: u ? myElo(u) : null, av: myAvatarObj().id, a: S.mine });
     res.code = code;
     const sent = store.get("sentChallenges", {}); sent[S.challenge.id] = { when: Date.now(), my, mine: S.mine, prompts: S.prompts }; store.set("sentChallenges", sent);
   } else if (S.mode === "challenge-guest") {
     const c = S.challenge;
     const u = me();
     if (c.elo != null) res.elo = applyMatchResult(c.from, c.elo, my, their, "friend", c.id);
-    res.code = b64e({ v: 1, id: c.id, reply: true, p: S.prompts, av: myAvatarObj().id, from: u ? u.name : "Your friend", elo: u ? u.elo - (res.elo ? res.elo.delta : 0) : null, a: S.mine, host: c.a, hostName: c.from });
+    res.code = b64e({ v: 1, id: c.id, reply: true, p: S.prompts, av: myAvatarObj().id, from: u ? u.name : "Your friend", elo: u ? myElo(u) - (res.elo ? res.elo.delta : 0) : null, a: S.mine, host: c.a, hostName: c.from });
   }
   S.result = res;
   S.view = "results";
@@ -1093,17 +1114,23 @@ async function cloudBoard() {
       c.from("profiles").select("name,today_score").eq("today_key", todayKey()).order("today_score", { ascending: false }).limit(100)
     ]), 8000);
     if (a.error || b.error) return null;
-    return { elo: a.data, daily: b.data, at: Date.now() };
+    let kid = null;
+    try {
+      const k = await withTimeout(c.from("profiles").select("name,avatar,kid:data->kid").not("data->kidElo", "is", null).order("data->kidElo", { ascending: false, nullsFirst: false }).limit(100), 8000);
+      if (!k.error && k.data) kid = k.data.map(r => ({ name: r.name, avatar: r.avatar, elo: (r.kid && r.kid.elo) || START_ELO, wins: (r.kid && r.kid.wins) || 0, losses: (r.kid && r.kid.losses) || 0 }));
+    } catch (e) {}
+    return { elo: a.data, daily: b.data, kid, at: Date.now() };
   } catch (e) { return null; }
 }
 
-function myCard() { const u = me(); return { name: u ? u.name : "Guest pilot", elo: u ? u.elo : START_ELO, av: myAvatarObj().id }; }
+function myElo(u) { u = u === undefined ? me() : u; if (!u) return START_ELO; return kidMode() ? ((u.kid && u.kid.elo) || START_ELO) : u.elo; }
+function myCard() { const u = me(); return { name: u ? u.name : "Guest pilot", elo: myElo(u), av: myAvatarObj().id, kid: kidMode() }; }
 function cleanCard(p, field) {   // everything in presence is untrusted
   const q = p && p.presence && p.presence[field];
   if (!q || typeof q !== "object") return null;
   const elo = Math.max(100, Math.min(3500, Math.round(+q.elo) || START_ELO));
   const name = String(q.name || "").replace(/[^\p{L}\p{N} _.-]/gu, "").trim().slice(0, 20) || "Pilot";
-  return { peer: p.peer, name, elo, av: avatarById(String(q.av)) ? String(q.av) : "rocket", t: +q.t || 0, want: typeof q.want === "string" ? q.want : null };
+  return { peer: p.peer, name, elo, av: avatarById(String(q.av)) ? String(q.av) : "rocket", t: +q.t || 0, want: typeof q.want === "string" ? q.want : null, kid: !!q.kid };
 }
 function eloWindow(waitMs) { return Math.min(800, 150 + Math.floor(Math.max(0, waitMs) / 5000) * 75); }
 function pairUp(list, now) {
@@ -1113,7 +1140,7 @@ function pairUp(list, now) {
     if (used.has(a.peer)) continue;
     let best = null;
     for (const b of list) {
-      if (b === a || used.has(b.peer)) continue;
+      if (b === a || used.has(b.peer) || !!a.kid !== !!b.kid) continue;
       const d = Math.abs(a.elo - b.elo);
       if (d <= Math.max(eloWindow(now - a.t), eloWindow(now - b.t)) && (!best || d < Math.abs(a.elo - best.elo))) best = b;
     }
@@ -1285,14 +1312,14 @@ function header() {
     <nav>
       <button data-go="leaderboard">Leaderboard</button>
       <button data-go="avatar" class="avbtn" aria-label="Change your avatar" title="Change your avatar">${myAvatar()}</button>
-      ${u ? `<button data-go="profile" class="chip">${esc(u.name)} · <b>${u.elo}</b></button>` : `<button data-go="login" class="chip">Log in</button>`}
+      ${kidMode() ? `<span class="kid-chip">🧸 Kid mode</span>` : ""}${u ? `<button data-go="profile" class="chip">${esc(u.name)} · <b>${myElo(u)}</b></button>` : `<button data-go="login" class="chip">Log in</button>`}
     </nav>
   </header>`;
 }
 
 function viewHome() {
   const u = me();
-  const key = todayKey();
+  const key = dailyKeyNow();
   const done = u ? u.daily[key] : store.get("guestDaily", {})[key];
   const now = new Date();
   const cal = `<span class="cal"><span class="cal-m">${now.toLocaleString("en-US", { month: "short" })}</span><span class="cal-d">${now.getDate()}</span></span>`;
@@ -1305,7 +1332,7 @@ function viewHome() {
              : box("pb-daily", `data-act="daily"`, cal, "Daily Launch", "Same 7 prompts for everyone today", "#" + dailyNumber(key))}
       ${box("pb-endless", `data-act="endless"`, "♾️", "Endless", "Never-ending prompts, one secret 1 in Attillion each", endlessStats().best ? "Best " + endlessStats().best : "")}
       ${box("pb-solo", `data-act="solo"`, "🎯", "Free Launch", "7 new prompts, beat your high score", soloStats().best ? "Best " + soloStats().best : "")}
-      ${box("pb-subjects", `data-go="subjects"`, "📚", "Subjects", "Sports, movies, history, weather and more", "")}
+      ${kidMode() ? "" : box("pb-subjects", `data-go="subjects"`, "📚", "Subjects", "Sports, movies, history, weather and more", "")}
       ${box("pb-friends", `data-go="friends"`, "🤝", "Play a friend", "Send a challenge or enter a code", "")}
     </div>
     <details class="how">
@@ -1523,7 +1550,7 @@ function viewResults() {
   let extra = "";
   if (res.elo) {
     const sign = res.elo.delta > 0 ? "+" : "";
-    extra += `<p class="elo-change">Elo ${sign}${res.elo.delta} → <b>${me().elo}</b></p>`;
+    extra += `<p class="elo-change">${kidMode() ? "Kid " : ""}Elo ${sign}${res.elo.delta} → <b>${myElo()}</b></p>`;
   } else if (oppName && !me()) {
     extra += `<p class="hint"><button class="link" data-go="login">Log in</button> to have games count toward your Elo.</p>`;
   }
@@ -1600,7 +1627,7 @@ function dailyShare(key, scores) {
 }
 
 function viewDailyDone() {
-  const key = todayKey();
+  const key = dailyKeyNow();
   const u = me();
   const done = u ? u.daily[key] : store.get("guestDaily", {})[key];
   const prompts = pickPrompts(hashStr("daily:" + key));
@@ -1658,6 +1685,7 @@ function viewProfile() {
     <h1>${esc(u.name)}</h1>
     <div class="stats">
       <div><span>Elo</span><b>${u.elo}</b></div>
+      ${u.kid ? `<div><span>🧸 Kid Elo</span><b>${u.kid.elo}</b></div>` : ""}
       <div><span>Peak</span><b>${u.peak}</b></div>
       <div><span>Record</span><b>${u.wins}–${u.losses}${u.draws ? "–" + u.draws : ""}</b></div>
       <div><span>Best free launch</span><b>${(u.solo && u.solo.best) || "–"}</b></div>
@@ -1732,6 +1760,13 @@ function viewSettings() {
     ${layoutBar()}
     <p class="hint">Auto fits whatever screen you're on. Pick one to use that layout anywhere. Saved on this device.</p>
 
+    <h2>Little Kid Mode</h2>
+    <div class="seg-pick" role="group" aria-label="Little Kid Mode">
+      <button data-act="kidmode" data-v="0" aria-pressed="${!kidMode()}"><span aria-hidden="true">🚀</span>Regular</button>
+      <button data-act="kidmode" data-v="1" aria-pressed="${kidMode()}"><span aria-hidden="true">🧸</span>Little kids</button>
+    </div>
+    <p class="hint">Easy questions for little kids, no twists, and 1 in Attillions are much easier to find. Kids get their own Elo, their own Daily Launch and their own leaderboard. Saved on this device.</p>
+
     <h2>Timer</h2>
     <div class="seg-pick" role="group" aria-label="Timer for Endless and Free Launch">
       <button data-act="untimed" data-v="0" aria-pressed="${!store.get("untimed", false)}"><span aria-hidden="true">⏱️</span>30 seconds</button>
@@ -1794,9 +1829,10 @@ function loadBoard() {
   cloudBoard().then(b => { boardLoading = false; if (b) { BOARD = b; if (S.view === "leaderboard") render(); } });
 }
 function viewLeaderboard() {
-  const tab = S.tab || "elo";
+  const tab = S.tab || (kidMode() ? "kids" : "elo");
   loadBoard();
   const local = Object.values(users());
+  if (tab === "kids") return viewKidBoard(local);
   const all = BOARD ? BOARD.elo.map(r => ({ online: true, name: r.name, elo: r.elo, avatar: r.avatar, wins: r.wins, losses: r.losses, daily: {} })) : local;
   if (BOARD) BOARD.daily.forEach(r => { const x = all.find(u => u.name === r.name); if (x) x.daily[todayKey()] = { score: r.today_score }; else all.push({ name: r.name, elo: 0, avatar: null, wins: 0, losses: 0, daily: { [todayKey()]: { score: r.today_score } }, onlyDaily: true }); });
   const key = todayKey();
@@ -1817,12 +1853,32 @@ function viewLeaderboard() {
     <div class="tabs" role="tablist">
       <button role="tab" aria-selected="${tab === "elo"}" data-act="tab" data-tab="elo">Elo rating</button>
       <button role="tab" aria-selected="${tab === "daily"}" data-act="tab" data-tab="daily">Today's launch</button>
+      <button role="tab" aria-selected="false" data-act="tab" data-tab="kids">🧸 Little kids</button>
     </div>
     <div class="table-wrap"><table class="board"><thead><tr><th>#</th><th>Player</th><th></th><th>${tab === "elo" ? "Elo" : "Score"}</th></tr></thead><tbody>${rows}</tbody></table></div>
     <p class="note">${BOARD ? "Worldwide board: every player with an online account, plus the computer opponents for reference." : "Showing accounts made in this browser, plus the computer opponents. The worldwide board appears when the game can reach the server."}</p>
   </main>`;
 }
 
+function viewKidBoard(local) {
+  const avOf = u => avMarkup((u.online ? avatarById(u.avatar) : AVATARS.find(x => x.id === u.avatar && isOpen(x, u))) || AVATARS[0]);
+  const players = BOARD && BOARD.kid ? BOARD.kid.map(r => Object.assign({ online: true }, r))
+    : local.filter(u => u.kid).map(u => ({ name: u.name, avatar: u.avatar, elo: u.kid.elo, wins: u.kid.wins || 0, losses: u.kid.losses || 0, krillions: u.krillions, krillTotal: u.krillTotal, peak: u.peak, codes: u.codes }));
+  const list = players.map(u => ({ av: avOf(u), name: u.name, val: u.elo, sub: `${u.wins}–${u.losses}`, human: true }))
+    .concat(regularBots().map(([, b]) => ({ av: b.av, name: b.name, val: b.elo, sub: "computer", human: false })))
+    .sort((a, b) => b.val - a.val);
+  const rows = list.map((r, i) => `<tr class="${r.human ? "" : "botrow"} ${me() && r.name === me().name ? "you" : ""}"><td class="n">${i + 1}</td><td>${r.av} ${esc(r.name)}</td><td class="sub">${esc(r.sub)}</td><td class="n">${r.val}</td></tr>`).join("");
+  return `${header()}<main class="narrow">
+    <h1>🧸 Little kids leaderboard</h1>
+    <div class="tabs" role="tablist">
+      <button role="tab" aria-selected="false" data-act="tab" data-tab="elo">Elo rating</button>
+      <button role="tab" aria-selected="false" data-act="tab" data-tab="daily">Today's launch</button>
+      <button role="tab" aria-selected="true" data-act="tab" data-tab="kids">🧸 Little kids</button>
+    </div>
+    <div class="table-wrap"><table class="board"><thead><tr><th>#</th><th>Player</th><th></th><th>Kid Elo</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="note">Kid Elo is separate from regular Elo. It only changes in Little Kid Mode (turn it on in Settings).</p>
+  </main>`;
+}
 function viewJoin() {
   return `${header()}<main class="narrow">
     <h1>Enter a code</h1>
@@ -1857,7 +1913,7 @@ function viewReplyResult() {
   if (me() && c.elo != null) {
     const r = applyMatchResult(c.from, c.elo, my, their, "friend", c.id + ":host");
     const h = me().history.find(x => x.id === c.id + ":host");
-    eloLine = `<p class="elo-change">Elo ${h.delta >= 0 ? "+" : ""}${h.delta} → <b>${me().elo}</b></p>`;
+    eloLine = `<p class="elo-change">Elo ${h.delta >= 0 ? "+" : ""}${h.delta} → <b>${myElo()}</b></p>`;
     void r;
   }
   const verdict = my > their ? "You win" : my < their ? `${esc(c.from)} wins` : "It's a tie";
@@ -1957,7 +2013,7 @@ document.addEventListener("click", async e => {
   const act = t.dataset.act;
   if (act === "bot") startMatch({ mode: "bot", level: t.dataset.level });
   else if (act === "daily") {
-    const key = todayKey();
+    const key = dailyKeyNow();
     startMatch({ mode: "daily", seed: hashStr("daily:" + key), prompts: pickPrompts(hashStr("daily:" + key)), dailyKey: key });
   }
   else if (act === "daily-view") go("daily-done");
@@ -1979,6 +2035,7 @@ document.addEventListener("click", async e => {
   else if (act === "sound-test") SFX("hadal");
   else if (act === "skip") endlessSkip();
   else if (act === "skips") { store.set("endlessSkips", Number(t.dataset.v)); render(); }
+  else if (act === "kidmode") { store.set("kidMode", t.dataset.v === "1"); render(); }
   else if (act === "untimed") { store.set("untimed", t.dataset.v === "1"); render(); }
   else if (act === "spin") {
     const av = t.querySelector(".av");
