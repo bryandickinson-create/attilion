@@ -508,6 +508,34 @@ function noteUsed(prompt, idx) {
   const m = store.get(repeatsStoreKey(), {}); const k = repeatKey(prompt, idx);
   m[k] = (m[k] || 0) + 1; store.set(repeatsStoreKey(), m);
 }
+/* Answers real players give, counted for everyone through the online answer_counts
+   table (and on this device as a backup). Each one makes that answer HUMAN_STEP
+   more common, so it is worth a little less next time, for every player. */
+const HUMAN_STEP = 0.35;
+const HC = {};   // base prompt id -> { answer: times given worldwide }
+function humanKey(prompt, idx) { return norm(prompt.answers[idx].display).slice(0, 60); }
+function humanCount(prompt, idx) {
+  const base = prompt.baseId || prompt.id, k = humanKey(prompt, idx);
+  const local = store.get("humanCounts", {})[base + ":" + k] || 0;
+  return Math.max(local, (HC[base] && HC[base][k]) || 0);
+}
+async function loadHumanCounts(ids) {
+  const bases = [...new Set((ids || []).map(id => (PROMPT_BY_ID[id] || {}).baseId || id))].filter(Boolean);
+  if (!bases.length) return;
+  try {
+    const c = await withTimeout(cloud(), 8000); if (!c) return;
+    const { data, error } = await withTimeout(c.from("answer_counts").select("prompt_id,answer,n").in("prompt_id", bases), 8000);
+    if (error || !data) return;
+    data.forEach(r => { (HC[r.prompt_id] = HC[r.prompt_id] || {})[r.answer] = r.n; });
+  } catch (e) {}
+}
+function bumpHuman(prompt, idx) {
+  if (idx < 0) return;
+  const base = prompt.baseId || prompt.id, k = humanKey(prompt, idx);
+  const m = store.get("humanCounts", {}); m[base + ":" + k] = (m[base + ":" + k] || 0) + 1; store.set("humanCounts", m);
+  if (HC[base] && HC[base][k] != null) HC[base][k]++;
+  cloud().then(c => c && c.rpc("bump_answer", { p_prompt: base, p_answer: k })).catch(() => {});
+}
 function repeatsCount() { return S.mode === "solo" || S.mode === "subject" || S.mode === "endless" || S.mode === "bot"; }
 
 /* ---------- Endless Launch ----------
@@ -547,7 +575,10 @@ function scoreAnswer(prompt, raw, fixed, useRepeats) {
   const idx = matchAnswer(prompt, raw);
   if (idx < 0) return { raw: raw || "", idx: -1, points: 0, depth: 0, share: 0, zone: null, valid: false };
   const used = useRepeats ? timesUsed(prompt, idx) : 0;
-  const sh = used ? Math.min(prompt.zeroShare, share(prompt, idx, fixed) * Math.pow(REPEAT_FACTOR, used)) : share(prompt, idx, fixed);
+  let sh = used ? Math.min(prompt.zeroShare, share(prompt, idx, fixed) * Math.pow(REPEAT_FACTOR, used)) : share(prompt, idx, fixed);
+  // every time any real player gives this answer, it gets a little more common for everyone
+  const others = useRepeats ? Math.max(0, humanCount(prompt, idx) - used) : 0;
+  if (others) sh = Math.min(prompt.zeroShare, sh * (1 + HUMAN_STEP * others));
   const depth = depthFor(sh, prompt);
   const points = sh <= prompt.krillShare ? 100 : Math.max(2, Math.min(97, Math.round(100 * depth / HADAL_DEPTH)));
   return { raw, idx, display: prompt.answers[idx].display, points, depth, share: sh, zone: zoneFor(depth), valid: true, used };
@@ -694,6 +725,7 @@ function startMatch(opts) {
   const seed = opts.seed != null ? opts.seed : Math.floor(Math.random() * 2 ** 31);
   const prompts = opts.prompts || (opts.mode === "endless" ? endlessQueue(seed) : pickFresh(seed, opts.cat));
   markSeen(prompts);
+  loadHumanCounts(prompts);
   go("play", {
     mode: opts.mode, level: opts.level, seed, prompts, round: 0,
     mine: [], theirs: opts.theirsRaw ? opts.theirsRaw.slice() : [],
@@ -767,6 +799,7 @@ function reveal() {
   const fixed = fixedRarity();
   S.lastMine = scoreAnswer(prompt, S.mine[S.round], fixed, repeatsCount());
   if (S.mode === "endless") S.lastMine = endlessAdjust(prompt, S.lastMine);
+  bumpHuman(prompt, S.lastMine.idx);
   if (repeatsCount()) noteUsed(prompt, S.lastMine.idx);
   S.lastTheirs = (S.mode === "daily" || S.mode === "solo" || S.mode === "subject" || S.mode === "endless" || S.mode === "challenge-host") ? null : scoreAnswer(prompt, S.theirs[S.round], fixed);
   if (S.mode !== "daily") { recordAnswer(prompt.id, S.lastMine.idx); }
@@ -2101,7 +2134,7 @@ function fromHash() {
 }
 
 // test hook
-window.Krillion = { getRoom, awardTokens, EVENT, PROMPTS, BASES, pickSet, noteUsed, state: () => S, scoreAnswer, matchAnswer, pickPrompts, depthFor, botAnswer, BOTS, todayKey };
+window.Krillion = { loadHumanCounts, humanCount, getRoom, awardTokens, EVENT, PROMPTS, BASES, pickSet, noteUsed, state: () => S, scoreAnswer, matchAnswer, pickPrompts, depthFor, botAnswer, BOTS, todayKey };
 
 if (!fromHash()) render();
 setTimeout(cloudPull, 500);

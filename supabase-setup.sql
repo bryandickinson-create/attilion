@@ -40,3 +40,25 @@ create policy "Players update their own profile" on public.profiles
 
 grant select on public.profiles to anon, authenticated;
 grant insert, update on public.profiles to authenticated;
+
+-- Answer counts: every answer a real player gives makes it a little more common for everyone.
+create table if not exists public.answer_counts (
+  prompt_id text not null check (length(prompt_id) <= 40),
+  answer text not null check (length(answer) <= 60),
+  n integer not null default 0,
+  primary key (prompt_id, answer)
+);
+alter table public.answer_counts enable row level security;
+drop policy if exists "Anyone can read answer counts" on public.answer_counts;
+create policy "Anyone can read answer counts" on public.answer_counts
+  for select to anon, authenticated using (true);
+grant select on public.answer_counts to anon, authenticated;
+
+create or replace function public.bump_answer(p_prompt text, p_answer text)
+returns void language sql security definer set search_path = public as $$
+  insert into public.answer_counts (prompt_id, answer, n)
+  values (left(p_prompt, 40), left(p_answer, 60), 1)
+  on conflict (prompt_id, answer) do update set n = public.answer_counts.n + 1;
+$$;
+revoke all on function public.bump_answer(text, text) from public;
+grant execute on function public.bump_answer(text, text) to anon, authenticated;
