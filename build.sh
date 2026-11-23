@@ -23,7 +23,9 @@ FONTS='<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bri
   echo "<script>"; cat src/prompts_wn.js; echo "</script>"
   echo "<script>"; cat src/prompts_kids.js; echo "</script>"
   echo "<script>"; cat src/prompts_kids2.js; echo "</script>"
+  echo "<script>"; cat src/prompts_kids3.js; echo "</script>"
   echo "<script>"; cat src/prompts_big.js; echo "</script>"
+  echo "<script>"; cat src/prompts_big2.js; echo "</script>"
   echo '<script>'; cat src/app.js; echo '</script>'
   echo '<script>'; cat src/fx.js; echo '</script>'
   echo '<script>'; cat src/sound.js; echo '</script>'
@@ -47,7 +49,9 @@ FONTS='<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bri
   echo "<script>"; cat src/prompts_wn.js; echo "</script>"
   echo "<script>"; cat src/prompts_kids.js; echo "</script>"
   echo "<script>"; cat src/prompts_kids2.js; echo "</script>"
+  echo "<script>"; cat src/prompts_kids3.js; echo "</script>"
   echo "<script>"; cat src/prompts_big.js; echo "</script>"
+  echo "<script>"; cat src/prompts_big2.js; echo "</script>"
   echo '<script>'; cat src/app.js; echo '</script>'
   echo '<script>'; cat src/fx.js; echo '</script>'
   echo '<script>'; cat src/sound.js; echo '</script>'

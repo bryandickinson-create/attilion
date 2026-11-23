@@ -320,6 +320,20 @@ function lev(a, b, max) {
 // entries: [{ forms: [...] }] in order from most to least common.
 // familiarCount: how many of them a fair player could think of (bots and
 // "down in the trench" examples only use those).
+const ALIASES = {
+  "phone": ["telephone", "cell phone", "cellphone", "smartphone", "smart phone", "mobile phone", "iphone", "landline"],
+  "telephone": ["phone", "landline"],
+  "tv": ["television", "telly", "tv set", "smart tv"], "television": ["tv", "telly"],
+  "video games": ["video game", "nintendo", "xbox", "playstation", "ps5", "ps4", "game console", "gaming", "switch", "nintendo switch", "game boy", "wii"],
+  "video game": ["video games", "nintendo", "xbox", "playstation", "ps5", "ps4", "game console", "gaming", "nintendo switch", "game boy", "wii"],
+  "nintendo switch": ["nintendo", "switch"], "game console": ["nintendo", "xbox", "playstation", "console"],
+  "computer": ["pc", "desktop", "desktop computer"], "laptop": ["notebook computer", "macbook", "chromebook"], "tablet": ["ipad"], "ipad": ["tablet"],
+  "refrigerator": ["fridge"], "fridge": ["refrigerator"], "couch": ["sofa"], "sofa": ["couch"],
+  "bike": ["bicycle"], "bicycle": ["bike"], "car": ["automobile"], "plane": ["airplane", "aeroplane", "jet"], "airplane": ["plane", "aeroplane"],
+  "mom": ["mommy", "mother", "mama"], "dad": ["daddy", "father", "papa"], "grandma": ["granny", "nana", "grandmother"], "grandpa": ["grandfather", "pop pop"],
+  "teddy bear": ["teddy"], "stuffed animal": ["stuffy", "plushie", "plush", "stuffie"], "lego": ["legos"], "legos": ["lego"],
+  "french fries": ["fries", "chips"], "fries": ["french fries"], "soda": ["pop", "soda pop", "soft drink"], "hamburger": ["burger", "cheeseburger"]
+};
 function buildPrompt(id, q, entries, familiarCount, extra) {
   const answers = []; const index = new Map();
   entries.forEach(e => {
@@ -329,6 +343,8 @@ function buildPrompt(id, q, entries, familiarCount, extra) {
     answers.push({ display: e.forms[0], keys });
     keys.forEach(k => { index.set(k, i); const s = singular(k); if (!index.has(s) && (!extra || !extra.test || extra.test(s))) index.set(s, i); });
   });
+  // everyday other names for an answer that's already on the list
+  Object.entries(ALIASES).forEach(([k, al]) => { if (!index.has(k)) return; const i = index.get(k); al.forEach(a => { if (!index.has(a) && (!extra || !extra.test || extra.test(a))) index.set(a, i); }); });
   let H = 0; answers.forEach((_, r) => { H += 1 / (r + 1); });
   answers.forEach((a, r) => { a.base = VALID_SHARE * (1 / (r + 1)) / H; });
   // The most common answer sits at the surface (0 m). 1 in Attillion starts
@@ -428,7 +444,7 @@ const KID_EXTRA = {   // kid topics also accept answers from matching grown-up l
   "k-character": "disneychar cartoonshow superhero", "k-princess": "disneychar", "k-superhero": "superhero", "k-snack": "candy", "k-job": "job", "k-holiday": "holiday winterholiday",
   "k-kitchen": "appliance utensil", "k-school": "classroom schoolsupply", "k-garden": "garden flower veg", "k-house": "room furniture bathroom", "k-sky": "space weather", "k-sea": "beach",
   "k-feel": "emotion", "k-farm": "farm", "k-breakfast": "breakfast cereal", "k-food": "fastfood pizza breakfast", "k-ride": "playground", "k-wheels": "wheels vehicle", "k-farmfood": "veg fruit",
-  "k-shape": "", "k-room": "room", "k-birthday": "", "k-zoo2": "" };
+  "k-shape": "shape", "k-room": "room", "k-birthday": "", "k-zoo2": "" };
 const KID_LETTER = { "k-letter": "b", "k-letter2": "s" };
 // words for "starts with B / S": every one-word answer from any list
 const KID_WORDS = {};
@@ -440,7 +456,7 @@ Object.values(KID_LETTER).forEach(l => { const set = new Set(); BASES.forEach(b 
     .concat(srcs.map(x => (window.KRILLION_PROMPTS || []).find(q => q.id === x)).filter(Boolean).map(q => q.a))
     .concat(srcs.map(x => (window.KRILLION_MORE2 || {})[x]))
     .concat(KID_LETTER[p.id] ? [KID_WORDS[KID_LETTER[p.id]]] : []).filter(Boolean);
-  const entries = [p.a].concat(more).join(";").split(";").map(e => ({ forms: e.split("|").map(s => s.trim()).filter(Boolean) })).filter(e => e.forms.length);
+  const entries = [p.a, (window.KRILLION_KIDS_MORE || {})[p.id]].filter(Boolean).concat(more).join(";").split(";").map(e => ({ forms: e.split("|").map(s => s.trim()).filter(Boolean) })).filter(e => e.forms.length);
   const base = buildPrompt(p.id, p.q, entries, KID_FAMILIAR, { baseId: p.id, kid: true, krillFrac: KID_KRILL_FROM });
   base.cats = ["kids"];
   BASES.push(base); PROMPTS.push(base); VARIANTS[p.id] = [];
@@ -470,7 +486,7 @@ function addBig(id, q, a, srcs) {
   base.cats = ["bigkids"];
   BASES.push(base); PROMPTS.push(base); VARIANTS[id] = [];
 }
-(window.KRILLION_BIG || []).forEach(p => addBig(p.id, p.q, p.a, (BIG_EXTRA[p.id] || "").split(" ").filter(Boolean)));
+(window.KRILLION_BIG || []).forEach(p => addBig(p.id, p.q, [p.a, (window.KRILLION_BIG_MORE || {})[p.id]].filter(Boolean).join(";"), (BIG_EXTRA[p.id] || "").split(" ").filter(Boolean)));
 BIG_FROM_REGULAR.forEach(id => {
   const r = (window.KRILLION_PROMPTS || []).find(x => x.id === id);
   if (r && !(window.KRILLION_BIG || []).some(b => b.q === r.q)) addBig("b-" + id, r.q, r.a, [id]);
