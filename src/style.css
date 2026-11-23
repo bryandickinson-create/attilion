@@ -602,3 +602,33 @@ h2 + .layout-bar { justify-content: flex-start; margin-top: 10px; }
 .av-bestans { filter: drop-shadow(0 0 6px rgba(120,220,255,.9)); display: inline-block; animation: perfectGlow 3s ease-in-out infinite; }
 .avatar { position: relative; }
 .av-stars { position: absolute; top: 6px; right: 6px; font: 700 11px var(--font-data); color: #ffe9a8; background: rgba(255,201,60,.14); border: 1px solid rgba(255,201,60,.4); border-radius: 999px; padding: 1px 6px; line-height: 1.5; }
+/* power-ups */
+.powers { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 10px 0 4px; }
+.power { border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.06); color: var(--foam); border-radius: 999px; padding: 7px 13px; font: 600 13px inherit; cursor: pointer; }
+.power b { font-family: var(--font-data); color: #ffe9a8; margin-left: 2px; }
+.power.on { border-color: var(--hadal); background: rgba(255,201,60,.18); }
+.power:disabled { opacity: .45; cursor: default; }
+.hint-text { color: #ffe9a8; font-size: 14px; margin: 6px 0 0; }
+/* badges */
+.badge-wall { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin-top: 10px; }
+.badge { border: 1px solid var(--sea-3); background: var(--sea-2); border-radius: 12px; padding: 10px; display: grid; gap: 2px; opacity: .55; }
+.badge.got { opacity: 1; border-color: rgba(255,201,60,.55); background: radial-gradient(circle at 85% 0%, rgba(255,201,60,.16), transparent 60%), var(--sea-2); }
+.badge .b-ic { font-size: 26px; }
+.badge b { font-size: 14px; }
+.badge small { font-size: 12px; color: var(--kelp); }
+h2 small.sub { font-size: 13px; font-weight: 500; color: var(--kelp); margin-left: 6px; }
+.pw-count { font-size: 18px !important; letter-spacing: .02em; }
+/* rivals */
+.rivals .up { color: #5fe08a; } .rivals .down { color: #ff8a8a; }
+/* top answers + bot talk */
+.top-said { margin: 14px auto 0; max-width: 420px; text-align: left; border: 1px solid var(--sea-3); border-radius: 12px; padding: 10px 14px; background: rgba(255,255,255,.03); }
+.ts-h { font: 700 12px var(--font-data); text-transform: uppercase; letter-spacing: .12em; color: var(--kelp); margin: 0 0 6px; }
+.top-said ol { margin: 0; padding-left: 20px; }
+.top-said li { display: list-item; }
+.top-said li span { margin-right: 8px; }
+.top-said li b { font-family: var(--font-data); color: #ffe9a8; font-size: 12px; }
+.bot-talk { display: flex; align-items: center; gap: 10px; max-width: 480px; margin: 14px auto 0; text-align: left; }
+.bt-av { font-size: 34px; }
+.bot-talk p { margin: 0; background: var(--sea-2); border: 1px solid var(--sea-3); border-radius: 16px 16px 16px 4px; padding: 10px 14px; }
+/* mystery */
+.pb-mystery { --hc: #b48cff; }

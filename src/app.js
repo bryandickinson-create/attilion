@@ -55,6 +55,9 @@ const AVATARS = [
   { id: "gdragon",  e: "🪐", name: "Golden Saturn",   krill: 50 },
   { id: "rdragon",  e: "🌌", name: "Rainbow Nebula",  krill: 100 },
   { id: "k1000",    e: "👑", name: "Attillion Crown", krill: 1000 },
+  // Daily Launch streaks
+  { id: "streak7",  e: "🔥", name: "Streak Flame",    streak: 7 },
+  { id: "streak30", e: "🌞", name: "Thirty-Day Sun",  streak: 30 },
   // Secret: only appears after a game where every answer was a 1 in Attillion
   { id: "perfect",  e: "🌌", name: "Perfect Nebula", perfect: true },
   // Secret: only appears after you find a question's hidden BEST answer
@@ -242,6 +245,7 @@ function avKrill(u) { return (u ? u.avKrill : store.get("guestAvKrill", {})) || 
 function perfectDone(u) { return u ? !!u.perfect : !!store.get("guestPerfect", false); }
 function isOpen(a, u) {
   if (a.ev) return evPrizes(u).includes(a.id);
+  if (a.streak) return streakBest(u) >= a.streak;
   if (a.perfect) return perfectDone(u) || redeemed(u).includes("perfect");
   if (a.bestAv) return bestDone(u) || redeemed(u).includes("bestans");
   if (a.code) return redeemed(u).includes(a.id);
@@ -855,6 +859,214 @@ function go(view, extra) {
   }
   clearInterval(timer); if (window.KrillionFX && window.KrillionFX.clear) window.KrillionFX.clear(); S = Object.assign({ view }, extra || {}); render(); window.scrollTo(0, 0); }
 
+/* ---------- extras: power-ups, streaks, badges, rivals, mystery topic, bot talk ---------- */
+// a value saved on your account, or on this device when you're a guest
+function ugGet(field, def) { const u = me(); const v = u ? u[field] : store.get("guest_" + field, undefined); return v === undefined || v === null ? def : v; }
+function ugSet(field, fn, def) {
+  const u = me();
+  if (u) updateUser(x => { x[field] = fn(x[field] === undefined || x[field] === null ? def : x[field]); });
+  else store.set("guest_" + field, fn(store.get("guest_" + field, def)));
+}
+
+/* Power-ups: earned by playing, used during a round (not in Quick match, the
+   Daily Launch or the Mystery topic, so those stay fair). */
+const POWERS = {
+  hint:   { ic: "💡", name: "Hint",   what: "Shows the first letter and length of one rare answer" },
+  double: { ic: "✌️", name: "Double", what: "This round's points count twice" },
+  freeze: { ic: "🧊", name: "Freeze", what: "Adds 10 seconds to the clock" }
+};
+const START_POWERS = { hint: 2, double: 1, freeze: 2 };
+function powers() { return Object.assign({}, START_POWERS, ugGet("powers", {})); }
+function addPower(k, n) { ugSet("powers", p => { p = Object.assign({}, START_POWERS, p); p[k] = Math.min(99, Math.max(0, (p[k] || 0) + n)); return p; }, {}); }
+function powersAllowed() { return S.mode !== "live" && S.mode !== "daily" && S.mode !== "mystery"; }
+function powerBar() {
+  if (!powersAllowed() || S.phase !== "answer") return "";
+  const have = powers(), used = (S.powerUsed && S.powerUsed[S.round]) || {};
+  return `<div class="powers" role="group" aria-label="Power-ups">${Object.entries(POWERS).map(([k, p]) => {
+    const off = !have[k] || used[k] || (k === "freeze" && S.deadline === Infinity);
+    return `<button type="button" class="power ${used[k] ? "on" : ""}" data-act="power" data-k="${k}" ${off ? "disabled" : ""} title="${esc(p.what)}"><span aria-hidden="true">${p.ic}</span> ${p.name} <b>×${have[k] || 0}</b></button>`;
+  }).join("")}</div>${S.hintText ? `<p class="hint-text">💡 ${esc(S.hintText)}</p>` : ""}${S.doubles && S.doubles[S.round] ? `<p class="hint-text">✌️ Double is on: this round counts twice</p>` : ""}`;
+}
+function usePower(k) {
+  if (!powersAllowed() || S.phase !== "answer" || !POWERS[k]) return;
+  S.powerUsed = S.powerUsed || {}; const used = S.powerUsed[S.round] = S.powerUsed[S.round] || {};
+  if (used[k] || !powers()[k]) return;
+  const prompt = PROMPT_BY_ID[S.prompts[S.round]];
+  if (k === "freeze") { if (S.deadline === Infinity) return; S.deadline += 10000; }
+  if (k === "double") { S.doubles = S.doubles || {}; S.doubles[S.round] = true; }
+  if (k === "hint") {
+    const pool = prompt.answers.slice(prompt.krillFrom, prompt.familiar).filter(a => norm(a.display) !== bestDisplay(prompt) && (!prompt.test || prompt.answers.indexOf(a) >= 0));
+    const a = pool[Math.floor(Math.random() * pool.length)] || prompt.answers[prompt.krillFrom];
+    const d = a.display; S.hintText = `Try one that starts with “${d[0].toUpperCase()}” and has ${d.replace(/[^a-z]/gi, "").length} letters`;
+  }
+  used[k] = true; addPower(k, -1); SFX("pop");
+  const inp = document.getElementById("answer"), val = inp ? inp.value : "";
+  render();
+  const again = document.getElementById("answer"); if (again) { again.value = val; again.focus(); }
+}
+// one power-up for finishing a game (two for a win against a bot)
+function earnPowers(res) {
+  if (S.mode === "endless" || S.mode === "mystery") return [];
+  const keys = Object.keys(POWERS), got = [];
+  const n = S.mode === "daily" ? 2 : S.mode === "bot" && res.my > res.their ? 2 : 1;
+  for (let i = 0; i < n; i++) { const k = keys[Math.floor(Math.random() * keys.length)]; addPower(k, 1); got.push(k); }
+  return got;
+}
+
+/* Daily streaks: days in a row with a Daily Launch played (any level). */
+function dailyDays(u) {
+  const d = u === undefined ? (me() ? me().daily : store.get("guestDaily", {})) : u ? u.daily : store.get("guestDaily", {});
+  return [...new Set(Object.keys(d || {}).map(k => k.replace(/^(kids|big)-/, "")))].sort();
+}
+function dayShift(key, n) { const t = new Date(key + "T12:00:00"); t.setDate(t.getDate() + n); return todayKey(t); }
+function streakNow(u) {
+  const days = new Set(dailyDays(u)); let k = todayKey();
+  if (!days.has(k)) k = dayShift(k, -1);
+  let n = 0; while (days.has(k)) { n++; k = dayShift(k, -1); }
+  return n;
+}
+function streakBest(u) {
+  const days = dailyDays(u); let best = 0, run = 0, prev = null;
+  days.forEach(k => { run = prev && dayShift(prev, 1) === k ? run + 1 : 1; best = Math.max(best, run); prev = k; });
+  return Math.max(best, (u && u.streakBest) || 0);
+}
+
+/* Achievements: worked out from what you've already done. */
+function allHistory(u) { return u ? (u.history || []).concat((u.kid && u.kid.history) || [], (u.big && u.big.history) || []) : []; }
+function beatBot(u, key) { const n = BOTS[key] && BOTS[key].name + " (computer)"; return allHistory(u).some(h => h.opp === n && h.me > h.them); }
+const BADGES = [
+  { id: "first",   ic: "🌟", name: "First Light",       what: "Find your first 1 in Attillion",        test: u => krillCount(u) >= 1 },
+  { id: "k10",     ic: "✨", name: "Stargazer",         what: "Find 10 1 in Attillions",                test: u => krillCount(u) >= 10 },
+  { id: "k100",    ic: "🌠", name: "Star Collector",    what: "Find 100 1 in Attillions",               test: u => krillCount(u) >= 100 },
+  { id: "best",    ic: "💎", name: "Treasure Hunter",   what: "Find a secret BEST answer",              test: u => bestDone(u) },
+  { id: "perfect", ic: "🌌", name: "Flawless",          what: "Every answer in a game a 1 in Attillion", test: u => perfectDone(u) },
+  { id: "hole",    ic: "🕳️", name: "Event Horizon",     what: "Beat Black Hole",                        test: u => beatBot(u, "shark") },
+  { id: "nova",    ic: "💥", name: "Supernova Slayer",  what: "Beat Supernova",                         test: u => beatBot(u, "nova") },
+  { id: "quasar",  ic: "🌠", name: "Brighter Than Bright", what: "Beat Quasar",                          test: u => beatBot(u, "quasar") },
+  { id: "friends", ic: "🤝", name: "Good Sport",        what: "Win 10 friend challenges",               test: u => allHistory(u).filter(h => h.kind === "friend" && h.me > h.them).length >= 10 },
+  { id: "quick",   ic: "⚡", name: "Quick Draw",        what: "Win 5 Quick matches",                    test: u => allHistory(u).filter(h => h.kind === "quick" && h.me > h.them).length >= 5 },
+  { id: "streak7", ic: "🔥", name: "On Fire",           what: "Play the Daily Launch 7 days in a row",  test: u => streakBest(u) >= 7 },
+  { id: "subjects", ic: "📚", name: "Know-It-All",      what: "A 1 in Attillion in every subject",      test: u => SUBJECTS.every(x => ((u ? u.krillions : store.get("guestKrillions", [])) || []).some(k => k.mode === x.name + " Launch")) },
+  { id: "event",   ic: "🎟️", name: "Event Champion",    what: "Win an event avatar",                    test: u => evPrizes(u).length >= 1 },
+  { id: "games",   ic: "🚀", name: "Frequent Flyer",    what: "Play 50 games that count for Elo",       test: u => allHistory(u).length >= 50 },
+  { id: "endless", ic: "♾️", name: "Secret Finder",     what: "Find the secret answer in Endless",      test: u => (((u ? u.endless : store.get("guestEndless", null)) || {}).found || 0) >= 1 },
+  { id: "mystery", ic: "🔮", name: "Mystery Solver",    what: "Score 90+ on a Mystery topic",           test: u => ((ugGet("mysteryLog", []) || []).some(m => m.points >= 90)) }
+];
+function badgesEarned(u) { return BADGES.filter(b => { try { return b.test(u); } catch (e) { return false; } }).map(b => b.id); }
+// badges you just earned (and marks them as seen)
+function newBadges() {
+  const earned = badgesEarned(me()), seen = ugGet("badgesSeen", null);
+  if (seen === null) { ugSet("badgesSeen", () => earned, []); return []; }   // first time: don't announce old ones
+  const fresh = earned.filter(id => !seen.includes(id));
+  if (fresh.length) ugSet("badgesSeen", s => [...new Set(s.concat(fresh))], []);
+  return fresh.map(id => BADGES.find(b => b.id === id));
+}
+function badgeWall(u) {
+  const got = new Set(badgesEarned(u));
+  return `<div class="badge-wall">${BADGES.map(b => `<div class="badge ${got.has(b.id) ? "got" : ""}" title="${esc(b.what)}"><span class="b-ic" aria-hidden="true">${got.has(b.id) ? b.ic : "🔒"}</span><b>${esc(b.name)}</b><small>${esc(b.what)}</small></div>`).join("")}</div>`;
+}
+
+/* Rivalries: your record against each real person you've played. */
+function rivals(u) {
+  const m = {};
+  allHistory(u).filter(h => h.kind === "friend" || h.kind === "quick").forEach(h => {
+    const r = m[h.opp] = m[h.opp] || { name: h.opp, w: 0, l: 0, d: 0, last: 0 };
+    if (h.me > h.them) r.w++; else if (h.me < h.them) r.l++; else r.d++;
+    r.last = Math.max(r.last, h.when || 0);
+  });
+  return Object.values(m).sort((a, b) => (b.w + b.l + b.d) - (a.w + a.l + a.d) || b.last - a.last);
+}
+function rivalTable(u) {
+  const list = rivals(u).slice(0, 12);
+  if (!list.length) return `<p class="hint">No rivals yet. Play a friend or a Quick match and your record against each person shows up here.</p>`;
+  return `<div class="table-wrap"><table class="breakdown rivals"><thead><tr><th>Rival</th><th>Record</th><th></th></tr></thead><tbody>${list.map(r => {
+    const lead = r.w > r.l ? `<span class="up">You lead</span>` : r.w < r.l ? `<span class="down">They lead</span>` : `<span>Even</span>`;
+    return `<tr><td>${esc(r.name)}</td><td class="n">${r.w}–${r.l}${r.d ? "–" + r.d : ""}</td><td>${lead}</td></tr>`;
+  }).join("")}</tbody></table></div>`;
+}
+
+/* Weekly Mystery topic: one surprise question a week, one try, its own board. */
+function weekKey(d) { d = d || new Date(); const t = new Date(d.getFullYear(), d.getMonth(), d.getDate()); t.setDate(t.getDate() - ((t.getDay() + 6) % 7)); return todayKey(t); }
+function mysteryTier() { return ageMode(); }
+function mysteryPromptId() { const ids = modeBases().map(p => p.id).sort(); return ids[hashStr("mystery:" + mysteryTier() + ":" + weekKey()) % ids.length]; }
+function myMystery() { return (ugGet("mysteryLog", []) || []).find(m => m.week === weekKey() && m.tier === mysteryTier()) || null; }
+let MYSTERY_BOARD = null, mysteryLoading = false, mysteryTried = 0;
+function loadMysteryBoard() {
+  if (mysteryLoading || Date.now() - mysteryTried < 30000 || (MYSTERY_BOARD && MYSTERY_BOARD.week === weekKey() && MYSTERY_BOARD.tier === mysteryTier() && Date.now() - MYSTERY_BOARD.at < 30000)) return;
+  mysteryLoading = true; mysteryTried = Date.now();
+  (async () => {
+    let got = false;
+    try {
+      const c = await cloud(); if (!c) return;
+      const r = await withTimeout(c.from("profiles").select("name,avatar,m:data->mysteryNow").eq("data->mysteryNow->>key", weekKey() + ":" + mysteryTier()).limit(200), 8000);
+      if (!r.error && r.data) MYSTERY_BOARD = { week: weekKey(), tier: mysteryTier(), at: Date.now(), rows: r.data.map(x => ({ name: x.name, avatar: x.avatar, answer: x.m && x.m.answer, points: (x.m && x.m.points) || 0 })) }, got = true;
+    } catch (e) {} finally { mysteryLoading = false; if (got && S.view === "mystery") render(); }
+  })();
+}
+function viewMystery() {
+  loadMysteryBoard();
+  const pr = PROMPT_BY_ID[mysteryPromptId()], mine = myMystery();
+  const local = Object.values(users()).map(u => ((u.mysteryLog || []).find(m => m.week === weekKey() && m.tier === mysteryTier()) || null) && Object.assign({ name: u.name, avatar: u.avatar }, (u.mysteryLog || []).find(m => m.week === weekKey() && m.tier === mysteryTier()))).filter(Boolean);
+  const rows = (MYSTERY_BOARD && MYSTERY_BOARD.rows.length ? MYSTERY_BOARD.rows : local).slice().sort((a, b) => b.points - a.points);
+  const next = new Date(weekKey() + "T12:00:00"); next.setDate(next.getDate() + 7);
+  return `${header()}<button class="link back-link menu-back" data-go="modes">← Back to Play</button>
+  <main class="narrow mystery">
+    <p class="eyebrow">Mystery topic · week of ${new Date(weekKey() + "T12:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" })}</p>
+    <h1>🔮 ${mine ? esc(pr.q) : "One secret question"}</h1>
+    ${mine ? `<p class="lede small">You answered <b>${esc(mine.answer || "(blank)")}</b> for <b>${mine.points}</b> points. A new mystery topic arrives ${next.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}.</p>`
+      : `<p class="lede small">Everyone gets the same surprise question this week, and you get one try. You won't see the question until you start. Find the rarest answer to top this week's board.</p>
+         <button class="btn primary" data-act="mystery-play">Reveal the question</button>`}
+    <h2>This week's board</h2>
+    ${rows.length ? `<div class="table-wrap"><table class="board"><thead><tr><th>#</th><th>Player</th><th>${mine ? "Answer" : ""}</th><th>Points</th></tr></thead><tbody>${rows.map((r, i) => `<tr class="${me() && r.name === me().name ? "you" : ""}"><td class="n">${i + 1}</td><td>${esc(r.name)}</td><td>${mine ? esc(r.answer || "–") : "🔒"}</td><td class="n">${r.points}</td></tr>`).join("")}</tbody></table></div>
+      ${mine ? "" : `<p class="hint">Answers stay hidden until you've played.</p>`}`
+      : `<p class="hint">Nobody has solved this week's mystery yet. ${me() ? "" : `<button class="link" data-go="login">Log in</button> to get on the board.`}</p>`}
+  </main>`;
+}
+function finishMystery() {
+  const r = S.scores[0] || { raw: "", points: 0 };
+  const entry = { week: weekKey(), tier: mysteryTier(), key: weekKey() + ":" + mysteryTier(), q: PROMPT_BY_ID[S.prompts[0]].q, answer: r.valid ? r.display : r.raw || "", points: r.points, when: Date.now() };
+  ugSet("mysteryLog", l => [entry].concat((l || []).filter(m => !(m.week === entry.week && m.tier === entry.tier))).slice(0, 30), []);
+  if (me()) updateUser(x => { x.mysteryNow = entry; });
+  MYSTERY_BOARD = null; mysteryTried = 0;
+  go("mystery");
+}
+
+/* What other players said: the most common answers given for this question. */
+function topSaid(prompt) {
+  const base = prompt.baseId || prompt.id, counts = {};
+  Object.entries(HC[base] || {}).forEach(([k, n]) => { counts[k] = Math.max(counts[k] || 0, n); });
+  const local = store.get("humanCounts", {});
+  Object.keys(local).forEach(k => { if (k.startsWith(base + ":")) { const a = k.slice(base.length + 1); counts[a] = Math.max(counts[a] || 0, local[k]); } });
+  return Object.entries(counts).filter(([k]) => norm(k) !== bestDisplay(prompt)).sort((a, b) => b[1] - a[1]).slice(0, 5)
+    .map(([k, n]) => { const i = prompt.index.get(k); return { a: i != null ? prompt.answers[i].display : k, n }; });
+}
+function topSaidBlock(prompt) {
+  const top = topSaid(prompt);
+  if (!top.length) return "";
+  return `<div class="top-said"><p class="ts-h">What players said most</p><ol>${top.map(t => `<li><span>${esc(t.a)}</span><b>${t.n.toLocaleString()}×</b></li>`).join("")}</ol></div>`;
+}
+
+/* Bot personalities: what each bot says when the game ends, or when it finds a 1 in Attillion. */
+const BOT_TALK = {
+  dust:      { win: ["Wait... I won? I was just floating here.", "Even space dust gets lucky sometimes!"], lose: ["Poof. Back to drifting.", "I'll settle somewhere eventually."], tie: ["We're both stuck in orbit!"], krill: ["Ooh, sparkly!"] },
+  minnow:    { win: ["Rock solid answers!", "Didn't see that coming, did you?"], lose: ["Ouch. That's a crater-sized loss.", "I'll tumble back to the asteroid belt."], tie: ["We collided right in the middle!"], krill: ["Direct hit!"] },
+  fish:      { win: ["Swung right past you!", "See you in 76 years for a rematch."], lose: ["Burned up on reentry.", "My tail is between my legs."], tie: ["Same orbit, same score."], krill: ["Whoosh! Found one!"] },
+  rover:     { win: ["Exploration pays off!", "Found that answer under a rock."], lose: ["Low battery. Need a recharge.", "Stuck in the sand again."], tie: ["Mission status: even."], krill: ["Sample collected!"] },
+  barracuda: { win: ["Shine bright!", "Twinkle twinkle, I win."], lose: ["Even stars fade sometimes.", "You outshined me."], tie: ["Two stars, same glow."], krill: ["Twinkle!"] },
+  shark:     { win: ["That answer got sucked right in.", "Nothing escapes me."], lose: ["You escaped my pull?!", "Impossible... the event horizon failed."], tie: ["We're caught in each other's gravity."], krill: ["Pulled that one from the void."] },
+  nova:      { win: ["BOOM! Too bright for you.", "What an explosive finish!"], lose: ["I... fizzled.", "That was a dud."], tie: ["A double explosion!"], krill: ["KABOOM!"] },
+  quasar:    { win: ["The brightest thing in the universe wins again.", "Did you expect anything else?"], lose: ["You outshone a quasar. Respect.", "Recalculating the universe..."], tie: ["Nobody has ever tied me. Until now."], krill: ["Too easy."] }
+};
+function botTalk(key, kind) {
+  const b = BOTS[key]; if (!b) return "";
+  const lines = (BOT_TALK[key] || {})[kind] || (b.event ? {
+    win: [`More ${EVENT.tokenName} for me!`, `That's how we do it in ${EVENT.name}.`],
+    lose: [`Take some ${EVENT.tokenName}. You earned them.`, "Next time I'm coming for you!"],
+    tie: ["Evenly matched!"], krill: ["Found a rare one!"] }[kind] : ["Good game!"]);
+  return lines[Math.floor(Math.random() * lines.length)];
+}
+function botBubble(key, kind) { const b = BOTS[key]; return b ? `<div class="bot-talk"><span class="bt-av" aria-hidden="true">${b.av}</span><p><b>${esc(b.name)}:</b> “${esc(botTalk(key, kind))}”</p></div>` : ""; }
+
 /* ---------- match flow ---------- */
 function startMatch(opts) {
   // opts: { mode: "bot"|"daily"|"challenge-host"|"challenge-guest", level, seed, prompts, opp }
@@ -870,11 +1082,11 @@ function startMatch(opts) {
   });
   beginRound();
 }
-function fixedRarity() { return S.mode === "endless" || S.mode === "live" || S.mode === "daily" || S.mode === "solo" || S.mode === "subject" || S.mode === "challenge-host" || S.mode === "challenge-guest"; }
+function fixedRarity() { return S.mode === "mystery" || S.mode === "endless" || S.mode === "live" || S.mode === "daily" || S.mode === "solo" || S.mode === "subject" || S.mode === "challenge-host" || S.mode === "challenge-guest"; }
 // Settings switch: Endless and Free Launch can be played with no timer (neither mode changes Elo).
 // Settings: timer and number of questions apply to every mode except Quick match
 // (the Daily Launch also keeps 7 questions so everyone plays the same set).
-function untimedOk() { return S.mode !== "live"; }
+function untimedOk() { return S.mode !== "live" && S.mode !== "mystery"; }
 function roundsSetting(mode) { const v = store.get("rounds", ROUNDS); return mode === "live" || mode === "daily" ? ROUNDS : v === 10 ? 10 : ROUNDS; }
 function isUntimedSetting() { return !!store.get("untimed", false); }
 function nRounds() { return (S && S.rounds) || ROUNDS; }
@@ -884,7 +1096,7 @@ function roundSecs() { const v = store.get("timerSecs", ROUND_SECONDS); return u
 function sayBtnSize() { const v = store.get("sayBtnSize", "m"); return ["off", "s", "m", "l", "xl"].includes(v) ? v : "m"; }
 function promptSpoken(pr) { return pr ? (pr.twist ? pr.baseQ + " " + pr.twist : pr.q) : ""; }
 function beginRound() {
-  S.bestUnlock = false;
+  S.bestUnlock = false; S.hintText = "";
   S.phase = "answer"; S.deadline = isUntimed() ? Infinity : Date.now() + roundSecs() * 1000; S.draft = "";
   S.botLockAt = S.mode === "bot" ? Date.now() + (2 + Math.random() * Math.min(19, roundSecs() * 0.63)) * 1000 : null;
   S.submittedAt = null; S.lastTick = null;
@@ -947,7 +1159,8 @@ function reveal() {
   // score both sides before this answer is counted, so a shared answer is worth the same to both
   S.lastMine = scoreAnswer(prompt, S.mine[S.round], fixed, repeatsCount());
   if (S.mode === "endless") S.lastMine = endlessAdjust(prompt, S.lastMine);
-  S.lastTheirs = (S.mode === "daily" || S.mode === "solo" || S.mode === "subject" || S.mode === "endless" || S.mode === "challenge-host") ? null : scoreAnswer(prompt, S.theirs[S.round], fixed, repeatsCount());
+  if (S.doubles && S.doubles[S.round] && S.lastMine.valid) S.lastMine = Object.assign({}, S.lastMine, { points: S.lastMine.points * 2, doubled: true });
+  S.lastTheirs = (S.mode === "daily" || S.mode === "mystery" || S.mode === "solo" || S.mode === "subject" || S.mode === "endless" || S.mode === "challenge-host") ? null : scoreAnswer(prompt, S.theirs[S.round], fixed, repeatsCount());
   bumpHuman(prompt, S.lastMine.idx);
   if (repeatsCount()) noteUsed(prompt, S.lastMine.idx);
   if (S.mode !== "daily") { recordAnswer(prompt.id, S.lastMine.idx); }
@@ -1024,6 +1237,7 @@ function nextRound() {
 }
 function total(list) { return (list || []).reduce((s, x) => s + (x ? x.points : 0), 0); }
 function finishMatch() {
+  if (S.mode === "mystery") { finishMystery(); return; }
   const my = total(S.scores), their = total(S.oppScores);
   const res = { my, their };
   if (S.mode === "bot") {
@@ -1073,6 +1287,9 @@ function finishMatch() {
     if (c.elo != null) res.elo = applyMatchResult(c.from, c.elo, my, their, "friend", c.id);
     res.code = b64e({ v: 1, id: c.id, reply: true, p: S.prompts, av: myAvatarObj().id, from: u ? u.name : "Your friend", elo: u ? myElo(u) - (res.elo ? res.elo.delta : 0) : null, a: S.mine, host: c.a, hostName: c.from });
   }
+  res.powersEarned = earnPowers(res);
+  ugSet("streakBest", n => Math.max(n || 0, streakBest(me())), 0);
+  res.badges = newBadges();
   // every single answer a 1 in Attillion: the secret Perfect Nebula avatar
   if (S.mode !== "endless" && S.scores.length >= ROUNDS && S.scores.every(x => x && x.points >= 100) && !perfectDone(me())) {
     if (me()) updateUser(x => { x.perfect = true; }); else store.set("guestPerfect", true);
@@ -1477,12 +1694,13 @@ function viewHome() {
   <main class="home">
     <div class="play-grid">
       ${box("pb-quick", `data-act="quick"`, "⚡", "Quick match", "Play a real person near your Elo, right now", `<span id="online">${onlineText()}</span>`)}
-      ${done ? box("pb-daily", `data-act="daily-view"`, cal, "Daily Launch", `Done today: ${done.score}. New one at midnight`, "#" + dailyNumber(key))
-             : box("pb-daily", `data-act="daily"`, cal, "Daily Launch", "Same 7 prompts for everyone today", "#" + dailyNumber(key))}
+      ${done ? box("pb-daily", `data-act="daily-view"`, cal, "Daily Launch", `Done today: ${done.score}. New one at midnight`, (streakNow() ? "🔥 " + streakNow() + " · " : "") + "#" + dailyNumber(key))
+             : box("pb-daily", `data-act="daily"`, cal, "Daily Launch", "Same 7 prompts for everyone today", (streakNow() ? "🔥 " + streakNow() + " · " : "") + "#" + dailyNumber(key))}
       ${box("pb-endless", `data-act="endless"`, "♾️", "Endless", "Never-ending prompts, one secret 1 in Attillion each", endlessStats().best ? "Best " + endlessStats().best : "")}
       ${box("pb-solo", `data-act="solo"`, "🎯", "Free Launch", "7 new prompts, beat your high score", soloStats().best ? "Best " + soloStats().best : "")}
       ${kidMode() || bigMode() ? "" : box("pb-subjects", `data-go="subjects"`, "📚", "Subjects", "Sports, movies, history, weather and more", "")}
       ${box("pb-friends", `data-go="friends"`, "🤝", "Play a friend", "Send a challenge or enter a code", "")}
+      ${box("pb-mystery", `data-go="mystery"`, "🔮", "Mystery topic", myMystery() ? `You scored ${myMystery().points}. See this week's board` : "One surprise question this week. One try.", "Weekly")}
     </div>
     <details class="how">
       <summary>How scoring works</summary>
@@ -1592,7 +1810,7 @@ function viewPlay() {
   const oppLabel = oppName || (S.mode === "challenge-host" ? "Your friend" : null);
   const scoreLine = `<div class="scoreboard ${oppLabel ? "duo" : "solo"}">
       ${pod("You", S.scores, "pod-me", prevMine, "me")}
-      <div class="sb-mid"><span class="sb-round">${S.mode === "endless" ? "Round " + (S.round + 1) : `Round ${S.round + 1}/${nRounds()}`}</span>${oppName ? `<span class="sb-lead" id="lead">${S.round === 0 && !revealing ? "First launch" : leadTextAt(oppName, prevMine, prevOpp)}</span>` : S.mode === "daily" ? `<span class="sb-lead">Daily Launch</span>` : S.mode === "solo" ? `<span class="sb-lead">Free Launch</span>` : S.mode === "subject" ? `<span class="sb-lead">${subjName()} Launch</span>` : S.mode === "endless" ? `<span class="sb-lead">Endless · ${S.scores ? S.scores.filter(x => x && x.secretHit).length : 0} 🌟 found</span>` : ""}</div>
+      <div class="sb-mid"><span class="sb-round">${S.mode === "endless" ? "Round " + (S.round + 1) : `Round ${S.round + 1}/${nRounds()}`}</span>${oppName ? `<span class="sb-lead" id="lead">${S.round === 0 && !revealing ? "First launch" : leadTextAt(oppName, prevMine, prevOpp)}</span>` : S.mode === "daily" ? `<span class="sb-lead">Daily Launch</span>` : S.mode === "mystery" ? `<span class="sb-lead">🔮 Mystery topic</span>` : S.mode === "solo" ? `<span class="sb-lead">Free Launch</span>` : S.mode === "subject" ? `<span class="sb-lead">${subjName()} Launch</span>` : S.mode === "endless" ? `<span class="sb-lead">Endless · ${S.scores ? S.scores.filter(x => x && x.secretHit).length : 0} 🌟 found</span>` : ""}</div>
       ${oppLabel ? pod(oppLabel, oppName ? S.oppScores : null, "pod-opp", prevOpp, "opp", oppName ? "" : "plays after you") : ""}
     </div>`;
   let body = "";
@@ -1610,6 +1828,7 @@ function viewPlay() {
           <button class="btn primary" type="submit">Lock in</button>
         </form>
         <p class="answer-error" id="answer-error" role="alert"></p>
+        ${powerBar()}
         ${S.mode === "endless" && skipLimit() > 0 ? `<button class="btn ghost small skip-btn" data-act="skip" ${skipsLeft() ? "" : "disabled"}>⏭ Skip this one ${skipLimit() === Infinity ? "" : `(${skipsLeft()} left)`}</button>` : ""}` : `<p class="waiting">Locked in: <b>${esc(S.mine[S.round] || "(blank)")}</b>. Waiting for ${esc(oppName)}…</p>`}
         ${oppName ? `<p class="opp-status" id="opplock">${S.live && S.live.gone ? `${esc(oppName)} left the match. Finish your rounds and the win is yours.` : S.mode === "challenge-guest" ? `${esc(oppName)} already answered. You'll see it at the end of the round.` : `<span class="dot"></span>${esc(oppName)} is thinking`}</p>` : ""}
       </div>`;
@@ -1622,7 +1841,7 @@ function viewPlay() {
   </main>`;
 }
 
-function roundLabel() { return S.mode === "endless" ? `Round ${S.round + 1} · Endless` : `Round ${S.round + 1} of ${nRounds()}`; }
+function roundLabel() { return S.mode === "mystery" ? "🔮 This week's Mystery topic · one try" : S.mode === "endless" ? `Round ${S.round + 1} · Endless` : `Round ${S.round + 1} of ${nRounds()}`; }
 function promptTitle(p) { return p.twist ? `${esc(p.baseQ)} <span class="twist"><b class="twist-tag">Twist</b> ${esc(p.twist)}</span>` : esc(p.q); }
 // Where an answer's avatar ends up in the sky column (percent from the top).
 // Rarer answers climb higher; a miss stays on the launch pad at the bottom.
@@ -1685,6 +1904,8 @@ function revealBlock(prompt, oppName) {
     ${same ? `<p class="same">Same answer. You both score it.</p>` : ""}
     ${S.unlockNote ? `<p class="unlock-note">That's Attillion #${S.unlockNote.krill}! You unlocked the ${avMarkup(S.unlockNote)} <b>${S.unlockNote.name}</b>. <button class="link" data-go="avatar">Use it</button></p>` : ""}
     ${S.mode === "endless" ? (S.lastMine.secretHit ? `<p class="best-note">You found the one secret 1 in Attillion!</p>` : `<p class="trench">The one secret 1 in Attillion was: <b>${esc(prompt.answers[S.secret].display)}</b></p>`) : `<p class="trench">Up among the stars: ${samples.map(esc).join(", ")}</p>`}
+    ${topSaidBlock(prompt)}
+    ${S.mode === "bot" && S.lastTheirs && S.lastTheirs.points >= 100 ? botBubble(S.level, "krill") : ""}
     ${S.mode === "endless" ? `<div class="row"><button class="btn primary" id="next" data-act="next">Next prompt</button><button class="btn ghost" data-act="endless-stop">Stop here</button></div>`
       : `<button class="btn primary" id="next" data-act="next">${S.round < nRounds() - 1 ? "Next prompt" : "See results"}</button>`}
   </div>`;
@@ -1706,6 +1927,10 @@ function viewResults() {
     extra += `<p class="hint"><button class="link" data-go="login">Log in</button> to have games count toward your Elo.</p>`;
   }
   if (S.mode === "live" && res.forfeit) extra += `<p class="hint">${esc(oppName)} left before the end, so their missing rounds scored 0.</p>`;
+  if (S.mode === "bot") extra += botBubble(S.level, res.my > res.their ? "lose" : res.my < res.their ? "win" : "tie");
+  if (res.powersEarned && res.powersEarned.length) extra += `<p class="best-note power-note">🎁 Power-up${res.powersEarned.length > 1 ? "s" : ""} earned: ${res.powersEarned.map(k => POWERS[k].ic + " " + POWERS[k].name).join(", ")}</p>`;
+  if (res.badges && res.badges.length) extra += res.badges.map(b => `<p class="unlock-note badge-note">New badge: <b>${b.ic} ${esc(b.name)}</b> · ${esc(b.what)}</p>`).join("");
+  if (S.mode === "daily") { const st = streakNow(); if (st > 1) extra += `<p class="best-note">🔥 ${st}-day streak! Come back tomorrow to keep it going.</p>`; }
   if (res.perfectUnlocked) extra += `<p class="unlock-note perfect-note">PERFECT GAME! Every answer was a 1 in Attillion. You unlocked the secret ${avMarkup(avatarById("perfect"))} <b>Perfect Nebula</b> avatar! <button class="link" data-go="avatar">Use it</button></p>`;
   if (res.tokens) {
     const prize = avatarById("ev-" + EVENT.key);
@@ -1877,9 +2102,16 @@ function viewProfile() {
       ${SUBJECTS.map(x => `<div><span>Best ${x.name.toLowerCase()}</span><b>${(u.subjects && u.subjects[x.key] && u.subjects[x.key].best) || "–"}</b></div>`).join("")}
       <div><span>Best daily</span><b>${dailies.length ? Math.max(...dailies.map(d => d[1].score)) : "–"}</b></div>
       <div class="gold"><span>Attillions</span><b>${krillCount(u)}</b></div>
+      <div><span>🔥 Daily streak</span><b>${streakNow(u)}</b></div>
+      <div><span>Best streak</span><b>${streakBest(u)}</b></div>
+      <div><span>Power-ups</span><b class="pw-count">${Object.entries(POWERS).map(([k, p]) => p.ic + powers()[k]).join(" ")}</b></div>
     </div>
     <h2>Your 1 in Attillions</h2>
     ${(u.krillions || []).length ? krillWall(u.krillions) : `<p class="hint">None yet. Find an answer almost nobody would say and it will be saved here.</p>`}
+    <h2>Badges <small class="sub">${badgesEarned(u).length} of ${BADGES.length}</small></h2>
+    ${badgeWall(u)}
+    <h2>Rivals</h2>
+    ${rivalTable(u)}
     <h2>Recent matches</h2>
     ${u.history.length ? `<div class="table-wrap"><table class="breakdown"><thead><tr><th>Opponent</th><th>Score</th><th>Elo</th></tr></thead><tbody>
       ${u.history.slice(0, 15).map(h => `<tr><td>${esc(h.opp)}</td><td class="n">${h.me}–${h.them}</td><td class="n ${h.delta >= 0 ? "up" : "down"}">${h.delta >= 0 ? "+" : ""}${h.delta}</td></tr>`).join("")}
@@ -1920,7 +2152,7 @@ function viewAvatar() {
           ${open ? `<span class="av-stars" title="1 in Attillions found wearing this avatar">⭐ ${(avKrill(u)[a.id] || 0).toLocaleString()}</span>` : ""}
           <span class="ae">${avMarkup(a)}</span><span class="an">${a.name}${a.dev ? ` <i class="devtag">DEV</i>` : a.code || a.perfect || a.bestAv ? ` <i class="secrettag">secret</i>` : ""}</span>
           ${a.ev ? `<span class="asub" title="${esc((findEvent(a.ev) || {}).name || "")}">Event avatar</span>` : ""}
-          <span class="al">${open ? (sel ? "Selected" : "Pick") : a.krill ? `🔒 ${a.krill} Attillions` : a.ev ? `🔒 ${EVENT_GOAL} ${EVENT.token}` : `🔒 ${a.elo} Elo`}</span>
+          <span class="al">${open ? (sel ? "Selected" : "Pick") : a.krill ? `🔒 ${a.krill} Attillions` : a.ev ? `🔒 ${EVENT_GOAL} ${EVENT.token}` : a.streak ? `🔒 ${a.streak}-day streak` : `🔒 ${a.elo} Elo`}</span>
         </button>`;
       }).join("")}
     </div>
@@ -2196,7 +2428,7 @@ function fillDescriptions() {
 function render() {
   const v = S.view;
   const html = v === "play" ? viewPlay() : v === "results" ? viewResults() : v === "login" ? viewLogin()
-    : v === "settings" ? viewSettings() : v === "avatar" ? viewAvatar() : v === "bots" ? viewBots() : v === "modes" ? viewHome() : v === "computer" ? viewComputer() : v === "event" ? viewEventBots() : v === "subjects" ? viewSubjects() : v === "friends" ? viewFriends() : v === "profile" ? viewProfile() : v === "leaderboard" ? viewLeaderboard() : v === "join" ? viewJoin()
+    : v === "mystery" ? viewMystery() : v === "settings" ? viewSettings() : v === "avatar" ? viewAvatar() : v === "bots" ? viewBots() : v === "modes" ? viewHome() : v === "computer" ? viewComputer() : v === "event" ? viewEventBots() : v === "subjects" ? viewSubjects() : v === "friends" ? viewFriends() : v === "profile" ? viewProfile() : v === "leaderboard" ? viewLeaderboard() : v === "join" ? viewJoin()
     : v === "queue" ? viewQueue() : v === "challenge" ? viewChallengeIntro() : v === "reply" ? viewReplyResult() : v === "daily-done" ? viewDailyDone() : viewHub();
   $app().innerHTML = html;
   document.body.dataset.view = v;
@@ -2252,6 +2484,8 @@ document.addEventListener("click", async e => {
   else if (act === "skips") { store.set("endlessSkips", Number(t.dataset.v)); render(); }
   else if (act === "agemode") { store.set("ageMode", t.dataset.v); store.set("kidMode", t.dataset.v === "little"); const y = window.scrollY; render(); window.scrollTo(0, y); }
   else if (act === "untimed") { store.set("untimed", t.dataset.v === "1"); const y = window.scrollY; render(); window.scrollTo(0, y); }
+  else if (act === "power") usePower(t.dataset.k);
+  else if (act === "mystery-play") { if (myMystery()) go("mystery"); else startMatch({ mode: "mystery", prompts: [mysteryPromptId()] }); }
   else if (act === "rounds") { store.set("rounds", +t.dataset.v); const y = window.scrollY; render(); window.scrollTo(0, y); }
   else if (act === "timer") { store.set("timerSecs", +t.dataset.v); store.set("untimed", false); const y = window.scrollY; render(); window.scrollTo(0, y); }
   else if (act === "spin") {
@@ -2317,7 +2551,13 @@ document.addEventListener("submit", async e => {
       } else if (all[key] && all[key].hash === h) {
         // an account made before cloud saves: move it online now if the name is free
         if (!all[key].cloud && !(res && res.wrong)) { const err = await cloudSignUp(all[key], pw); if (err === "") { all[key].cloud = true; saveUsers(all); } }
-      } else { authBusy(false); go("login", { mode: "login", error: "Username or password doesn't match." }); return; }
+      } else {
+        authBusy(false);
+        go("login", { mode: "login", error: res && res.wrong ? "That password doesn't match this account."
+          : all[key] ? "Username or password doesn't match."
+          : "There's no account called “" + name + "” on this device. If you made it somewhere else (like the Claude app or another device), log in there. Accounts only work on every device once the online save is turned on." });
+        return;
+      }
       authBusy(false);
     }
     store.set("session", all[key].name);
@@ -2397,7 +2637,14 @@ document.addEventListener("submit", async e => {
     const name = document.getElementById("reset-name").value.trim();
     const a = document.getElementById("reset-pw").value, b2 = document.getElementById("reset-pw2").value;
     const all = users(); const rec = all[name.toLowerCase()];
-    if (!rec) { go("login", { mode: "reset", resetName: name, error: "There's no account with that username in this browser." }); return; }
+    if (!rec) {
+      let online = false;
+      try { const c = await cloud(); online = !!(c && await withTimeout(cloudFindName(c, name), 8000)); } catch (err) {}
+      go("login", { mode: "reset", resetName: name, error: online
+        ? "That account is saved online. Go back to Log in and use your username and password, and it will open on this device too. A password can only be reset on the device where you last logged in."
+        : "That account isn't saved on this device. Log in on the device or app where you made it (for example the Claude app instead of Safari), or go back to Log in and try your password here." });
+      return;
+    }
     if (a !== b2) { go("login", { mode: "reset", resetName: name, error: "Those two passwords don't match." }); return; }
     rec.hash = await hashPw(rec.name, a); saveUsers(all); store.set("session", rec.name);
     SFX("lock"); go("profile");
