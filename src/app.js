@@ -67,9 +67,9 @@ const AVATARS = [
   { id: "cheese",   e: "🧀", name: "Moon cheese",    code: 190172967 },
   { id: "saturn",   e: "🪐", name: "Saturn",         code: 812187123 },
   // the Developer avatars always sit last, in this order
-  { id: "dev",      e: "👾", name: "Developer",      code: 3929745284, dev: true },
-  { id: "gdev",     e: "👾", name: "Gold Developer", code: 762634016, dev: true },
-  { id: "rdev",     e: "👾", name: "Rainbow Developer", code: 3751850430, dev: true }
+  { id: "dev",      e: "👾", name: "Developer",      code: 4277053133, dev: true },
+  { id: "gdev",     e: "👾", name: "Gold Developer", code: 2110502093, dev: true },
+  { id: "rdev",     e: "👾", name: "Rainbow Developer", code: 207743465, dev: true }
 ];
 
 /* ---------- seasonal events ----------
