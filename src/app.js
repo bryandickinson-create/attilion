@@ -773,7 +773,10 @@ function eventMatch() { return S.mode === "bot" && BOTS[S.level] && BOTS[S.level
 const AVATAR_THEMES = {
   perfect: { name: "Perfect Nebula", rgb: "190,140,255", emojis: ["🌌", "✨", "💫", "🌠", "⭐", "🪐"], style: "galaxy" },
   k1000: { name: "Attillion Crown", rgb: "255,200,60", emojis: ["👑", "🪙", "💰", "💎", "✨"], style: "crown" },
-  bestans: { name: "Best Answer Diamond", rgb: "120,230,255", emojis: ["💎", "💎", "✨", "💠", "🔷"], style: "diamond" }
+  bestans: { name: "Best Answer Diamond", rgb: "120,230,255", emojis: ["💎", "💎", "✨", "💠", "🔷"], style: "diamond" },
+  streak7: { name: "Streak Flame", rgb: "255,120,40", emojis: ["🔥", "🔥", "✨", "💥", "☄️"], style: "flame" },
+  streak30: { name: "Thirty-Day Sun", rgb: "255,120,40", emojis: ["🔥", "🔥", "✨", "💥", "☄️"], style: "flame" },
+  allbadges: { name: "Grand Champion", rgb: "255,205,70", emojis: ["🏆", "🏅", "🎖️", "🥇", "⭐", "🌟"], style: "trophy" }
 };
 function myTheme() { const a = myAvatarObj(); if (AVATAR_THEMES[a.id]) return AVATAR_THEMES[a.id]; if (eventMatch()) return eventTheme(EVENT); return a.ev ? eventTheme(findEvent(a.ev)) : null; }
 function curOppName() {
