@@ -416,10 +416,26 @@ const CAT_OF = {
    Its own prompts (no twists), 1 in Attillion much easier to reach, and its own
    Elo, daily launch and leaderboard. Switched in Settings, saved on this device. */
 const KID_FAMILIAR = 40, KID_KRILL_FROM = 0.55;
-const KID_EXTRA = { "k-fruit": "fruit", "k-color": "color", "k-ocean": "ocean", "k-body": "body", "k-dino": "dino", "k-pet": "pet", "k-bug": "insect", "k-vehicle": "vehicle", "k-clothes": "clothing", "k-sport": "sport", "k-dessert": "dessert", "k-animal": "mammal", "k-weather": "weather", "k-music": "instrument" };
+const KID_EXTRA = {   // kid topics also accept answers from matching grown-up lists
+  "k-fruit": "fruit", "k-color": "color", "k-ocean": "ocean fish", "k-body": "body bone", "k-dino": "dino", "k-pet": "pet dog breed_cat", "k-bug": "insect",
+  "k-vehicle": "vehicle wheels boat", "k-clothes": "clothing hat shoe wintercloth", "k-sport": "sport", "k-dessert": "dessert candy cake cookie icecream", "k-animal": "mammal bird reptile pet",
+  "k-weather": "weather", "k-music": "instrument", "k-veg": "veg", "k-bird": "bird", "k-drink": "drink coffee", "k-zoo": "mammal reptile bird", "k-yummy": "pizza",
+  "k-ice": "icecream", "k-tool": "tool", "k-space": "space", "k-camp": "camping", "k-game": "game playground", "k-tvshow": "cartoonshow", "k-movie": "animated",
+  "k-character": "disneychar cartoonshow superhero", "k-princess": "disneychar", "k-superhero": "superhero", "k-snack": "candy", "k-job": "job", "k-holiday": "holiday winterholiday",
+  "k-kitchen": "appliance utensil", "k-school": "classroom schoolsupply", "k-garden": "garden flower veg", "k-house": "room furniture bathroom", "k-sky": "space weather", "k-sea": "beach",
+  "k-feel": "emotion", "k-farm": "farm", "k-breakfast": "breakfast cereal", "k-food": "fastfood pizza breakfast", "k-ride": "playground", "k-wheels": "wheels vehicle", "k-farmfood": "veg fruit",
+  "k-shape": "", "k-room": "room", "k-birthday": "", "k-zoo2": "" };
+const KID_LETTER = { "k-letter": "b", "k-letter2": "s" };
+// words for "starts with B / S": every one-word answer from any list
+const KID_WORDS = {};
+Object.values(KID_LETTER).forEach(l => { const set = new Set(); BASES.forEach(b => b.answers.forEach(a => { const d = norm(a.display); if (d[0] === l && !d.includes(" ") && d.length <= 10) set.add(d); })); KID_WORDS[l] = [...set].join(";"); });
 (window.KRILLION_KIDS || []).forEach(p => {
-  const src = KID_EXTRA[p.id];
-  const more = src ? [window.KRILLION_MORE, window.KRILLION_MORE3, window.KRILLION_MORE2].map(m => (m || {})[src]).filter(Boolean) : [];
+  const srcs = (KID_EXTRA[p.id] || "").split(" ").filter(Boolean);
+  // hand-picked grown-up extras first, the big dictionary lists last
+  const more = [window.KRILLION_MORE, window.KRILLION_MORE3].flatMap(m => srcs.map(x => (m || {})[x]))
+    .concat(srcs.map(x => (window.KRILLION_PROMPTS || []).find(q => q.id === x)).filter(Boolean).map(q => q.a))
+    .concat(srcs.map(x => (window.KRILLION_MORE2 || {})[x]))
+    .concat(KID_LETTER[p.id] ? [KID_WORDS[KID_LETTER[p.id]]] : []).filter(Boolean);
   const entries = [p.a].concat(more).join(";").split(";").map(e => ({ forms: e.split("|").map(s => s.trim()).filter(Boolean) })).filter(e => e.forms.length);
   const base = buildPrompt(p.id, p.q, entries, KID_FAMILIAR, { baseId: p.id, kid: true, krillFrac: KID_KRILL_FROM });
   base.cats = ["kids"];
