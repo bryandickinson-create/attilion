@@ -228,6 +228,7 @@ function viewEventCard() {
 // Bundle codes unlock a whole group at once.
 const ELO_BOOST_CAP = 2000;
 const ELO_BOOST_CODE = 3265732527;
+const POWER_RESET_CODE = 2919067109; // lets BOLTCACHE58 be used again today
 const POWER_CODE = 3522492995; // +3 of each power-up, once a day
 const BUNDLES = [
   { id: "krill-all", code: 1175683394, name: "every Attillion trophy", pick: "rdragon" },
@@ -2580,6 +2581,13 @@ document.addEventListener("submit", async e => {
       });
       SFX("win");
       go("avatar", { codeMsg: `+Elo boost! Your ${k === "kid" ? "Kid " : k === "big" ? "Big kid " : ""}Elo is now ${myElo()} (it stops at ${ELO_BOOST_CAP}).` });
+      return;
+    }
+    if (h === POWER_RESET_CODE) {
+      if (ugGet("powerCodeDay", "") !== todayKey()) { go("avatar", { codeMsg: "Your power-up code is already ready. Go use it!" }); return; }
+      ugSet("powerCodeDay", () => "", "");
+      SFX("win");
+      go("avatar", { codeMsg: "⚡ Recharged! You can use the power-up code again." });
       return;
     }
     if (h === POWER_CODE) {
