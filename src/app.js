@@ -534,9 +534,8 @@ function depthFor(sh, prompt) {
   return Math.round(HADAL_DEPTH * Math.log(ZERO_SHARE / sh) / Math.log(ZERO_SHARE / KRILLION_SHARE));
 }
 function zoneFor(depth) { let z = ZONES[0]; ZONES.forEach(x => { if (depth >= x.min) z = x; }); return z; }
-// Answers you've used before count as more common: each earlier use makes it
-// REPEAT_FACTOR times as common (never more common than the top answer).
-const REPEAT_FACTOR = 3;
+// How many times you've given each answer (shown as a note; the rarity change
+// itself comes from the shared human counts below).
 function repeatKey(prompt, idx) { return (prompt.baseId || prompt.id) + ":" + norm(prompt.answers[idx].display); }
 function repeatsStoreKey() { const u = me(); return "repeats:" + (u ? u.name.toLowerCase() : "guest"); }
 function timesUsed(prompt, idx) { return store.get(repeatsStoreKey(), {})[repeatKey(prompt, idx)] || 0; }
@@ -611,11 +610,13 @@ function endlessStats() { const u = me(); return (u ? u.endless : store.get("gue
 function scoreAnswer(prompt, raw, fixed, useRepeats) {
   const idx = matchAnswer(prompt, raw);
   if (idx < 0) return { raw: raw || "", idx: -1, points: 0, depth: 0, share: 0, zone: null, valid: false };
+  // every time any real player (you included) gives this answer, it gets slightly more
+  // common for everyone. Bots and players are scored the same way, so the same
+  // answer is worth the same points whoever gives it.
   const used = useRepeats ? timesUsed(prompt, idx) : 0;
-  let sh = used ? Math.min(prompt.zeroShare, share(prompt, idx, fixed) * Math.pow(REPEAT_FACTOR, used)) : share(prompt, idx, fixed);
-  // every time any real player gives this answer, it gets a little more common for everyone
-  const others = useRepeats ? Math.max(0, humanCount(prompt, idx) - used) : 0;
-  if (others) sh = Math.min(prompt.zeroShare, sh * (1 + HUMAN_STEP * others));
+  let sh = share(prompt, idx, fixed);
+  const said = useRepeats ? humanCount(prompt, idx) : 0;
+  if (said) sh = Math.min(prompt.zeroShare, sh * (1 + HUMAN_STEP * said));
   const depth = depthFor(sh, prompt);
   const points = sh <= prompt.krillShare ? 100 : Math.max(2, Math.min(97, Math.round(100 * depth / HADAL_DEPTH)));
   return { raw, idx, display: prompt.answers[idx].display, points, depth, share: sh, zone: zoneFor(depth), valid: true, used };
@@ -844,11 +845,12 @@ function reveal() {
   if (S.mode === "bot") S.theirs[S.round] = botAnswer(S.level, prompt);
   if (S.live) S.theirs[S.round] = liveOppAnswer(S.round);
   const fixed = fixedRarity();
+  // score both sides before this answer is counted, so a shared answer is worth the same to both
   S.lastMine = scoreAnswer(prompt, S.mine[S.round], fixed, repeatsCount());
   if (S.mode === "endless") S.lastMine = endlessAdjust(prompt, S.lastMine);
+  S.lastTheirs = (S.mode === "daily" || S.mode === "solo" || S.mode === "subject" || S.mode === "endless" || S.mode === "challenge-host") ? null : scoreAnswer(prompt, S.theirs[S.round], fixed, repeatsCount());
   bumpHuman(prompt, S.lastMine.idx);
   if (repeatsCount()) noteUsed(prompt, S.lastMine.idx);
-  S.lastTheirs = (S.mode === "daily" || S.mode === "solo" || S.mode === "subject" || S.mode === "endless" || S.mode === "challenge-host") ? null : scoreAnswer(prompt, S.theirs[S.round], fixed);
   if (S.mode !== "daily") { recordAnswer(prompt.id, S.lastMine.idx); }
   S.scores = S.scores || []; S.oppScores = S.oppScores || [];
   S.scores[S.round] = S.lastMine; if (S.lastTheirs) S.oppScores[S.round] = S.lastTheirs;
@@ -1535,7 +1537,7 @@ function answerCard(label, r, me_) {
       ${norm(r.raw) !== norm(r.display) ? `<p class="matched">you typed “${esc(r.raw)}”</p>` : ""}
       <div class="gauge" aria-hidden="true"><span style="--d:${depthPct.toFixed(1)}%"></span></div>
       <p class="pts"><b>0</b> pts</p>
-      <p class="meta">${r.zone.name} · ${altText(r.depth)} up · ${oneIn(r.share)}</p>${r.used ? `<p class="hint repeat-note">You've said this ${r.used === 1 ? "once" : r.used + " times"} before, so it counts as more common now.</p>` : ""}
+      <p class="meta">${r.zone.name} · ${altText(r.depth)} up · ${oneIn(r.share)}</p>${r.used ? `<p class="hint repeat-note">You've said this ${r.used === 1 ? "once" : r.used + " times"} before, so it is worth slightly less now.</p>` : ""}
       <p class="played">Played like <b>${perfElo(r.points, 1).toLocaleString()}</b></p>
       ${r.points === 100 ? `<p class="what" data-what="${esc(r.display)}" data-hint="${esc(curHint())}" hidden></p>` : ""}`
     : `<p class="pts"><b>0</b> pts</p><p class="meta">${r.raw ? "Not on our list for this prompt" : "Time ran out"}</p><p class="played">Played like <b>${perfElo(0, 1).toLocaleString()}</b></p>`}
