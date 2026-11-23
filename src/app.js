@@ -55,6 +55,8 @@ const AVATARS = [
   { id: "gdragon",  e: "🪐", name: "Golden Saturn",   krill: 50 },
   { id: "rdragon",  e: "🌌", name: "Rainbow Nebula",  krill: 100 },
   { id: "k1000",    e: "👑", name: "Attillion Crown", krill: 1000 },
+  // Secret: only appears after a game where every answer was a 1 in Attillion
+  { id: "perfect",  e: "🌌", name: "Perfect Galaxy", perfect: true },
   // Secret avatars: only unlocked by typing a code in Settings. Codes are
   // stored as hashes so they don't show up as plain text in the page source.
   { id: "alien",    e: "👽", name: "Alien",          code: 32697793 },
@@ -227,8 +229,10 @@ function codeHash(raw) { return hashStr("krillion-code:" + String(raw).toUpperCa
 function redeemed(u) { return u ? (u.codes || []) : store.get("guestCodes", []); }
 // The saved list keeps the latest 500, so a separate running total counts every one.
 function krillCount(u) { return u ? Math.max((u.krillions || []).length, u.krillTotal || 0) : Math.max(store.get("guestKrillions", []).length, store.get("guestKrillTotal", 0)); }
+function perfectDone(u) { return u ? !!u.perfect : !!store.get("guestPerfect", false); }
 function isOpen(a, u) {
   if (a.ev) return evPrizes(u).includes(a.id);
+  if (a.perfect) return perfectDone(u);
   if (a.code) return redeemed(u).includes(a.id);
   if (a.krill) return krillCount(u) >= a.krill || (a.krill < 1000 && redeemed(u).includes("krill-all"));
   return a.elo === 0 || (u && a.elo <= u.peak);
@@ -1027,9 +1031,18 @@ function finishMatch() {
     if (c.elo != null) res.elo = applyMatchResult(c.from, c.elo, my, their, "friend", c.id);
     res.code = b64e({ v: 1, id: c.id, reply: true, p: S.prompts, av: myAvatarObj().id, from: u ? u.name : "Your friend", elo: u ? myElo(u) - (res.elo ? res.elo.delta : 0) : null, a: S.mine, host: c.a, hostName: c.from });
   }
+  // every single answer a 1 in Attillion: the secret Perfect Galaxy avatar
+  if (S.mode !== "endless" && S.scores.length >= ROUNDS && S.scores.every(x => x && x.points === 100) && !perfectDone(me())) {
+    if (me()) updateUser(x => { x.perfect = true; }); else store.set("guestPerfect", true);
+    res.perfectUnlocked = true;
+  }
   S.result = res;
   S.view = "results";
   render();
+  if (res.perfectUnlocked) setTimeout(() => {
+    const a = avatarById("perfect"), el = document.querySelector(".perfect-note");
+    if (a && el && window.KrillionFX && window.KrillionFX.celebrate) { SFX("hadal"); window.KrillionFX.celebrate(el, a.id, avMarkup(a), a.name); }
+  }, 400);
   if (res.evUnlocked) setTimeout(() => {   // the event prize arrives with the event's own animation
     const a = avatarById("ev-" + EVENT.key), el = document.querySelector(".unlock-note");
     if (a && el && window.KrillionFX && window.KrillionFX.celebrate) { SFX("hadal"); window.KrillionFX.celebrate(el, a.id, avMarkup(a), a.name, eventTheme(EVENT)); }
@@ -1650,6 +1663,7 @@ function viewResults() {
     extra += `<p class="hint"><button class="link" data-go="login">Log in</button> to have games count toward your Elo.</p>`;
   }
   if (S.mode === "live" && res.forfeit) extra += `<p class="hint">${esc(oppName)} left before the end, so their missing rounds scored 0.</p>`;
+  if (res.perfectUnlocked) extra += `<p class="unlock-note perfect-note">PERFECT GAME! Every answer was a 1 in Attillion. You unlocked the secret ${avMarkup(avatarById("perfect"))} <b>Perfect Galaxy</b> avatar! <button class="link" data-go="avatar">Use it</button></p>`;
   if (res.tokens) {
     const prize = avatarById("ev-" + EVENT.key);
     extra += `<p class="best-note ev-note">+${res.tokens} ${EVENT.token} ${esc(EVENT.tokenName)} · ${eventTokens(me())} / ${EVENT_GOAL}</p>`;
@@ -1856,11 +1870,11 @@ function viewAvatar() {
     <p class="lede small">This is you on the launch tower. Rarer answers send it higher. New avatars unlock as your best Elo climbs.${u ? ` Your best so far is <b>${peak}</b>.` : ""}</p>
     ${u ? "" : `<p class="hint"><button class="link" data-go="login">Log in</button> to earn Elo and unlock more avatars.</p>`}
     <div class="avatars">
-      ${AVATARS.filter(a => a.ev ? (isOpen(a, u) || a.ev === EVENT.key) : (!a.code || isOpen(a, u))).map(a => {
+      ${AVATARS.filter(a => a.ev ? (isOpen(a, u) || a.ev === EVENT.key) : ((!a.code && !a.perfect) || isOpen(a, u))).map(a => {
         const open = isOpen(a, u);
         const sel = a.e + a.id === current;
         return `<button class="avatar ${sel ? "on" : ""}" ${open ? `data-act="avatar" data-id="${a.id}"` : "disabled"} aria-pressed="${sel}">
-          <span class="ae">${avMarkup(a)}</span><span class="an">${a.name}${a.dev ? ` <i class="devtag">DEV</i>` : a.code ? ` <i class="secrettag">secret</i>` : ""}</span>
+          <span class="ae">${avMarkup(a)}</span><span class="an">${a.name}${a.dev ? ` <i class="devtag">DEV</i>` : a.code || a.perfect ? ` <i class="secrettag">secret</i>` : ""}</span>
           ${a.ev ? `<span class="asub" title="${esc((findEvent(a.ev) || {}).name || "")}">Event avatar</span>` : ""}
           <span class="al">${open ? (sel ? "Selected" : "Pick") : a.krill ? `🔒 ${a.krill} Attillions` : a.ev ? `🔒 ${EVENT_GOAL} ${EVENT.token}` : `🔒 ${a.elo} Elo`}</span>
         </button>`;
@@ -2248,6 +2262,7 @@ document.addEventListener("submit", async e => {
       if (g[todayKey()]) { all[key].daily[todayKey()] = g[todayKey()]; saveUsers(all); }
       const gk = store.get("guestKrillions", []);
       if (gk.length) { all[key].krillions = gk; saveUsers(all); store.set("guestKrillions", []); }
+      if (store.get("guestPerfect", false)) { all[key].perfect = true; saveUsers(all); }
     } else {
       authBusy(true);
       const res = await cloudLogIn(name, pw);
