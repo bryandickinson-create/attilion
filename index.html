@@ -1908,13 +1908,13 @@ function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h
 function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 // Picks 7 different topics; 2 or 3 of them get a twist ("...with no E in it").
 // Topics this player saw recently are skipped when possible.
-function pickSet(seed, seenList, cat) {
+function pickSet(seed, seenList, cat, n) {
   const seen = new Set(seenList || []);
   const r = rng(seed);
   const catWant = cat === "seasonal" ? "season-" + seasonKey() : cat;
   const ids = modeBases().filter(p => !catWant || p.cats.includes(catWant)).map(p => p.id);
   for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
-  const bases = ids.filter(id => !seen.has(id)).concat(ids.filter(id => seen.has(id))).slice(0, ROUNDS);
+  const bases = ids.filter(id => !seen.has(id)).concat(ids.filter(id => seen.has(id))).slice(0, n || ROUNDS);
   const twistable = bases.map((id, i) => i).filter(i => VARIANTS[bases[i]].length);
   const want = kidMode() || bigMode() ? 0 : r() < 0.5 ? 2 : 3;
   const twistSlots = new Set();
@@ -1939,7 +1939,7 @@ function markSeen(ids) {
   const seen = store.get("seenPrompts", []).map(id => id.split("~")[0]).filter(id => !baseIds.includes(id)).concat(baseIds);
   store.set("seenPrompts", seen.slice(-Math.floor(BASES.length * 0.8)));
 }
-function pickFresh(seed, cat) { return pickSet(seed, store.get("seenPrompts", []), cat); }
+function pickFresh(seed, cat, n) { return pickSet(seed, store.get("seenPrompts", []), cat, n); }
 function todayKey(d) { d = d || new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
 function dailyKeyNow() { return (kidMode() ? "kids-" : bigMode() ? "big-" : "") + todayKey(); }
 function dailyNumber(key) { key = String(key).replace(/^(kids|big)-/, ""); return Math.floor((Date.parse(key + "T12:00:00") - Date.parse("2026-11-21T12:00:00")) / 864e5) + 1; }
@@ -2051,20 +2051,25 @@ function go(view, extra) {
 function startMatch(opts) {
   // opts: { mode: "bot"|"daily"|"challenge-host"|"challenge-guest", level, seed, prompts, opp }
   const seed = opts.seed != null ? opts.seed : Math.floor(Math.random() * 2 ** 31);
-  const prompts = opts.prompts || (opts.mode === "endless" ? endlessQueue(seed) : pickFresh(seed, opts.cat));
+  const prompts = opts.prompts || (opts.mode === "endless" ? endlessQueue(seed) : pickFresh(seed, opts.cat, roundsSetting(opts.mode)));
   markSeen(prompts);
   loadHumanCounts(prompts);
   go("play", {
     mode: opts.mode, level: opts.level, seed, prompts, round: 0,
     mine: [], theirs: opts.theirsRaw ? opts.theirsRaw.slice() : [],
     opp: opts.opp || null, live: opts.live || null, challenge: opts.challenge || null, dailyKey: opts.dailyKey || null, cat: opts.cat || null,
-    phase: "answer"
+    phase: "answer", rounds: opts.mode === "endless" ? ROUNDS : prompts.length
   });
   beginRound();
 }
 function fixedRarity() { return S.mode === "endless" || S.mode === "live" || S.mode === "daily" || S.mode === "solo" || S.mode === "subject" || S.mode === "challenge-host" || S.mode === "challenge-guest"; }
 // Settings switch: Endless and Free Launch can be played with no timer (neither mode changes Elo).
-function untimedOk() { return S.mode === "endless" || S.mode === "solo"; }
+// Settings: timer and number of questions apply to every mode except Quick match
+// (the Daily Launch also keeps 7 questions so everyone plays the same set).
+function untimedOk() { return S.mode !== "live"; }
+function roundsSetting(mode) { const v = store.get("rounds", ROUNDS); return mode === "live" || mode === "daily" ? ROUNDS : v === 10 ? 10 : ROUNDS; }
+function isUntimedSetting() { return !!store.get("untimed", false); }
+function nRounds() { return (S && S.rounds) || ROUNDS; }
 function isUntimed() { return untimedOk() && store.get("untimed", false); }
 // Endless and Free Launch can use 15, 25, 30 or 60 seconds; every other mode stays at 30
 function roundSecs() { const v = store.get("timerSecs", ROUND_SECONDS); return untimedOk() && [15, 25, 30, 60].includes(v) ? v : ROUND_SECONDS; }
@@ -2072,7 +2077,7 @@ function sayBtnSize() { const v = store.get("sayBtnSize", "m"); return ["off", "
 function promptSpoken(pr) { return pr ? (pr.twist ? pr.baseQ + " " + pr.twist : pr.q) : ""; }
 function beginRound() {
   S.phase = "answer"; S.deadline = isUntimed() ? Infinity : Date.now() + roundSecs() * 1000; S.draft = "";
-  S.botLockAt = S.mode === "bot" ? Date.now() + (3 + Math.random() * 19) * 1000 : null;
+  S.botLockAt = S.mode === "bot" ? Date.now() + (2 + Math.random() * Math.min(19, roundSecs() * 0.63)) * 1000 : null;
   S.submittedAt = null; S.lastTick = null;
   if (S.live) { S.live.at = S.round; livePresence(); }
   render();
@@ -2198,7 +2203,7 @@ function nextRound() {
     if (S.round + 1 >= S.prompts.length) S.prompts = S.prompts.concat(endlessQueue(S.seed + S.prompts.length));
     S.round++; beginRound(); return;
   }
-  if (S.round < ROUNDS - 1) { S.round++; beginRound(); }
+  if (S.round < nRounds() - 1) { S.round++; beginRound(); }
   else finishMatch();
 }
 function total(list) { return (list || []).reduce((s, x) => s + (x ? x.points : 0), 0); }
@@ -2657,7 +2662,7 @@ function viewHome() {
     <details class="how">
       <summary>How scoring works</summary>
     <section class="hero">
-      <p class="eyebrow">7 prompts · 30 seconds each · up to 100 points a round</p>
+      <p class="eyebrow">${roundsSetting("solo")} prompts · ${isUntimedSetting() ? "no timer" : (store.get("timerSecs", 30) === 60 ? "1 minute" : store.get("timerSecs", 30) + " seconds") + " each"} · up to 100 points a round</p>
       <h1>Think of the answer <em>nobody else</em> will.</h1>
       <p class="lede">Every prompt has hundreds of right answers. Common ones barely leave the ground and score almost nothing. Rare ones launch higher. Find one of the truly rare answers, the few that almost nobody thinks of, and you break past the Moon: <strong>1 in Attillion</strong>, a full 100 points.</p>
       ${depthLegend()}
@@ -2687,7 +2692,7 @@ function viewFriends() {
   return playSubView(`
       <article class="mode friends">
         <div class="mode-head"><h2>Play a friend</h2></div>
-        <p>Play your 7 rounds, send the challenge, and your friend plays the same prompts. After each round they see what you said. Same answers are allowed.</p>
+        <p>Play your ${roundsSetting("challenge-host")} rounds, send the challenge, and your friend plays the same prompts. After each round they see what you said. Same answers are allowed.</p>
         <div class="row">
           <button class="btn primary" data-act="challenge-new">Create a challenge</button>
           <button class="btn ghost" data-go="join">Enter a code</button>
@@ -2751,7 +2756,7 @@ function viewPlay() {
   const pod = (name, list, id, prev, cls, note) => `<div class="pod ${cls}">
       <span class="pod-name">${esc(name)}</span>
       <b class="pod-total" id="${id}" data-from="${prev}">${note ? "?" : prev}</b>
-      <div class="pod-rounds" aria-hidden="true">${Array.from({ length: ROUNDS }, (_, j) => {
+      <div class="pod-rounds" aria-hidden="true">${Array.from({ length: nRounds() }, (_, j) => {
         const i = S.mode === "endless" ? Math.max(0, S.round - ROUNDS + 1) + j : j;
         const r = list && list[i];
         const fresh = revealing && i === S.round;
@@ -2762,7 +2767,7 @@ function viewPlay() {
   const oppLabel = oppName || (S.mode === "challenge-host" ? "Your friend" : null);
   const scoreLine = `<div class="scoreboard ${oppLabel ? "duo" : "solo"}">
       ${pod("You", S.scores, "pod-me", prevMine, "me")}
-      <div class="sb-mid"><span class="sb-round">${S.mode === "endless" ? "Round " + (S.round + 1) : `Round ${S.round + 1}/${ROUNDS}`}</span>${oppName ? `<span class="sb-lead" id="lead">${S.round === 0 && !revealing ? "First launch" : leadTextAt(oppName, prevMine, prevOpp)}</span>` : S.mode === "daily" ? `<span class="sb-lead">Daily Launch</span>` : S.mode === "solo" ? `<span class="sb-lead">Free Launch</span>` : S.mode === "subject" ? `<span class="sb-lead">${subjName()} Launch</span>` : S.mode === "endless" ? `<span class="sb-lead">Endless · ${S.scores ? S.scores.filter(x => x && x.secretHit).length : 0} 🌟 found</span>` : ""}</div>
+      <div class="sb-mid"><span class="sb-round">${S.mode === "endless" ? "Round " + (S.round + 1) : `Round ${S.round + 1}/${nRounds()}`}</span>${oppName ? `<span class="sb-lead" id="lead">${S.round === 0 && !revealing ? "First launch" : leadTextAt(oppName, prevMine, prevOpp)}</span>` : S.mode === "daily" ? `<span class="sb-lead">Daily Launch</span>` : S.mode === "solo" ? `<span class="sb-lead">Free Launch</span>` : S.mode === "subject" ? `<span class="sb-lead">${subjName()} Launch</span>` : S.mode === "endless" ? `<span class="sb-lead">Endless · ${S.scores ? S.scores.filter(x => x && x.secretHit).length : 0} 🌟 found</span>` : ""}</div>
       ${oppLabel ? pod(oppLabel, oppName ? S.oppScores : null, "pod-opp", prevOpp, "opp", oppName ? "" : "plays after you") : ""}
     </div>`;
   let body = "";
@@ -2792,7 +2797,7 @@ function viewPlay() {
   </main>`;
 }
 
-function roundLabel() { return S.mode === "endless" ? `Round ${S.round + 1} · Endless` : `Round ${S.round + 1} of ${ROUNDS}`; }
+function roundLabel() { return S.mode === "endless" ? `Round ${S.round + 1} · Endless` : `Round ${S.round + 1} of ${nRounds()}`; }
 function promptTitle(p) { return p.twist ? `${esc(p.baseQ)} <span class="twist"><b class="twist-tag">Twist</b> ${esc(p.twist)}</span>` : esc(p.q); }
 // Where an answer's avatar ends up in the sky column (percent from the top).
 // Rarer answers climb higher; a miss stays on the launch pad at the bottom.
@@ -2855,7 +2860,7 @@ function revealBlock(prompt, oppName) {
     ${S.unlockNote ? `<p class="unlock-note">That's Attillion #${S.unlockNote.krill}! You unlocked the ${avMarkup(S.unlockNote)} <b>${S.unlockNote.name}</b>. <button class="link" data-go="avatar">Use it</button></p>` : ""}
     ${S.mode === "endless" ? (S.lastMine.secretHit ? `<p class="best-note">You found the one secret 1 in Attillion!</p>` : `<p class="trench">The one secret 1 in Attillion was: <b>${esc(prompt.answers[S.secret].display)}</b></p>`) : `<p class="trench">Up among the stars: ${samples.map(esc).join(", ")}</p>`}
     ${S.mode === "endless" ? `<div class="row"><button class="btn primary" id="next" data-act="next">Next prompt</button><button class="btn ghost" data-act="endless-stop">Stop here</button></div>`
-      : `<button class="btn primary" id="next" data-act="next">${S.round < ROUNDS - 1 ? "Next prompt" : "See results"}</button>`}
+      : `<button class="btn primary" id="next" data-act="next">${S.round < nRounds() - 1 ? "Next prompt" : "See results"}</button>`}
   </div>`;
 }
 
@@ -2903,7 +2908,7 @@ function viewResults() {
   }
   if (S.mode === "challenge-host") {
     extra += codeBox("Send this to your friend", res.code, "c",
-      "They'll play the same 7 prompts and see your answer after each round. When they finish, they'll get a reply code. Paste it under Enter a code to see who won.");
+      `They'll play the same ${nRounds()} prompts and see your answer after each round. When they finish, they'll get a reply code. Paste it under Enter a code to see who won.`);
   }
   if (S.mode === "challenge-guest") {
     extra += codeBox(`Send this back to ${esc(S.challenge.from)}`, res.code, "r", "Their game updates when they paste it under Enter a code.");
@@ -2912,9 +2917,9 @@ function viewResults() {
     <p class="eyebrow">${S.mode === "live" ? "Quick match" : S.mode === "endless" ? "Endless Launch" : S.mode === "solo" ? "Free Launch" : S.mode === "subject" ? subjName() + " Launch" : S.mode === "daily" ? "Daily Launch #" + dailyNumber(S.dailyKey) : S.mode === "bot" ? "vs " + BOTS[S.level].name : S.mode === "challenge-host" ? "Challenge created" : "Challenge from " + esc(S.challenge.from)}</p>
     <h1>${verdict || `You scored ${res.my}`}</h1>
     <div class="totals">
-      <div><span>${myAvatar()} You</span><b>${res.my}</b><em>played like ${perfElo(res.my, S.mode === "endless" ? Math.max(1, res.rounds) : ROUNDS).toLocaleString()}</em></div>
-      ${oppName ? `<div><span>${oppAvatar()} ${esc(oppName)}</span><b>${res.their}</b><em>played like ${perfElo(res.their, ROUNDS).toLocaleString()}</em></div>` : ""}
-      <div class="of">out of ${(S.mode === "endless" ? res.rounds : ROUNDS) * 100}</div>
+      <div><span>${myAvatar()} You</span><b>${res.my}</b><em>played like ${perfElo(res.my, S.mode === "endless" ? Math.max(1, res.rounds) : nRounds()).toLocaleString()}</em></div>
+      ${oppName ? `<div><span>${oppAvatar()} ${esc(oppName)}</span><b>${res.their}</b><em>played like ${perfElo(res.their, nRounds()).toLocaleString()}</em></div>` : ""}
+      <div class="of">out of ${(S.mode === "endless" ? res.rounds : nRounds()) * 100}</div>
     </div>
     ${extra}
     <div class="table-wrap"><table class="breakdown"><thead><tr><th>Prompt</th><th>You</th><th>Pts</th>${oppName ? `<th>${esc(oppName)}</th><th>Pts</th>` : ""}</tr></thead><tbody>${rows}</tbody></table></div>
@@ -3117,11 +3122,17 @@ function viewSettings() {
     <p class="hint">${kidMode() ? "Easy questions for little kids, no twists, and 1 in Attillions are much easier to find." : bigMode() ? "In between: questions for older kids, no twists, and 1 in Attillions a little easier to find than Regular." : "The full game, with twist rounds."} Little kids and Big kids each get their own Elo, their own Daily Launch and their own leaderboard. Saved on this device.</p>
 
     <h2>Timer</h2>
-    <div class="seg-pick" role="group" aria-label="Timer for Endless and Free Launch">
+    <div class="seg-pick" role="group" aria-label="Timer">
       ${[15, 25, 30, 60].map(n => `<button data-act="timer" data-v="${n}" aria-pressed="${!store.get("untimed", false) && store.get("timerSecs", 30) === n}"><span aria-hidden="true">⏱️</span>${n === 60 ? "1 minute" : n + " seconds"}</button>`).join("")}
       <button data-act="untimed" data-v="1" aria-pressed="${!!store.get("untimed", false)}"><span aria-hidden="true">∞</span>No timer</button>
     </div>
-    <p class="hint">Only for Endless and Free Launch, which never change your Elo. Every other mode stays timed. Saved on this device.</p>
+    <p class="hint">Time for each question in every mode except Quick match, which always uses 30 seconds so both players get the same time. Saved on this device.</p>
+
+    <h2>Questions per game</h2>
+    <div class="seg-pick" role="group" aria-label="Questions per game">
+      ${[7, 10].map(n => `<button data-act="rounds" data-v="${n}" aria-pressed="${roundsSetting("solo") === n}">${n} questions</button>`).join("")}
+    </div>
+    <p class="hint">For bots, Free Launch, Subjects and friend challenges. Quick match and the Daily Launch always have 7 questions, so everyone plays the same game. Endless keeps going until you stop. Saved on this device.</p>
 
     <h2>Endless skips</h2>
     <div class="seg-pick" role="group" aria-label="Skips per Endless run">
@@ -3266,7 +3277,7 @@ function viewChallengeIntro() {
   return `${header()}<main class="narrow">
     <p class="eyebrow">Challenge</p>
     <h1>${esc(c.from)} challenged you</h1>
-    <p class="lede small">Same 7 prompts they played. You get 30 seconds each. After every round you'll see what ${esc(c.from)} said.${c.elo != null ? ` Their Elo when they sent it: <b>${c.elo}</b>.` : ""}</p>
+    <p class="lede small">Same ${c.p.length} prompts they played. After every round you'll see what ${esc(c.from)} said.${c.elo != null ? ` Their Elo when they sent it: <b>${c.elo}</b>.` : ""}</p>
     ${me() ? "" : `<p class="hint"><button class="link" data-go="login">Log in</button> first if you want this to count toward your Elo.</p>`}
     <button class="btn primary" data-act="challenge-play">Start</button>
   </main>`;
@@ -3289,7 +3300,7 @@ function viewReplyResult() {
   return `${header()}<main class="results">
     <p class="eyebrow">Challenge result</p>
     <h1>${verdict}</h1>
-    <div class="totals"><div><span>${myAvatar()} You</span><b>${my}</b><em>played like ${perfElo(my, ROUNDS).toLocaleString()}</em></div><div><span>${c.av && avatarById(c.av) ? avMarkup(avatarById(c.av)) : "🚀"} ${esc(c.from)}</span><b>${their}</b><em>played like ${perfElo(their, ROUNDS).toLocaleString()}</em></div><div class="of">out of 700</div></div>
+    <div class="totals"><div><span>${myAvatar()} You</span><b>${my}</b><em>played like ${perfElo(my, c.p.length).toLocaleString()}</em></div><div><span>${c.av && avatarById(c.av) ? avMarkup(avatarById(c.av)) : "🚀"} ${esc(c.from)}</span><b>${their}</b><em>played like ${perfElo(their, c.p.length).toLocaleString()}</em></div><div class="of">out of ${c.p.length * 100}</div></div>
     ${eloLine}
     <div class="table-wrap"><table class="breakdown"><thead><tr><th>Prompt</th><th>You</th><th>Pts</th><th>${esc(c.from)}</th><th>Pts</th></tr></thead><tbody>
       ${prompts.map((p, i) => `<tr><td class="q">${esc(p.q)}</td><td>${esc(mine[i].raw || "–")}</td><td class="n">${mine[i].points}</td><td>${esc(theirs[i].raw || "–")}</td><td class="n">${theirs[i].points}</td></tr>`).join("")}
@@ -3362,14 +3373,14 @@ function render() {
   $app().innerHTML = html;
   document.body.dataset.view = v;
   fillDescriptions();
-  if (window.KrillionFX) window.KrillionFX.setDepth(v === "play" ? 0.15 + 0.85 * Math.min(1, S.round / (ROUNDS - 1)) : 0);
+  if (window.KrillionFX) window.KrillionFX.setDepth(v === "play" ? 0.15 + 0.85 * Math.min(1, S.round / Math.max(1, nRounds() - 1)) : 0);
 }
 
 /* ---------- events ---------- */
 function openCode(raw) {
   let c;
   try { c = b64d(raw); } catch (e) { return "That code didn't read correctly. Copy the whole thing and try again."; }
-  if (!c || !Array.isArray(c.p) || c.p.length !== ROUNDS || c.p.some(id => !PROMPT_BY_ID[id])) return "That code is for a different version of Attillion.";
+  if (!c || !Array.isArray(c.p) || ![7, 10].includes(c.p.length) || c.p.some(id => !PROMPT_BY_ID[id])) return "That code is for a different version of Attillion.";
   if (c.reply) { go("reply", { reply: c }); return null; }
   go("challenge", { challenge: c });
   return null;
@@ -3413,6 +3424,7 @@ document.addEventListener("click", async e => {
   else if (act === "skips") { store.set("endlessSkips", Number(t.dataset.v)); render(); }
   else if (act === "agemode") { store.set("ageMode", t.dataset.v); store.set("kidMode", t.dataset.v === "little"); const y = window.scrollY; render(); window.scrollTo(0, y); }
   else if (act === "untimed") { store.set("untimed", t.dataset.v === "1"); const y = window.scrollY; render(); window.scrollTo(0, y); }
+  else if (act === "rounds") { store.set("rounds", +t.dataset.v); const y = window.scrollY; render(); window.scrollTo(0, y); }
   else if (act === "timer") { store.set("timerSecs", +t.dataset.v); store.set("untimed", false); const y = window.scrollY; render(); window.scrollTo(0, y); }
   else if (act === "spin") {
     const av = t.querySelector(".av");
