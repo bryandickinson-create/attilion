@@ -572,3 +572,11 @@ h2 + .layout-bar { justify-content: flex-start; margin-top: 10px; }
 .krillion-banner.themed .kb-who { color: rgb(var(--th)); }
 .kb-theme { font: 700 clamp(16px, 3.4vw, 24px) var(--font-display); color: #fff; margin: 0 0 8px; letter-spacing: .02em; }
 .avatar .asub { font-size: 11px; font-style: italic; color: #ffd98a; margin-top: -2px; }
+/* sorting saved 1 in Attillions */
+.krill-tools { display: grid; gap: 10px; margin-top: 12px; }
+.ks-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ks-chip { border: 1px solid rgba(255,201,60,.35); background: #0a0d24; color: var(--foam); border-radius: 999px; padding: 7px 12px; font: 600 13px var(--font-body, inherit); cursor: pointer; }
+.ks-chip.on { background: var(--hadal); color: #1a1204; border-color: var(--hadal); }
+.ks-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.ks-row select, .ks-row input { flex: 1 1 200px; min-width: 0; font: 14px inherit; padding: 9px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.18); background: #0a0d24; color: var(--foam); }
+.krill-card[hidden] { display: none; }

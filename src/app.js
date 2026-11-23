@@ -1704,6 +1704,37 @@ function viewLogin() {
   </main>`;
 }
 
+// your saved 1 in Attillions, with sorting, a game-mode filter and a search box
+const KSORTS = [["new", "Newest"], ["old", "Oldest"], ["rare", "Rarest"], ["common", "Least rare"], ["az", "A to Z"], ["za", "Z to A"], ["q", "By question"], ["mode", "By game mode"]];
+function rarityOf(k) { return k.share > 0 ? k.share : 1 / Math.max(1, Math.pow(10, (k.depth || 0) / 1000)); }
+function krillWall(list) {
+  const sort = KSORTS.some(x => x[0] === store.get("krillSort")) ? store.get("krillSort") : "new";
+  const modes = [...new Set(list.map(k => k.mode))].sort();
+  const mf = modes.includes(store.get("krillMode")) ? store.get("krillMode") : "";
+  const cmp = {
+    new: (a, b) => b.when - a.when, old: (a, b) => a.when - b.when,
+    rare: (a, b) => rarityOf(a) - rarityOf(b), common: (a, b) => rarityOf(b) - rarityOf(a),
+    az: (a, b) => a.a.localeCompare(b.a), za: (a, b) => b.a.localeCompare(a.a),
+    q: (a, b) => a.q.localeCompare(b.q) || b.when - a.when, mode: (a, b) => a.mode.localeCompare(b.mode) || b.when - a.when
+  }[sort];
+  const shown = list.filter(k => !mf || k.mode === mf).slice().sort(cmp);
+  return `<div class="krill-tools">
+      <div class="ks-chips" role="group" aria-label="Sort by">${KSORTS.map(([k, n]) => `<button class="ks-chip ${k === sort ? "on" : ""}" data-act="ksort" data-k="${k}" aria-pressed="${k === sort}">${n}</button>`).join("")}</div>
+      <div class="ks-row">
+        <select id="krill-mode" aria-label="Game mode"><option value="">All game modes (${list.length})</option>${modes.map(m => `<option value="${esc(m)}" ${m === mf ? "selected" : ""}>${esc(m)} (${list.filter(k => k.mode === m).length})</option>`).join("")}</select>
+        <input id="krill-search" type="search" placeholder="Search answers or questions" autocomplete="off">
+      </div>
+    </div>
+    <div class="krill-wall">${shown.map(k => `
+      <div class="krill-card" data-s="${esc((k.a + " " + k.q).toLowerCase())}">
+        <p class="kc-a">${esc(k.a)}</p>
+        <p class="kc-q">${esc(k.q)}</p>
+        <p class="what small" data-what="${esc(k.a)}" data-hint="${esc(topicHint(k.q))}" hidden></p>
+        <p class="kc-m">${new Date(k.when).toLocaleDateString(undefined, { month: "short", day: "numeric", year: new Date(k.when).getFullYear() === new Date().getFullYear() ? undefined : "numeric" })} · ${esc(k.mode)} · ${altText(k.depth)}</p>
+      </div>`).join("")}</div>
+    <p class="hint" id="krill-none" hidden>No 1 in Attillions match that search.</p>`;
+}
+
 function viewProfile() {
   const u = me(); if (!u) return viewLogin();
   const dailies = Object.entries(u.daily).sort((a, b) => b[0].localeCompare(a[0]));
@@ -1721,13 +1752,7 @@ function viewProfile() {
       <div class="gold"><span>Attillions</span><b>${krillCount(u)}</b></div>
     </div>
     <h2>Your 1 in Attillions</h2>
-    ${(u.krillions || []).length ? `<div class="krill-wall">${u.krillions.slice(0, 60).map(k => `
-      <div class="krill-card">
-        <p class="kc-a">${esc(k.a)}</p>
-        <p class="kc-q">${esc(k.q)}</p>
-        <p class="what small" data-what="${esc(k.a)}" data-hint="${esc(topicHint(k.q))}" hidden></p>
-        <p class="kc-m">${new Date(k.when).toLocaleDateString(undefined, { month: "short", day: "numeric" })} · ${esc(k.mode)} · ${altText(k.depth)}</p>
-      </div>`).join("")}</div>` : `<p class="hint">None yet. Find an answer almost nobody would say and it will be saved here.</p>`}
+    ${(u.krillions || []).length ? krillWall(u.krillions) : `<p class="hint">None yet. Find an answer almost nobody would say and it will be saved here.</p>`}
     <h2>Recent matches</h2>
     ${u.history.length ? `<div class="table-wrap"><table class="breakdown"><thead><tr><th>Opponent</th><th>Score</th><th>Elo</th></tr></thead><tbody>
       ${u.history.slice(0, 15).map(h => `<tr><td>${esc(h.opp)}</td><td class="n">${h.me}–${h.them}</td><td class="n ${h.delta >= 0 ? "up" : "down"}">${h.delta >= 0 ? "+" : ""}${h.delta}</td></tr>`).join("")}
@@ -2035,6 +2060,8 @@ function openCode(raw) {
 }
 
 document.addEventListener("click", async e => {
+  const ks = e.target.closest('[data-act="ksort"]');
+  if (ks) { store.set("krillSort", ks.dataset.k); const y = window.scrollY; render(); window.scrollTo(0, y); return; }
   const t = e.target.closest("[data-go],[data-act]");
   if (!t) return;
   if (t.dataset.go) { go(t.dataset.go); return; }
@@ -2201,7 +2228,15 @@ document.addEventListener("submit", async e => {
   }
 });
 
+document.addEventListener("change", e => {
+  if (e.target.id === "krill-mode") { store.set("krillMode", e.target.value); const y = window.scrollY; render(); window.scrollTo(0, y); }
+});
 document.addEventListener("input", e => {
+  if (e.target.id === "krill-search") {
+    const q = e.target.value.trim().toLowerCase(); let n = 0;
+    document.querySelectorAll(".krill-wall .krill-card").forEach(c => { const hit = !q || c.dataset.s.includes(q); c.hidden = !hit; if (hit) n++; });
+    const none = document.getElementById("krill-none"); if (none) none.hidden = n > 0;
+  }
   if (e.target.id === "vol" && window.KrillionSound) {
     window.KrillionSound.volume = +e.target.value / 100;
     const o = document.getElementById("vol-out"); if (o) o.textContent = e.target.value + "%";
