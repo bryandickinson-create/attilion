@@ -228,6 +228,7 @@ function viewEventCard() {
 // Bundle codes unlock a whole group at once.
 const ELO_BOOST_CAP = 2000;
 const ELO_BOOST_CODE = 3265732527;
+const POWER_CODE = 3522492995; // +3 of each power-up, once a day
 const BUNDLES = [
   { id: "krill-all", code: 1175683394, name: "every Attillion trophy", pick: "rdragon" },
   { id: "krill-all", code: 2284514118, name: "every Attillion trophy", pick: "rdragon" },   // the old code still works
@@ -2579,6 +2580,15 @@ document.addEventListener("submit", async e => {
       });
       SFX("win");
       go("avatar", { codeMsg: `+Elo boost! Your ${k === "kid" ? "Kid " : k === "big" ? "Big kid " : ""}Elo is now ${myElo()} (it stops at ${ELO_BOOST_CAP}).` });
+      return;
+    }
+    if (h === POWER_CODE) {
+      if (ugGet("powerCodeDay", "") === todayKey()) { go("avatar", { codeMsg: "You already used the power-up code today. Try again tomorrow!" }); return; }
+      ugSet("powerCodeDay", () => todayKey(), "");
+      Object.keys(POWERS).forEach(k => addPower(k, 3));
+      SFX("win");
+      const p = powers();
+      go("avatar", { codeMsg: `🎁 +3 of every power-up! You now have ${Object.keys(POWERS).map(k => POWERS[k].ic + " " + p[k]).join(", ")}.` });
       return;
     }
     const bundle = BUNDLES.find(x => x.code === h);
