@@ -445,8 +445,42 @@ Object.values(KID_LETTER).forEach(l => { const set = new Set(); BASES.forEach(b 
   base.cats = ["kids"];
   BASES.push(base); PROMPTS.push(base); VARIANTS[p.id] = [];
 });
-function kidMode() { return !!store.get("kidMode", false); }
-function modeBases() { const k = kidMode(); return BASES.filter(p => !!p.kid === k); }
+/* ---------- Big Kid Mode ----------
+   Between Little kids and Regular: its own topics plus easier regular topics, no
+   twists, 1 in Attillion a bit easier than regular, and its own Elo, daily and board. */
+const BIG_FAMILIAR = 52, BIG_KRILL_FROM = 0.82;
+const BIG_EXTRA = {   // big kid topics also accept answers from matching regular lists
+  "b-videogame": "", "b-country": "country africa europe asia samerica", "b-hero": "superhero", "b-pokemonlike": "myth", "b-lunch": "sandwich soup pizza fastfood",
+  "b-board": "game", "b-gadget": "", "b-ocean2": "ocean fish", "b-snackfood": "candy", "b-outside": "playground", "b-mythbeast": "myth",
+  "b-careers": "job", "b-instrument": "instrument", "b-bodyorg": "body bone", "b-pet": "pet", "b-history": "figure founder", "b-weather2": "weather space",
+  "b-sportball": "sport", "b-space2": "space", "b-recess": "playground", "b-breakfast": "breakfast cereal", "b-cartoon": "cartoonshow disneychar",
+  "b-bookchar": "character hpchar", "b-trip": "camping", "b-amusement": "carnival", "b-winter": "winterthing wintersport", "b-tvkids": "cartoonshow",
+  "b-insect": "insect", "b-holidayx": "holiday winterholiday", "b-kitchen": "appliance utensil", "b-cityplace": "", "b-insidehome": "", "b-mathword": "shape unit" };
+// regular topics that also show up in Big Kid Mode (with the big kid rarity)
+const BIG_FROM_REGULAR = ["fruit", "veg", "dog", "color", "sport", "bird", "vehicle", "flower", "dino", "shape", "dessert", "beach", "mammal", "reptile", "clothing",
+  "pizza", "icecream", "superpower", "emotion", "room", "furniture", "subject", "candy", "drink", "camping", "classroom", "carnival", "hobby", "farm", "animated",
+  "cake", "cereal", "wheels", "sportsgear", "hpchar", "disneychar", "cartoonshow", "halloween", "christmas", "summerthing", "state", "uscity", "fastfood", "landmark",
+  "invention", "kidsbook", "fairytale", "bookseries", "costume", "babyanimal", "olympic", "proteam"];
+function addBig(id, q, a, srcs) {
+  const more = [window.KRILLION_MORE, window.KRILLION_MORE3].flatMap(m => srcs.map(x => (m || {})[x]))
+    .concat(srcs.map(x => (window.KRILLION_PROMPTS || []).find(r => r.id === x)).filter(Boolean).map(r => r.a))
+    .concat(srcs.map(x => (window.KRILLION_MORE2 || {})[x])).filter(Boolean);
+  const entries = [a].concat(more).join(";").split(";").map(e => ({ forms: e.split("|").map(t => t.trim()).filter(Boolean) })).filter(e => e.forms.length);
+  const base = buildPrompt(id, q, entries, BIG_FAMILIAR, { baseId: id, big: true, krillFrac: BIG_KRILL_FROM });
+  base.cats = ["bigkids"];
+  BASES.push(base); PROMPTS.push(base); VARIANTS[id] = [];
+}
+(window.KRILLION_BIG || []).forEach(p => addBig(p.id, p.q, p.a, (BIG_EXTRA[p.id] || "").split(" ").filter(Boolean)));
+BIG_FROM_REGULAR.forEach(id => {
+  const r = (window.KRILLION_PROMPTS || []).find(x => x.id === id);
+  if (r && !(window.KRILLION_BIG || []).some(b => b.q === r.q)) addBig("b-" + id, r.q, r.a, [id]);
+});
+// "little", "big" or "regular" (saved on this device)
+function ageMode() { const v = store.get("ageMode", null); if (v === "little" || v === "big" || v === "regular") return v; return store.get("kidMode", false) ? "little" : "regular"; }
+function kidMode() { return ageMode() === "little"; }
+function bigMode() { return ageMode() === "big"; }
+function tierKey() { return kidMode() ? "kid" : bigMode() ? "big" : null; }
+function modeBases() { const k = kidMode(), b = bigMode(); return BASES.filter(p => !!p.kid === k && !!p.big === b); }
 const PROMPT_BY_ID = Object.fromEntries(PROMPTS.map(p => [p.id, p]));
 
 // Extra words around a real answer still count: "Yellowstone National Park",
@@ -636,7 +670,7 @@ function pickSet(seed, seenList, cat) {
   for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
   const bases = ids.filter(id => !seen.has(id)).concat(ids.filter(id => seen.has(id))).slice(0, ROUNDS);
   const twistable = bases.map((id, i) => i).filter(i => VARIANTS[bases[i]].length);
-  const want = kidMode() ? 0 : r() < 0.5 ? 2 : 3;
+  const want = kidMode() || bigMode() ? 0 : r() < 0.5 ? 2 : 3;
   const twistSlots = new Set();
   while (twistSlots.size < Math.min(want, twistable.length)) twistSlots.add(twistable[Math.floor(r() * twistable.length)]);
   // no two twists of the same kind in one game
@@ -661,8 +695,8 @@ function markSeen(ids) {
 }
 function pickFresh(seed, cat) { return pickSet(seed, store.get("seenPrompts", []), cat); }
 function todayKey(d) { d = d || new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
-function dailyKeyNow() { return (kidMode() ? "kids-" : "") + todayKey(); }
-function dailyNumber(key) { key = String(key).replace(/^kids-/, ""); return Math.floor((Date.parse(key + "T12:00:00") - Date.parse("2026-11-21T12:00:00")) / 864e5) + 1; }
+function dailyKeyNow() { return (kidMode() ? "kids-" : bigMode() ? "big-" : "") + todayKey(); }
+function dailyNumber(key) { key = String(key).replace(/^(kids|big)-/, ""); return Math.floor((Date.parse(key + "T12:00:00") - Date.parse("2026-11-21T12:00:00")) / 864e5) + 1; }
 
 /* ---------- accounts + Elo ---------- */
 // Local accounts: stored in this browser only. Replace with Supabase auth
@@ -718,10 +752,10 @@ function applyMatchResult(oppName, oppElo, myTotal, oppTotal, kind, matchId, noL
   const u = me(); if (!u) return null;
   const result = myTotal > oppTotal ? 1 : myTotal < oppTotal ? 0 : 0.5;
   let delta = 0;
-  const kid = kidMode();
+  const kid = tierKey();
   updateUser(x => {
-    // Little Kid Mode keeps a completely separate rating and record
-    const r = kid ? (x.kid = x.kid || { elo: START_ELO, peak: START_ELO, games: 0, wins: 0, losses: 0, draws: 0, history: [] }) : x;
+    // Little Kid Mode and Big Kid Mode each keep a completely separate rating and record
+    const r = kid ? (x[kid] = x[kid] || { elo: START_ELO, peak: START_ELO, games: 0, wins: 0, losses: 0, draws: 0, history: [] }) : x;
     r.history = r.history || [];
     if (matchId && r.history.some(h => h.id === matchId)) return;
     delta = eloDelta(r.elo, oppElo, result, r.games || 0);
@@ -730,7 +764,7 @@ function applyMatchResult(oppName, oppElo, myTotal, oppTotal, kind, matchId, noL
     if (result === 1) r.wins = (r.wins || 0) + 1; else if (result === 0) r.losses = (r.losses || 0) + 1; else r.draws = (r.draws || 0) + 1;
     r.history.unshift({ id: matchId || String(Date.now()), when: Date.now(), kind, opp: oppName, oppElo, me: myTotal, them: oppTotal, delta });
     r.history = r.history.slice(0, 50);
-    if (kid) x.kidElo = r.elo;   // copied up so the kids leaderboard can sort on it
+    if (kid) x[kid + "Elo"] = r.elo;   // copied up so the kids leaderboard can sort on it
   });
   return { delta, result };
 }
@@ -742,7 +776,7 @@ function botAnswer(level, prompt) {
   const n = prompt.familiar;
   const idx = Math.random() < b.lucky
     ? prompt.krillFrom + Math.floor(Math.random() * (n - prompt.krillFrom))   // a lucky deep dive
-    : Math.min(n - 1, Math.floor(b.pick() * (prompt.kid ? KID_KRILL_FROM / KRILLION_FROM : 1) * n));   // kid lists reach 1 in Attillion sooner, so bots aim shallower there
+    : Math.min(n - 1, Math.floor(b.pick() * (prompt.kid ? KID_KRILL_FROM / KRILLION_FROM : prompt.big ? BIG_KRILL_FROM / KRILLION_FROM : 1) * n));   // kid lists reach 1 in Attillion sooner, so bots aim shallower there
   return prompt.answers[idx].display;
 }
 
@@ -786,10 +820,12 @@ function fixedRarity() { return S.mode === "endless" || S.mode === "live" || S.m
 // Settings switch: Endless and Free Launch can be played with no timer (neither mode changes Elo).
 function untimedOk() { return S.mode === "endless" || S.mode === "solo"; }
 function isUntimed() { return untimedOk() && store.get("untimed", false); }
+// Endless and Free Launch can use 15, 25, 30 or 60 seconds; every other mode stays at 30
+function roundSecs() { const v = store.get("timerSecs", ROUND_SECONDS); return untimedOk() && [15, 25, 30, 60].includes(v) ? v : ROUND_SECONDS; }
 function sayBtnSize() { const v = store.get("sayBtnSize", "m"); return ["off", "s", "m", "l", "xl"].includes(v) ? v : "m"; }
 function promptSpoken(pr) { return pr ? (pr.twist ? pr.baseQ + " " + pr.twist : pr.q) : ""; }
 function beginRound() {
-  S.phase = "answer"; S.deadline = isUntimed() ? Infinity : Date.now() + ROUND_SECONDS * 1000; S.draft = "";
+  S.phase = "answer"; S.deadline = isUntimed() ? Infinity : Date.now() + roundSecs() * 1000; S.draft = "";
   S.botLockAt = S.mode === "bot" ? Date.now() + (3 + Math.random() * 19) * 1000 : null;
   S.submittedAt = null; S.lastTick = null;
   if (S.live) { S.live.at = S.round; livePresence(); }
@@ -808,7 +844,7 @@ function tick() {
     const secs = Math.ceil(left / 1000);
     const t = document.getElementById("clock"); if (t) t.textContent = secs;
     if (secs <= 5 && secs > 0 && secs !== S.lastTick) { S.lastTick = secs; SFX("tick"); }
-    const ring = document.getElementById("ring"); if (ring) ring.style.setProperty("--p", (left / (ROUND_SECONDS * 1000)).toFixed(3));
+    const ring = document.getElementById("ring"); if (ring) ring.style.setProperty("--p", (left / (roundSecs() * 1000)).toFixed(3));
     const ol = document.getElementById("opplock");
     if (ol && S.botLockAt) ol.classList.toggle("on", now >= S.botLockAt);
     if (ol && S.live) ol.classList.toggle("on", liveOppAnswered(S.round));
@@ -1151,18 +1187,23 @@ async function cloudBoard() {
       const k = await withTimeout(c.from("profiles").select("name,avatar,kid:data->kid").not("data->kidElo", "is", null).order("data->kidElo", { ascending: false, nullsFirst: false }).limit(100), 8000);
       if (!k.error && k.data) kid = k.data.map(r => ({ name: r.name, avatar: r.avatar, elo: (r.kid && r.kid.elo) || START_ELO, wins: (r.kid && r.kid.wins) || 0, losses: (r.kid && r.kid.losses) || 0 }));
     } catch (e) {}
-    return { elo: a.data, daily: b.data, kid, at: Date.now() };
+    let big = null;
+    try {
+      const k = await withTimeout(c.from("profiles").select("name,avatar,big:data->big").not("data->bigElo", "is", null).order("data->bigElo", { ascending: false, nullsFirst: false }).limit(100), 8000);
+      if (!k.error && k.data) big = k.data.map(r => ({ name: r.name, avatar: r.avatar, elo: (r.big && r.big.elo) || START_ELO, wins: (r.big && r.big.wins) || 0, losses: (r.big && r.big.losses) || 0 }));
+    } catch (e) {}
+    return { elo: a.data, daily: b.data, kid, big, at: Date.now() };
   } catch (e) { return null; }
 }
 
-function myElo(u) { u = u === undefined ? me() : u; if (!u) return START_ELO; return kidMode() ? ((u.kid && u.kid.elo) || START_ELO) : u.elo; }
-function myCard() { const u = me(); return { name: u ? u.name : "Guest pilot", elo: myElo(u), av: myAvatarObj().id, kid: kidMode() }; }
+function myElo(u) { u = u === undefined ? me() : u; if (!u) return START_ELO; const k = tierKey(); return k ? ((u[k] && u[k].elo) || START_ELO) : u.elo; }
+function myCard() { const u = me(); return { name: u ? u.name : "Guest pilot", elo: myElo(u), av: myAvatarObj().id, kid: kidMode(), tier: ageMode() }; }
 function cleanCard(p, field) {   // everything in presence is untrusted
   const q = p && p.presence && p.presence[field];
   if (!q || typeof q !== "object") return null;
   const elo = Math.max(100, Math.min(3500, Math.round(+q.elo) || START_ELO));
   const name = String(q.name || "").replace(/[^\p{L}\p{N} _.-]/gu, "").trim().slice(0, 20) || "Pilot";
-  return { peer: p.peer, name, elo, av: avatarById(String(q.av)) ? String(q.av) : "rocket", t: +q.t || 0, want: typeof q.want === "string" ? q.want : null, kid: !!q.kid };
+  return { peer: p.peer, name, elo, av: avatarById(String(q.av)) ? String(q.av) : "rocket", t: +q.t || 0, want: typeof q.want === "string" ? q.want : null, kid: !!q.kid, tier: ["little", "big"].includes(q.tier) ? q.tier : q.kid ? "little" : "regular" };
 }
 function eloWindow(waitMs) { return Math.min(800, 150 + Math.floor(Math.max(0, waitMs) / 5000) * 75); }
 function pairUp(list, now) {
@@ -1172,7 +1213,7 @@ function pairUp(list, now) {
     if (used.has(a.peer)) continue;
     let best = null;
     for (const b of list) {
-      if (b === a || used.has(b.peer) || !!a.kid !== !!b.kid) continue;
+      if (b === a || used.has(b.peer) || a.tier !== b.tier) continue;
       const d = Math.abs(a.elo - b.elo);
       if (d <= Math.max(eloWindow(now - a.t), eloWindow(now - b.t)) && (!best || d < Math.abs(a.elo - best.elo))) best = b;
     }
@@ -1344,7 +1385,7 @@ function header() {
     <nav>
       <button data-go="leaderboard">Leaderboard</button>
       <button data-go="avatar" class="avbtn" aria-label="Change your avatar" title="Change your avatar">${myAvatar()}</button>
-      ${kidMode() ? `<span class="kid-chip">🧸 Kid mode</span>` : ""}${u ? `<button data-go="profile" class="chip">${esc(u.name)} · <b>${myElo(u)}</b></button>` : `<button data-go="login" class="chip">Log in</button>`}
+      ${kidMode() ? `<span class="kid-chip">🧸 Kid mode</span>` : bigMode() ? `<span class="kid-chip">🎒 Big kid mode</span>` : ""}${u ? `<button data-go="profile" class="chip">${esc(u.name)} · <b>${myElo(u)}</b></button>` : `<button data-go="login" class="chip">Log in</button>`}
     </nav>
   </header>`;
 }
@@ -1364,7 +1405,7 @@ function viewHome() {
              : box("pb-daily", `data-act="daily"`, cal, "Daily Launch", "Same 7 prompts for everyone today", "#" + dailyNumber(key))}
       ${box("pb-endless", `data-act="endless"`, "♾️", "Endless", "Never-ending prompts, one secret 1 in Attillion each", endlessStats().best ? "Best " + endlessStats().best : "")}
       ${box("pb-solo", `data-act="solo"`, "🎯", "Free Launch", "7 new prompts, beat your high score", soloStats().best ? "Best " + soloStats().best : "")}
-      ${kidMode() ? "" : box("pb-subjects", `data-go="subjects"`, "📚", "Subjects", "Sports, movies, history, weather and more", "")}
+      ${kidMode() || bigMode() ? "" : box("pb-subjects", `data-go="subjects"`, "📚", "Subjects", "Sports, movies, history, weather and more", "")}
       ${box("pb-friends", `data-go="friends"`, "🤝", "Play a friend", "Send a challenge or enter a code", "")}
     </div>
     <details class="how">
@@ -1482,7 +1523,7 @@ function viewPlay() {
   if (S.phase === "answer" || S.phase === "waiting") {
     body = `
       <div class="prompt-card">
-        <div class="ring ${isUntimed() ? "untimed" : ""}" id="ring" style="--p:1"><span id="clock">${isUntimed() ? "∞" : ROUND_SECONDS}</span></div>
+        <div class="ring ${isUntimed() ? "untimed" : ""}" id="ring" style="--p:1"><span id="clock">${isUntimed() ? "∞" : roundSecs()}</span></div>
         <p class="round-label">${roundLabel()}${prompt.twist ? ` · <span class="twist-warn">twist round, read the rule!</span>` : ""}</p>
         <h2 class="prompt">${promptTitle(prompt)}</h2>
         ${sayBtnSize() !== "off" ? `<button type="button" class="say-btn say-${sayBtnSize()}" data-act="say" aria-label="Hear the question">🔊</button>` : ""}
@@ -1583,7 +1624,7 @@ function viewResults() {
   let extra = "";
   if (res.elo) {
     const sign = res.elo.delta > 0 ? "+" : "";
-    extra += `<p class="elo-change">${kidMode() ? "Kid " : ""}Elo ${sign}${res.elo.delta} → <b>${myElo()}</b></p>`;
+    extra += `<p class="elo-change">${kidMode() ? "Kid " : bigMode() ? "Big kid " : ""}Elo ${sign}${res.elo.delta} → <b>${myElo()}</b></p>`;
   } else if (oppName && !me()) {
     extra += `<p class="hint"><button class="link" data-go="login">Log in</button> to have games count toward your Elo.</p>`;
   }
@@ -1750,6 +1791,7 @@ function viewProfile() {
     <h1>${esc(u.name)}</h1>
     <div class="stats">
       <div><span>Elo</span><b>${u.elo}</b></div>
+      ${u.big ? `<div><span>🎒 Big kid Elo</span><b>${u.big.elo}</b></div>` : ""}
       ${u.kid ? `<div><span>🧸 Kid Elo</span><b>${u.kid.elo}</b></div>` : ""}
       <div><span>Peak</span><b>${u.peak}</b></div>
       <div><span>Record</span><b>${u.wins}–${u.losses}${u.draws ? "–" + u.draws : ""}</b></div>
@@ -1820,16 +1862,17 @@ function viewSettings() {
     ${layoutBar()}
     <p class="hint">Auto fits whatever screen you're on. Pick one to use that layout anywhere. Saved on this device.</p>
 
-    <h2>Little Kid Mode</h2>
-    <div class="seg-pick" role="group" aria-label="Little Kid Mode">
-      <button data-act="kidmode" data-v="0" aria-pressed="${!kidMode()}"><span aria-hidden="true">🚀</span>Regular</button>
-      <button data-act="kidmode" data-v="1" aria-pressed="${kidMode()}"><span aria-hidden="true">🧸</span>Little kids</button>
+    <h2>Question level</h2>
+    <div class="seg-pick" role="group" aria-label="Question level">
+      <button data-act="agemode" data-v="little" aria-pressed="${kidMode()}"><span aria-hidden="true">🧸</span>Little kids</button>
+      <button data-act="agemode" data-v="big" aria-pressed="${bigMode()}"><span aria-hidden="true">🎒</span>Big kids</button>
+      <button data-act="agemode" data-v="regular" aria-pressed="${ageMode() === "regular"}"><span aria-hidden="true">🚀</span>Regular</button>
     </div>
-    <p class="hint">Easy questions for little kids, no twists, and 1 in Attillions are much easier to find. Kids get their own Elo, their own Daily Launch and their own leaderboard. Saved on this device.</p>
+    <p class="hint">${kidMode() ? "Easy questions for little kids, no twists, and 1 in Attillions are much easier to find." : bigMode() ? "In between: questions for older kids, no twists, and 1 in Attillions a little easier to find than Regular." : "The full game, with twist rounds."} Little kids and Big kids each get their own Elo, their own Daily Launch and their own leaderboard. Saved on this device.</p>
 
     <h2>Timer</h2>
     <div class="seg-pick" role="group" aria-label="Timer for Endless and Free Launch">
-      <button data-act="untimed" data-v="0" aria-pressed="${!store.get("untimed", false)}"><span aria-hidden="true">⏱️</span>30 seconds</button>
+      ${[15, 25, 30, 60].map(n => `<button data-act="timer" data-v="${n}" aria-pressed="${!store.get("untimed", false) && store.get("timerSecs", 30) === n}"><span aria-hidden="true">⏱️</span>${n === 60 ? "1 minute" : n + " seconds"}</button>`).join("")}
       <button data-act="untimed" data-v="1" aria-pressed="${!!store.get("untimed", false)}"><span aria-hidden="true">∞</span>No timer</button>
     </div>
     <p class="hint">Only for Endless and Free Launch, which never change your Elo. Every other mode stays timed. Saved on this device.</p>
@@ -1906,10 +1949,10 @@ function loadBoard() {
   cloudBoard().then(b => { boardLoading = false; if (b) { BOARD = b; if (S.view === "leaderboard") render(); } });
 }
 function viewLeaderboard() {
-  const tab = S.tab || (kidMode() ? "kids" : "elo");
+  const tab = S.tab || (kidMode() ? "kids" : bigMode() ? "big" : "elo");
   loadBoard();
   const local = Object.values(users());
-  if (tab === "kids") return viewKidBoard(local);
+  if (tab === "kids" || tab === "big") return viewKidBoard(local, tab === "big" ? "big" : "kid");
   const all = BOARD ? BOARD.elo.map(r => ({ online: true, name: r.name, elo: r.elo, avatar: r.avatar, wins: r.wins, losses: r.losses, daily: {} })) : local;
   if (BOARD) BOARD.daily.forEach(r => { const x = all.find(u => u.name === r.name); if (x) x.daily[todayKey()] = { score: r.today_score }; else all.push({ name: r.name, elo: 0, avatar: null, wins: 0, losses: 0, daily: { [todayKey()]: { score: r.today_score } }, onlyDaily: true }); });
   const key = todayKey();
@@ -1930,6 +1973,7 @@ function viewLeaderboard() {
     <div class="tabs" role="tablist">
       <button role="tab" aria-selected="${tab === "elo"}" data-act="tab" data-tab="elo">Elo rating</button>
       <button role="tab" aria-selected="${tab === "daily"}" data-act="tab" data-tab="daily">Today's launch</button>
+      <button role="tab" aria-selected="false" data-act="tab" data-tab="big">🎒 Big kids</button>
       <button role="tab" aria-selected="false" data-act="tab" data-tab="kids">🧸 Little kids</button>
     </div>
     <div class="table-wrap"><table class="board"><thead><tr><th>#</th><th>Player</th><th></th><th>${tab === "elo" ? "Elo" : "Score"}</th></tr></thead><tbody>${rows}</tbody></table></div>
@@ -1937,23 +1981,25 @@ function viewLeaderboard() {
   </main>`;
 }
 
-function viewKidBoard(local) {
+function viewKidBoard(local, k) {
+  k = k || "kid"; const big = k === "big";
   const avOf = u => avMarkup((u.online ? avatarById(u.avatar) : AVATARS.find(x => x.id === u.avatar && isOpen(x, u))) || AVATARS[0]);
-  const players = BOARD && BOARD.kid ? BOARD.kid.map(r => Object.assign({ online: true }, r))
-    : local.filter(u => u.kid).map(u => ({ name: u.name, avatar: u.avatar, elo: u.kid.elo, wins: u.kid.wins || 0, losses: u.kid.losses || 0, krillions: u.krillions, krillTotal: u.krillTotal, peak: u.peak, codes: u.codes }));
+  const players = BOARD && BOARD[k] ? BOARD[k].map(r => Object.assign({ online: true }, r))
+    : local.filter(u => u[k]).map(u => ({ name: u.name, avatar: u.avatar, elo: u[k].elo, wins: u[k].wins || 0, losses: u[k].losses || 0, krillions: u.krillions, krillTotal: u.krillTotal, peak: u.peak, codes: u.codes }));
   const list = players.map(u => ({ av: avOf(u), name: u.name, val: u.elo, sub: `${u.wins}–${u.losses}`, human: true }))
     .concat(regularBots().map(([, b]) => ({ av: b.av, name: b.name, val: b.elo, sub: "computer", human: false })))
     .sort((a, b) => b.val - a.val);
   const rows = list.map((r, i) => `<tr class="${r.human ? "" : "botrow"} ${me() && r.name === me().name ? "you" : ""}"><td class="n">${i + 1}</td><td>${r.av} ${esc(r.name)}</td><td class="sub">${esc(r.sub)}</td><td class="n">${r.val}</td></tr>`).join("");
   return `${header()}<main class="narrow">
-    <h1>🧸 Little kids leaderboard</h1>
+    <h1>${big ? "🎒 Big kids" : "🧸 Little kids"} leaderboard</h1>
     <div class="tabs" role="tablist">
       <button role="tab" aria-selected="false" data-act="tab" data-tab="elo">Elo rating</button>
       <button role="tab" aria-selected="false" data-act="tab" data-tab="daily">Today's launch</button>
-      <button role="tab" aria-selected="true" data-act="tab" data-tab="kids">🧸 Little kids</button>
+      <button role="tab" aria-selected="${big}" data-act="tab" data-tab="big">🎒 Big kids</button>
+      <button role="tab" aria-selected="${!big}" data-act="tab" data-tab="kids">🧸 Little kids</button>
     </div>
-    <div class="table-wrap"><table class="board"><thead><tr><th>#</th><th>Player</th><th></th><th>Kid Elo</th></tr></thead><tbody>${rows}</tbody></table></div>
-    <p class="note">Kid Elo is separate from regular Elo. It only changes in Little Kid Mode (turn it on in Settings).</p>
+    <div class="table-wrap"><table class="board"><thead><tr><th>#</th><th>Player</th><th></th><th>${big ? "Big kid" : "Kid"} Elo</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="note">${big ? "Big kid" : "Kid"} Elo is separate from regular Elo. It only changes when Question level is set to ${big ? "Big kids" : "Little kids"} in Settings.</p>
   </main>`;
 }
 function viewJoin() {
@@ -2119,8 +2165,9 @@ document.addEventListener("click", async e => {
   else if (act === "pvol-test") { if (window.KrillionSound) window.KrillionSound.prompt("Name a fruit"); }
   else if (act === "skip") endlessSkip();
   else if (act === "skips") { store.set("endlessSkips", Number(t.dataset.v)); render(); }
-  else if (act === "kidmode") { store.set("kidMode", t.dataset.v === "1"); render(); }
-  else if (act === "untimed") { store.set("untimed", t.dataset.v === "1"); render(); }
+  else if (act === "agemode") { store.set("ageMode", t.dataset.v); store.set("kidMode", t.dataset.v === "little"); const y = window.scrollY; render(); window.scrollTo(0, y); }
+  else if (act === "untimed") { store.set("untimed", t.dataset.v === "1"); const y = window.scrollY; render(); window.scrollTo(0, y); }
+  else if (act === "timer") { store.set("timerSecs", +t.dataset.v); store.set("untimed", false); const y = window.scrollY; render(); window.scrollTo(0, y); }
   else if (act === "spin") {
     const av = t.querySelector(".av");
     av.classList.remove("spin"); void av.offsetWidth; av.classList.add("spin");
