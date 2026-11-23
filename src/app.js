@@ -448,7 +448,7 @@ const KID_EXTRA = {   // kid topics also accept answers from matching grown-up l
   "k-character": "disneychar cartoonshow superhero", "k-princess": "disneychar", "k-superhero": "superhero", "k-snack": "candy", "k-job": "job", "k-holiday": "holiday winterholiday",
   "k-kitchen": "appliance utensil", "k-school": "classroom schoolsupply", "k-garden": "garden flower veg", "k-house": "room furniture bathroom", "k-sky": "space weather", "k-sea": "beach",
   "k-feel": "emotion", "k-farm": "farm", "k-breakfast": "breakfast cereal", "k-food": "fastfood pizza breakfast", "k-ride": "playground", "k-wheels": "wheels vehicle", "k-farmfood": "veg fruit",
-  "k-shape": "shape", "k-room": "room", "k-birthday": "", "k-zoo2": "" };
+  "k-shape": "shape", "k-room": "room", "k-birthday": "", "k-zoo2": "", "k-place": "state uscity country landmark europecity worldcity nacity asiacity usparks" };
 const KID_LETTER = { "k-letter": "b", "k-letter2": "s" };
 // words for "starts with B / S": every one-word answer from any list
 const KID_WORDS = {};
