@@ -600,3 +600,5 @@ h2 + .layout-bar { justify-content: flex-start; margin-top: 10px; }
 @keyframes bestShift { to { background-position: 300% 0; } }
 .kc-best { font: 800 11px var(--font-data); color: #1a1204; background: linear-gradient(90deg, #ffd34d, #ff9ae0); border-radius: 999px; padding: 2px 7px; vertical-align: middle; }
 .av-bestans { filter: drop-shadow(0 0 6px rgba(120,220,255,.9)); display: inline-block; animation: perfectGlow 3s ease-in-out infinite; }
+.avatar { position: relative; }
+.av-stars { position: absolute; top: 6px; right: 6px; font: 700 11px var(--font-data); color: #ffe9a8; background: rgba(255,201,60,.14); border: 1px solid rgba(255,201,60,.4); border-radius: 999px; padding: 1px 6px; line-height: 1.5; }
