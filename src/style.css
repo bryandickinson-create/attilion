@@ -613,7 +613,7 @@ h2 + .layout-bar { justify-content: flex-start; margin-top: 10px; }
 .power b { font-family: var(--font-data); color: #ffe9a8; margin-left: 2px; }
 .power.on { border-color: var(--hadal); background: rgba(255,201,60,.18); }
 .power:disabled { opacity: .45; cursor: default; }
-.hint-text { color: #ffe9a8; font-size: 14px; margin: 6px 0 0; }
+.hint-text { color: #ffe9a8; font-size: 15px; margin: 6px 0 0; font-family: var(--font-data); letter-spacing: .02em; }
 /* badges */
 .badge-wall { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin-top: 10px; }
 .badge { border: 1px solid var(--sea-3); background: var(--sea-2); border-radius: 12px; padding: 10px; display: grid; gap: 2px; opacity: .55; }

@@ -894,6 +894,29 @@ function powerBar() {
     return `<button type="button" class="power ${used[k] ? "on" : ""}" data-act="power" data-k="${k}" ${off ? "disabled" : ""} title="${esc(p.what)}"><span aria-hidden="true">${p.ic}</span> ${p.name} <b>×${have[k] || 0}</b></button>`;
   }).join("")}</div>${S.hintText ? `<p class="hint-text">💡 ${esc(S.hintText)}</p>` : ""}${S.doubles && S.doubles[S.round] ? `<p class="hint-text">✌️ Double is on: this round counts twice</p>` : ""}`;
 }
+// Hint: pick an answer that really scores a 1 in Attillion right now in this mode,
+// then show it as a fill-in-the-blanks pattern with just enough letters that no
+// other answer to the question fits it.
+function hintFor(prompt) {
+  let pick;
+  if (S.mode === "endless") pick = prompt.answers[endlessSecret(prompt)];
+  else {
+    const fixed = fixedRarity(), rep = repeatsCount(), best = bestDisplay(prompt);
+    const good = prompt.answers.filter(a => norm(a.display) !== best && /^[a-z0-9 '\-&.]+$/i.test(a.display) && (() => { try { return scoreAnswer(prompt, a.display, fixed, rep).points >= 100; } catch (e) { return false; } })());
+    pick = good[Math.floor(Math.random() * good.length)];
+  }
+  if (!pick) return "";
+  const d = pick.display, chars = [...d];
+  const letterIdx = chars.map((c, i) => /[a-z0-9]/i.test(c) ? i : -1).filter(i => i >= 0);
+  const shown = new Set([letterIdx[0], letterIdx[letterIdx.length - 1]]);
+  const others = prompt.answers.map(a => a.display.toLowerCase()).filter(x => x !== d.toLowerCase() && x.length === d.length);
+  const fits = x => chars.every((c, i) => /[a-z0-9]/i.test(c) ? (!shown.has(i) || x[i] === c.toLowerCase()) && /[a-z0-9]/i.test(x[i]) : x[i] === c);
+  // reveal more letters (spread out) until the pattern points to just this answer
+  const order = letterIdx.slice(1, -1).sort((a, b) => ((a * 7) % 5) - ((b * 7) % 5) || a - b);
+  while (others.some(fits) && order.length && shown.size < letterIdx.length - 1) shown.add(order.shift());
+  const pattern = chars.map((c, i) => /[a-z0-9]/i.test(c) ? (shown.has(i) ? c.toUpperCase() : "_") : c === " " ? " " : c).join(" ");
+  return `Try: ${pattern} (${letterIdx.length} letters)`;
+}
 function usePower(k) {
   if (!powersAllowed() || S.phase !== "answer" || !POWERS[k]) return;
   S.powerUsed = S.powerUsed || {}; const used = S.powerUsed[S.round] = S.powerUsed[S.round] || {};
@@ -901,12 +924,7 @@ function usePower(k) {
   const prompt = PROMPT_BY_ID[S.prompts[S.round]];
   if (k === "freeze") { if (S.deadline === Infinity) return; S.deadline += 10000; }
   if (k === "double") { S.doubles = S.doubles || {}; S.doubles[S.round] = true; }
-  if (k === "hint") {
-    const pool = prompt.answers.slice(prompt.krillFrom, prompt.familiar).filter(a => norm(a.display) !== bestDisplay(prompt) && (!prompt.test || prompt.answers.indexOf(a) >= 0));
-    // Endless has exactly one secret 1 in Attillion per prompt, so the hint points at that one
-    const a = S.mode === "endless" ? prompt.answers[endlessSecret(prompt)] : pool[Math.floor(Math.random() * pool.length)] || prompt.answers[prompt.krillFrom];
-    const d = a.display; S.hintText = `Try one that starts with “${d[0].toUpperCase()}” and has ${d.replace(/[^a-z]/gi, "").length} letters`;
-  }
+  if (k === "hint") { const h = hintFor(prompt); if (!h) return; S.hintText = h; }
   used[k] = true; addPower(k, -1); SFX("pop");
   const inp = document.getElementById("answer"), val = inp ? inp.value : "";
   render();
