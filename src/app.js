@@ -1069,6 +1069,38 @@ function botTalk(key, kind) {
 }
 function botBubble(key, kind) { const b = BOTS[key]; return b ? `<div class="bot-talk"><span class="bt-av" aria-hidden="true">${b.av}</span><p><b>${esc(b.name)}:</b> “${esc(botTalk(key, kind))}”</p></div>` : ""; }
 
+// Mid-round chatter: start (round begins), ahead / behind (bot leads or trails), think (halfway), lock (bot locks in), hurry (5 s left)
+const BOT_CHAT = {
+  dust:      { start: ["Floating in... ready!", "Is it my turn? Okay!", "La la la, drifting along."], ahead: ["Am I winning? Neat!", "Lucky breeze today."], behind: ["You're really good at this.", "I'm just happy to be here."], think: ["Hmm... thinking floaty thoughts.", "Is a cloud an answer?"], lock: ["I typed something!", "Done! I think."], hurry: ["Tick tock, little speck!", "Better hurry!"] },
+  minnow:    { start: ["Bring it on!", "I'm a rock. Rocks don't panic.", "Ready to tumble."], ahead: ["Solid lead, solid rock.", "Feeling heavy with points."], behind: ["Chipping away at your lead.", "Not cracked yet!"], think: ["Grinding on this one...", "Rock brain working..."], lock: ["Locked in. Rock solid.", "Boulder answer, done."], hurry: ["Clock's crumbling!", "Five seconds, pebble!"] },
+  fish:      { start: ["Here I come, swinging in!", "Round and round we go.", "Comet's coming through!"], ahead: ["Catch my tail if you can!", "Zooming ahead!"], behind: ["Just warming up my tail.", "Slingshotting around the sun..."], think: ["Whoosh... thinking at top speed.", "Hold on, orbiting this one."], lock: ["Locked! Zoom!", "Shot it out of the sky."], hurry: ["You're about to burn up!", "Faster than a comet, go go!"] },
+  rover:     { start: ["Mission start. Scanning...", "Wheels down. Let's explore.", "Beep boop, ready."], ahead: ["Data says I'm winning.", "Mission going well."], behind: ["Rerouting to catch up.", "Recalculating path..."], think: ["Scanning the surface...", "Drilling for an answer..."], lock: ["Sample sent to base.", "Answer uploaded. Beep."], hurry: ["Warning: time low!", "Beep beep beep! Hurry!"] },
+  barracuda: { start: ["Time to shine!", "Twinkle mode: on.", "Let's light this up."], ahead: ["I'm glowing right now.", "Brightest one here!"], behind: ["Just dimmed a little.", "Watch me flare back."], think: ["Thinking bright thoughts...", "Hmm, so many to choose from."], lock: ["Locked in with a sparkle.", "Twinkle! Done."], hurry: ["Your light's running out!", "Shine faster!"] },
+  shark:     { start: ["Come closer...", "Nothing escapes my answers.", "Feel the pull?"], ahead: ["You're slipping toward me.", "Gravity's on my side."], behind: ["I'll pull you back in.", "This won't last."], think: ["Swallowing every idea in sight...", "Pulling answers from the void..."], lock: ["Absorbed. Locked in.", "Into the dark it goes."], hurry: ["Time is collapsing!", "The event horizon is near!"] },
+  nova:      { start: ["Three... two... one...", "Ready to blow up the board!", "Charging up!"], ahead: ["Exploding ahead!", "That's a big bang lead."], behind: ["Building pressure...", "Just you wait. Boom's coming."], think: ["Fizzzzz...", "Heating up..."], lock: ["BOOM! Locked in.", "Kaboom, done!"], hurry: ["Fuse is almost out!", "Five seconds to detonation!"] },
+  quasar:    { start: ["Try to keep up.", "I've seen every answer in the universe.", "Let's make this quick."], ahead: ["As expected.", "The universe is in order."], behind: ["Interesting. Very interesting.", "Nobody's ever done this to me."], think: ["Calculating the rarest possible...", "Too many good answers. Hmm."], lock: ["Done. Obviously.", "Locked in before you blinked."], hurry: ["Still typing?", "Time's nearly gone, little star."] }
+};
+function chatLine(kind) {
+  const key = S.level, b = BOTS[key]; if (!b) return "";
+  const lines = (BOT_CHAT[key] || {})[kind] || ({
+    start: ["Let's go!", `Welcome to ${b.event ? EVENT.name : "my orbit"}!`], ahead: ["I'm in front!"], behind: ["I'll catch up!"],
+    think: ["Hmm, let me think..."], lock: ["Locked in!"], hurry: ["Hurry up!"] }[kind]);
+  let pick = lines[Math.floor(Math.random() * lines.length)];
+  if (lines.length > 1 && pick === S.chat) pick = lines[(lines.indexOf(pick) + 1) % lines.length];
+  return pick;
+}
+function setChat(kind) {
+  if (S.mode !== "bot" || !BOTS[S.level]) return;
+  S.chat = chatLine(kind); S.chatKind = kind;
+  const el = document.getElementById("botchat-text");
+  if (el) { el.textContent = `“${S.chat}”`; const box = el.closest(".bot-chat"); if (box) { box.classList.remove("pop"); void box.offsetWidth; box.classList.add("pop"); } }
+}
+function chatBox() {
+  if (S.mode !== "bot" || !BOTS[S.level] || !S.chat || store.get("botChat", true) === false) return "";
+  const b = BOTS[S.level];
+  return `<div class="bot-talk bot-chat"><span class="bt-av" aria-hidden="true">${b.av}</span><p><b>${esc(b.name)}:</b> <span id="botchat-text">“${esc(S.chat)}”</span></p></div>`;
+}
+
 /* ---------- match flow ---------- */
 function startMatch(opts) {
   // opts: { mode: "bot"|"daily"|"challenge-host"|"challenge-guest", level, seed, prompts, opp }
@@ -1101,7 +1133,11 @@ function beginRound() {
   S.bestUnlock = false; S.hintText = "";
   S.phase = "answer"; S.deadline = isUntimed() ? Infinity : Date.now() + roundSecs() * 1000; S.draft = "";
   S.botLockAt = S.mode === "bot" ? Date.now() + (2 + Math.random() * Math.min(19, roundSecs() * 0.63)) * 1000 : null;
-  S.submittedAt = null; S.lastTick = null;
+  S.submittedAt = null; S.lastTick = null; S.chat = ""; S.chatKind = "";
+  if (S.mode === "bot" && BOTS[S.level]) {
+    const my = total(S.scores || []), their = total(S.oppScores || []);
+    S.chat = chatLine(S.round === 0 || Math.abs(my - their) < 15 ? "start" : their > my ? "ahead" : "behind"); S.chatKind = "start";
+  }
   if (S.live) { S.live.at = S.round; livePresence(); }
   render();
   const input = document.getElementById("answer"); if (input) input.focus();
@@ -1121,6 +1157,12 @@ function tick() {
     const ring = document.getElementById("ring"); if (ring) ring.style.setProperty("--p", (left / (roundSecs() * 1000)).toFixed(3));
     const ol = document.getElementById("opplock");
     if (ol && S.botLockAt) ol.classList.toggle("on", now >= S.botLockAt);
+    if (S.mode === "bot" && S.botLockAt) {
+      const total_ = roundSecs() * 1000;
+      if (now >= S.botLockAt && S.chatKind !== "lock" && S.chatKind !== "hurry") setChat("lock");
+      else if (now < S.botLockAt && S.chatKind === "start" && left < total_ * 0.55) setChat("think");
+      if (secs <= 5 && S.chatKind !== "hurry") setChat("hurry");
+    }
     if (ol && S.live) ol.classList.toggle("on", liveOppAnswered(S.round));
     if (left <= 0) submit(true);
   } else if (S.phase === "waiting" && !S.live) {
@@ -1831,6 +1873,7 @@ function viewPlay() {
         </form>
         <p class="answer-error" id="answer-error" role="alert"></p>
         ${powerBar()}
+        ${chatBox()}
         ${S.mode === "endless" && skipLimit() > 0 ? `<button class="btn ghost small skip-btn" data-act="skip" ${skipsLeft() ? "" : "disabled"}>⏭ Skip this one ${skipLimit() === Infinity ? "" : `(${skipsLeft()} left)`}</button>` : ""}` : `<p class="waiting">Locked in: <b>${esc(S.mine[S.round] || "(blank)")}</b>. Waiting for ${esc(oppName)}…</p>`}
         ${oppName ? `<p class="opp-status" id="opplock">${S.live && S.live.gone ? `${esc(oppName)} left the match. Finish your rounds and the win is yours.` : S.mode === "challenge-guest" ? `${esc(oppName)} already answered. You'll see it at the end of the round.` : `<span class="dot"></span>${esc(oppName)} is thinking`}</p>` : ""}
       </div>`;
