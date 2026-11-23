@@ -182,6 +182,10 @@ function eventFor(w) {
   return Object.assign({ w, start, end: new Date(start.getTime() + EVENT_DAYS * 864e5) }, ev);
 }
 const EVENT = eventFor(eventWindow());
+// each event's colour and emojis, used for its themed 1 in Attillion animation
+const EVENT_RGB = { haunted: "255,140,40", harvest: "240,170,60", leaves: "230,110,40", frost: "150,220,255", holiday: "235,70,80", aurora: "90,240,190", bloom: "255,150,200", egghunt: "255,220,120", showers: "110,170,255", flare: "255,200,60", sparks: "255,90,90", ocean: "60,200,230", heist: "60,255,200", doomsday: "170,90,255", biggame: "120,200,90", heart: "255,90,160", clover: "80,220,110", greenplanet: "110,210,90", arcade: "255,230,80", deepdive: "60,130,230", spacecamp: "220,230,255", games: "255,200,60", academy: "255,220,90", dino: "200,160,100", orchard: "240,70,70", monster: "170,255,90" };
+function findEvent(key) { return Object.values(EVENTS).flat().find(x => x.key === key) || null; }
+function eventTheme(ev) { return ev ? { name: ev.name, rgb: EVENT_RGB[ev.key] || "255,201,60", emojis: [ev.token, ev.token, ev.prize.e].concat(ev.bots.map(b => b[0])) } : null; }
 // every event's prize, so prizes from past events stay in your collection
 Object.values(EVENTS).flat().forEach(ev => AVATARS.splice(AVATARS.findIndex(a => a.code), 0, { id: "ev-" + ev.key, e: ev.prize.e, name: ev.prize.name, ev: ev.key }));
 EVENT.bots.forEach(([av, name, blurb], i) => { BOTS["ev" + i] = Object.assign({ name, av, blurb, event: true, tier: i }, EVENT_TIERS[i]); });
@@ -672,6 +676,9 @@ function myAvatarObj() {
   return unlockedAvatars(u).find(x => x.id === id) || AVATARS[0];
 }
 function myAvatar() { return avMarkup(myAvatarObj()); }
+// event bot matches use the event's theme; wearing an event avatar themes your own 1 in Attillion everywhere
+function eventMatch() { return S.mode === "bot" && BOTS[S.level] && BOTS[S.level].event; }
+function myTheme() { if (eventMatch()) return eventTheme(EVENT); const a = myAvatarObj(); return a.ev ? eventTheme(findEvent(a.ev)) : null; }
 function curOppName() {
   return S.mode === "bot" ? BOTS[S.level].name : S.mode === "challenge-guest" ? S.challenge.from : S.mode === "live" && S.live ? S.live.opp.name : null;
 }
@@ -868,7 +875,7 @@ function playReveal() {
   requestAnimationFrame(() => requestAnimationFrame(() => { if (dMe) dMe.classList.add("go"); }));
   if (mineCard) {
     FX.countUp(mineCard.querySelector(".pts b"), S.lastMine.points, 900);
-    FX.reveal(mineCard, S.lastMine.valid ? S.lastMine.zone.key : null, "you", { devTakeover: ["dev", "rdev", "gdev"].includes(myAvatarObj().id) ? myAvatarObj().id : null });
+    FX.reveal(mineCard, S.lastMine.valid ? S.lastMine.zone.key : null, "you", { devTakeover: ["dev", "rdev", "gdev"].includes(myAvatarObj().id) && !eventMatch() ? myAvatarObj().id : null, theme: myTheme() });
     SFX(S.lastMine.valid ? S.lastMine.zone.key : "miss");
     FX.countUp(document.getElementById("pod-me"), total(S.scores), 900);
   }
@@ -879,7 +886,7 @@ function playReveal() {
       theirCard.classList.remove("pending");
       if (dOpp) { dOpp.classList.remove("pending"); dOpp.classList.add("go"); }
       FX.countUp(theirCard.querySelector(".pts b"), S.lastTheirs.points, 900);
-      FX.reveal(theirCard, S.lastTheirs.valid ? S.lastTheirs.zone.key : null, oppName);
+      FX.reveal(theirCard, S.lastTheirs.valid ? S.lastTheirs.zone.key : null, oppName, { theme: eventMatch() ? eventTheme(EVENT) : null });
       SFX(S.lastTheirs.valid ? S.lastTheirs.zone.key : "miss", 0.6);
       FX.countUp(document.getElementById("pod-opp"), total(S.oppScores), 900);
       const lead = document.getElementById("lead"); if (lead) lead.textContent = leadText(oppName);
@@ -961,6 +968,10 @@ function finishMatch() {
   S.result = res;
   S.view = "results";
   render();
+  if (res.evUnlocked) setTimeout(() => {   // the event prize arrives with the event's own animation
+    const a = avatarById("ev-" + EVENT.key), el = document.querySelector(".unlock-note");
+    if (a && el && window.KrillionFX && window.KrillionFX.celebrate) { SFX("hadal"); window.KrillionFX.celebrate(el, a.id, avMarkup(a), a.name, eventTheme(EVENT)); }
+  }, 400);
   const hasOpp = S.mode === "bot" || S.mode === "challenge-guest" || S.mode === "live";
   SFX(!hasOpp ? "win" : my > their ? "win" : my < their ? "lose" : "tie");
 }
@@ -1317,7 +1328,7 @@ function celebrateAvatar(id) {
   const a = avatarById(id); if (!a) return;
   SFX("hadal");
   const el = document.querySelector(`[data-act="avatar"][data-id="${id}"]`) || document.querySelector(".avbtn");
-  if (window.KrillionFX && window.KrillionFX.celebrate) window.KrillionFX.celebrate(el, a.id, avMarkup(a), a.name);
+  if (window.KrillionFX && window.KrillionFX.celebrate) window.KrillionFX.celebrate(el, a.id, avMarkup(a), a.name, a.ev ? eventTheme(findEvent(a.ev)) : null);
 }
 
 /* ---------- views ---------- */

@@ -566,3 +566,8 @@ h2 + .layout-bar { justify-content: flex-start; margin-top: 10px; }
 @keyframes crownglow { 0% { filter: drop-shadow(0 0 6px #ffc93c) drop-shadow(0 0 2px #ff5fa2); } 33% { filter: drop-shadow(0 0 8px #8fd8ff) drop-shadow(0 0 2px #ffc93c); } 66% { filter: drop-shadow(0 0 8px #a58bff) drop-shadow(0 0 2px #5fe08a); } 100% { filter: drop-shadow(0 0 6px #ffc93c) drop-shadow(0 0 2px #ff5fa2); } }
 
 .kid-chip { font-size: 13px; font-weight: 700; color: #ffd36b; border: 1px solid #ffd36b; border-radius: 999px; padding: 4px 10px; }
+/* event-themed 1 in Attillion */
+.krillion-banner.themed { background: radial-gradient(ellipse at center, rgba(var(--th), .28), rgba(3,4,14,.9) 70%); }
+.krillion-banner.themed .kb-big { color: rgb(var(--th)); text-shadow: 0 0 30px rgba(var(--th), .75), 0 0 90px rgba(var(--th), .45), 0 6px 0 rgba(0,0,0,.45); }
+.krillion-banner.themed .kb-who { color: rgb(var(--th)); }
+.kb-theme { font: 700 clamp(16px, 3.4vw, 24px) var(--font-display); color: #fff; margin: 0 0 8px; letter-spacing: .02em; }

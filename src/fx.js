@@ -204,7 +204,7 @@ const effects = {
       }
     });
   },
-  hadal(card, who, opts) { if (opts && opts.devTakeover) devTakeover(card, opts.devTakeover); else krillion(card, who); }
+  hadal(card, who, opts) { if (opts && opts.devTakeover) devTakeover(card, opts.devTakeover); else krillion(card, who, opts); }
 };
 
 function ring(card, rgb, n, dur) {
@@ -248,13 +248,16 @@ function krillion(card, who, opts) {
   const app = document.getElementById("app");
   if (app && !reduce) { app.classList.remove("shake"); void app.offsetWidth; app.classList.add("shake"); }
   const banner = document.createElement("div");
-  banner.className = "krillion-banner";
-  banner.innerHTML = `<div class="kb-inner"><p class="kb-who">${opts && opts.avatarHtml ? opts.avatarHtml + " " + escH(opts.label || "") : who === "you" ? "You found it" : escH(who) + " found it"}</p><p class="kb-big"><span>1 in</span> Attillion</p>${opts && opts.avatarHtml ? "" : `<p class="kb-pts">+100</p>`}</div>`;
+  const th = opts && opts.theme;
+  banner.className = "krillion-banner" + (th ? " themed" : "");
+  if (th) banner.style.setProperty("--th", th.rgb);
+  banner.innerHTML = `<div class="kb-inner">${th ? `<p class="kb-theme">${escH(th.emojis[0])} ${escH(th.name)} ${escH(th.emojis[0])}</p>` : ""}<p class="kb-who">${opts && opts.avatarHtml ? opts.avatarHtml + " " + escH(opts.label || "") : who === "you" ? "You found it" : escH(who) + " found it"}</p><p class="kb-big"><span>1 in</span> Attillion</p>${opts && opts.avatarHtml ? "" : `<p class="kb-pts">+100</p>`}</div>`;
   document.body.appendChild(banner);
   const end = () => { banner.classList.add("out"); document.body.classList.remove("krillion-hit"); setTimeout(() => banner.remove(), 500); };
   const timer = setTimeout(end, 2600);
   banner.addEventListener("click", () => { clearTimeout(timer); end(); });
 
+  if (th) { themedBurst(x, y, th); return; }
   // a burst of gold stars shoots out from the altitude marker and swirls
   for (let i = 0; i < 200; i++) {
     const a = rand(0, TAU), sp = rand(120, 620);
@@ -276,6 +279,48 @@ function krillion(card, who, opts) {
   });
 }
 
+/* an event's own 1 in Attillion: its emojis burst out and swirl, more rain down
+   from the top, and the shockwaves and sparkles take the event's colour */
+function emoji(c, ch, x, y, size, alpha, rot) {
+  c.save(); c.translate(x, y); c.rotate(rot); c.globalAlpha = Math.max(0, Math.min(1, alpha));
+  c.font = size + "px system-ui, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif"; c.textAlign = "center"; c.textBaseline = "middle";
+  c.fillText(ch, 0, 0); c.restore();
+}
+function themedBurst(x, y, th) {
+  const pick = () => th.emojis[Math.floor(Math.random() * th.emojis.length)];
+  const col = `rgb(${th.rgb})`;
+  for (let i = 0; i < 70; i++) {
+    const a = rand(0, TAU), sp = rand(150, 560);
+    parts.push({
+      x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, rot: rand(-0.5, 0.5), spin: rand(-3, 3), size: rand(18, 38), life: rand(1.8, 3.2), ch: pick(),
+      update(p, dt) {
+        p.vx *= 0.97; p.vy = p.vy * 0.97 + 30 * dt;
+        const sw = 70; p.vx += -p.vy / sw * dt * 60 * 0.12; p.vy += p.vx / sw * dt * 60 * 0.12;
+        p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.spin * dt;
+      },
+      draw(c, p) { emoji(c, p.ch, p.x, p.y, p.size, Math.min(1, p.life), p.rot); }
+    });
+  }
+  for (let i = 0; i < 40; i++) parts.push({
+    x: rand(0, W), y: rand(-H * 0.6, -20), vy: rand(160, 320), sway: rand(0, TAU), rot: 0, size: rand(20, 34), life: 3.4, delay: rand(0, 0.9), ch: pick(),
+    update(p, dt) { if (p.delay > 0) { p.delay -= dt; p.life += dt; return; } p.y += p.vy * dt; p.sway += dt * 2; p.x += Math.sin(p.sway) * 40 * dt; p.rot = Math.sin(p.sway) * 0.3; },
+    draw(c, p) { if (p.delay > 0) return; emoji(c, p.ch, p.x, p.y, p.size, Math.min(1, p.life), p.rot); }
+  });
+  for (let i = 0; i < 90; i++) {
+    const a = rand(0, TAU), sp = rand(100, 600);
+    parts.push({
+      x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, rot: rand(0, TAU), spin: rand(-6, 6), size: rand(3, 7), life: rand(1.2, 2.4),
+      update(p, dt) { p.vx *= 0.975; p.vy *= 0.975; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.spin * dt; },
+      draw(c, p) { sparkle(c, p.x, p.y, p.size, Math.random() < 0.15 ? "#ffffff" : col, Math.min(1, p.life), p.rot); }
+    });
+  }
+  for (let i = 0; i < 3; i++) parts.push({
+    x, y, life: 1.4, max: 1.4, delay: i * 0.18,
+    update(p, dt) { if (p.delay > 0) { p.delay -= dt; p.life += dt; } },
+    draw(c, p) { if (p.delay > 0) return; const k = 1 - p.life / p.max; c.strokeStyle = `rgba(${th.rgb},${(1 - k) * 0.9})`; c.lineWidth = 4 * (1 - k) + 1; c.beginPath(); c.arc(p.x, p.y, 20 + k * Math.max(W, H) * 0.6, 0, TAU); c.stroke(); }
+  });
+}
+
 function countUp(el, to, ms) {
   if (!el) return;
   if (reduce) { el.textContent = to; return; }
@@ -292,10 +337,10 @@ window.KrillionFX = {
   setDepth(v) { depthTarget = Math.max(0, Math.min(1, v)); },
   countUp,
   // the full 1 in Attillion moment, played when you pick a new avatar
-  celebrate(el, avatarId, avatarHtml, label) {
+  celebrate(el, avatarId, avatarHtml, label, theme) {
     if (!el || reduce) return;
     if (avatarId === "dev" || avatarId === "rdev" || avatarId === "gdev") devTakeover(el, avatarId);
-    else krillion(el, "", { avatarHtml, label });
+    else krillion(el, "", { avatarHtml, label, theme });
     runFx();
   },
   reveal(card, zoneKey, who, opts) {
