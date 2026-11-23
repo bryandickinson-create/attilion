@@ -1462,6 +1462,7 @@ function viewEventCard() {
 }
 
 // Bundle codes unlock a whole group at once.
+const ELO_BOOST_CAP = 2000;
 const ELO_BOOST_CODE = 3265732527;
 const BUNDLES = [
   { id: "krill-all", code: 1175683394, name: "every Attillion trophy", pick: "rdragon" },
@@ -3554,20 +3555,19 @@ document.addEventListener("submit", async e => {
   else if (e.target.id === "code-form") {
     const input = document.getElementById("unlock-code");
     const h = codeHash(input.value);
-    // one-time Elo boost: +100 to your current level's Elo, once per account
+    // Elo boost: admin account only, +100 each time, never above 2000
     if (h === ELO_BOOST_CODE) {
       const u = me();
-      if (!u) { go("avatar", { codeMsg: "Log in first. The Elo boost goes on your account." }); return; }
-      if ((u.codes || []).includes("elo-boost")) { go("avatar", { codeMsg: "You already used the Elo boost on this account." }); return; }
+      if (!u || u.name.toLowerCase() !== OWNER_NAME.toLowerCase()) { SFX("error"); go("avatar", { codeMsg: "That code doesn't unlock anything." }); return; }
+      if (myElo(u) >= ELO_BOOST_CAP) { go("avatar", { codeMsg: `The Elo boost stops at ${ELO_BOOST_CAP}. Your Elo is ${myElo(u)}.` }); return; }
       const k = tierKey();
       updateUser(x => {
-        x.codes = (x.codes || []).concat("elo-boost");
         const r = k ? (x[k] = x[k] || { elo: START_ELO, peak: START_ELO, games: 0, wins: 0, losses: 0, draws: 0, history: [] }) : x;
-        r.elo += 100; r.peak = Math.max(r.peak || START_ELO, r.elo);
+        r.elo = Math.min(ELO_BOOST_CAP, r.elo + 100); r.peak = Math.max(r.peak || START_ELO, r.elo);
         if (k) x[k + "Elo"] = r.elo;
       });
       SFX("win");
-      go("avatar", { codeMsg: `+100 Elo! Your ${k === "kid" ? "Kid " : k === "big" ? "Big kid " : ""}Elo is now ${myElo()}.` });
+      go("avatar", { codeMsg: `+Elo boost! Your ${k === "kid" ? "Kid " : k === "big" ? "Big kid " : ""}Elo is now ${myElo()} (it stops at ${ELO_BOOST_CAP}).` });
       return;
     }
     const bundle = BUNDLES.find(x => x.code === h);
