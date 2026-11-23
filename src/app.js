@@ -26,11 +26,11 @@ const BOTS = {
   dust:      { name: "Space Dust", av: "✨", elo: 500,  miss: 0.30, lucky: 0.02, pick: () => Math.pow(Math.random(), 3) * 0.08, blurb: "Floats around. Sometimes says nothing at all." },
   minnow:    { name: "Asteroid",  av: "🪨", elo: 800,  miss: 0.15, lucky: 0.04, pick: () => Math.pow(Math.random(), 2.2) * 0.15, blurb: "Says the first thing that drifts by." },
   fish:      { name: "Comet",     av: "☄️", elo: 1100, miss: 0.10, lucky: 0.07, pick: () => Math.pow(Math.random(), 1.5) * 0.35, blurb: "Goes around the block, rarely leaves orbit." },
-  rover:     { name: "Rover",     av: "🛻", elo: 1250, miss: 0.08, lucky: 0.06, pick: () => Math.pow(Math.random(), 1.2) * 0.45, blurb: "Explores a little further every round." },
-  barracuda: { name: "Star",      av: "🌟", elo: 1400, miss: 0.07, lucky: 0.08, pick: () => 0.03 + Math.random() * 0.5,         blurb: "Bright, fast, sometimes too clever." },
-  shark:     { name: "Black Hole", av: "🕳️", elo: 1700, miss: 0.04, lucky: 0.14, pick: () => 0.06 + Math.random() * 0.69,        blurb: "Pulls in answers nobody else can reach." },
-  nova:      { name: "Supernova", av: "💥", elo: 2000, miss: 0.03, lucky: 0.20, pick: () => 0.12 + Math.random() * 0.72,        blurb: "Explodes with rare answers. Hard to outshine." },
-  quasar:    { name: "Quasar",    av: "🌠", elo: 2300, miss: 0.02, lucky: 0.26, pick: () => 0.2 + Math.random() * 0.72,         blurb: "The brightest thing in the universe. Good luck." }
+  rover:     { name: "Rover",     av: "🛻", elo: 1250, miss: 0.08, lucky: 0.04, pick: () => Math.pow(Math.random(), 1.2) * 0.45, blurb: "Explores a little further every round." },
+  barracuda: { name: "Star",      av: "🌟", elo: 1400, miss: 0.07, lucky: 0.05, pick: () => 0.03 + Math.random() * 0.5,         blurb: "Bright, fast, sometimes too clever." },
+  shark:     { name: "Black Hole", av: "🕳️", elo: 1700, miss: 0.04, lucky: 0.09, pick: () => 0.06 + Math.random() * 0.69,        blurb: "Pulls in answers nobody else can reach." },
+  nova:      { name: "Supernova", av: "💥", elo: 2000, miss: 0.03, lucky: 0.13, pick: () => 0.12 + Math.random() * 0.7,        blurb: "Explodes with rare answers. Hard to outshine." },
+  quasar:    { name: "Quasar",    av: "🌠", elo: 2300, miss: 0.02, lucky: 0.17, pick: () => 0.2 + Math.random() * 0.68,         blurb: "The brightest thing in the universe. Good luck." }
 };
 
 // Avatars unlock by your best (peak) Elo, so a losing streak never takes one away.
@@ -77,8 +77,8 @@ const EVENT_EPOCH = new Date(2026, 10, 16);       // a Monday; events run Monday
 const EVENT_DAYS = 14, EVENT_GOAL = 150;
 const EVENT_TIERS = [
   { elo: 900,  miss: 0.10, lucky: 0.06, pick: () => Math.pow(Math.random(), 1.6) * 0.3, win: 12, draw: 7,  loss: 3 },
-  { elo: 1300, miss: 0.07, lucky: 0.08, pick: () => 0.03 + Math.random() * 0.45,       win: 20, draw: 12, loss: 5 },
-  { elo: 1800, miss: 0.04, lucky: 0.15, pick: () => 0.08 + Math.random() * 0.7,        win: 32, draw: 20, loss: 8 }
+  { elo: 1300, miss: 0.07, lucky: 0.05, pick: () => 0.03 + Math.random() * 0.45,       win: 20, draw: 12, loss: 5 },
+  { elo: 1800, miss: 0.04, lucky: 0.10, pick: () => 0.08 + Math.random() * 0.7,        win: 32, draw: 20, loss: 8 }
 ];
 const EVENTS = {
   fall: [
@@ -734,7 +734,7 @@ function botAnswer(level, prompt) {
   const n = prompt.familiar;
   const idx = Math.random() < b.lucky
     ? prompt.krillFrom + Math.floor(Math.random() * (n - prompt.krillFrom))   // a lucky deep dive
-    : Math.min(n - 1, Math.floor(b.pick() * n));
+    : Math.min(n - 1, Math.floor(b.pick() * (prompt.kid ? KID_KRILL_FROM / KRILLION_FROM : 1) * n));   // kid lists reach 1 in Attillion sooner, so bots aim shallower there
   return prompt.answers[idx].display;
 }
 
