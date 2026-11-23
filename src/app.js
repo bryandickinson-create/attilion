@@ -875,7 +875,7 @@ function playReveal() {
   requestAnimationFrame(() => requestAnimationFrame(() => { if (dMe) dMe.classList.add("go"); }));
   if (mineCard) {
     FX.countUp(mineCard.querySelector(".pts b"), S.lastMine.points, 900);
-    FX.reveal(mineCard, S.lastMine.valid ? S.lastMine.zone.key : null, "you", { devTakeover: ["dev", "rdev", "gdev"].includes(myAvatarObj().id) && !eventMatch() ? myAvatarObj().id : null, theme: myTheme() });
+    FX.reveal(mineCard, S.lastMine.valid ? S.lastMine.zone.key : null, "you", { devTakeover: ["dev", "rdev", "gdev"].includes(myAvatarObj().id) && !eventMatch() ? myAvatarObj().id : null, theme: myTheme(), odds: S.lastMine.share > 0 ? oneIn(S.lastMine.share).replace("about ", "") : "" });
     SFX(S.lastMine.valid ? S.lastMine.zone.key : "miss");
     FX.countUp(document.getElementById("pod-me"), total(S.scores), 900);
   }
@@ -886,7 +886,7 @@ function playReveal() {
       theirCard.classList.remove("pending");
       if (dOpp) { dOpp.classList.remove("pending"); dOpp.classList.add("go"); }
       FX.countUp(theirCard.querySelector(".pts b"), S.lastTheirs.points, 900);
-      FX.reveal(theirCard, S.lastTheirs.valid ? S.lastTheirs.zone.key : null, oppName, { theme: eventMatch() ? eventTheme(EVENT) : null });
+      FX.reveal(theirCard, S.lastTheirs.valid ? S.lastTheirs.zone.key : null, oppName, { theme: eventMatch() ? eventTheme(EVENT) : null, odds: S.lastTheirs.share > 0 ? oneIn(S.lastTheirs.share).replace("about ", "") : "" });
       SFX(S.lastTheirs.valid ? S.lastTheirs.zone.key : "miss", 0.6);
       FX.countUp(document.getElementById("pod-opp"), total(S.oppScores), 900);
       const lead = document.getElementById("lead"); if (lead) lead.textContent = leadText(oppName);
@@ -1728,6 +1728,7 @@ function krillWall(list) {
     <div class="krill-wall">${shown.map(k => `
       <div class="krill-card" data-s="${esc((k.a + " " + k.q).toLowerCase())}">
         <p class="kc-a">${esc(k.a)}</p>
+        ${k.share > 0 ? `<p class="kc-odds">1 in ${Math.max(1, Math.round(100 / k.share)).toLocaleString()}</p>` : ""}
         <p class="kc-q">${esc(k.q)}</p>
         <p class="what small" data-what="${esc(k.a)}" data-hint="${esc(topicHint(k.q))}" hidden></p>
         <p class="kc-m">${new Date(k.when).toLocaleDateString(undefined, { month: "short", day: "numeric", year: new Date(k.when).getFullYear() === new Date().getFullYear() ? undefined : "numeric" })} · ${esc(k.mode)} · ${altText(k.depth)}</p>

@@ -580,3 +580,5 @@ h2 + .layout-bar { justify-content: flex-start; margin-top: 10px; }
 .ks-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .ks-row select, .ks-row input { flex: 1 1 200px; min-width: 0; font: 14px inherit; padding: 9px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.18); background: #0a0d24; color: var(--foam); }
 .krill-card[hidden] { display: none; }
+.kc-odds { font: 700 13px var(--font-data); color: #ffe9a8; margin-top: 4px !important; letter-spacing: .02em; }
+.kb-odds { font: 700 clamp(18px, 3.6vw, 28px) var(--font-data); color: #fff4cf; margin: 10px 0 0; animation: rise 1s .25s both; }

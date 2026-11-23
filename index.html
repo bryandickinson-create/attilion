@@ -585,6 +585,8 @@ h2 + .layout-bar { justify-content: flex-start; margin-top: 10px; }
 .ks-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .ks-row select, .ks-row input { flex: 1 1 200px; min-width: 0; font: 14px inherit; padding: 9px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.18); background: #0a0d24; color: var(--foam); }
 .krill-card[hidden] { display: none; }
+.kc-odds { font: 700 13px var(--font-data); color: #ffe9a8; margin-top: 4px !important; letter-spacing: .02em; }
+.kb-odds { font: 700 clamp(18px, 3.6vw, 28px) var(--font-data); color: #fff4cf; margin: 10px 0 0; animation: rise 1s .25s both; }
 </style></head><body>
 <div id="app"></div>
 <script>
@@ -1999,7 +2001,7 @@ function playReveal() {
   requestAnimationFrame(() => requestAnimationFrame(() => { if (dMe) dMe.classList.add("go"); }));
   if (mineCard) {
     FX.countUp(mineCard.querySelector(".pts b"), S.lastMine.points, 900);
-    FX.reveal(mineCard, S.lastMine.valid ? S.lastMine.zone.key : null, "you", { devTakeover: ["dev", "rdev", "gdev"].includes(myAvatarObj().id) && !eventMatch() ? myAvatarObj().id : null, theme: myTheme() });
+    FX.reveal(mineCard, S.lastMine.valid ? S.lastMine.zone.key : null, "you", { devTakeover: ["dev", "rdev", "gdev"].includes(myAvatarObj().id) && !eventMatch() ? myAvatarObj().id : null, theme: myTheme(), odds: S.lastMine.share > 0 ? oneIn(S.lastMine.share).replace("about ", "") : "" });
     SFX(S.lastMine.valid ? S.lastMine.zone.key : "miss");
     FX.countUp(document.getElementById("pod-me"), total(S.scores), 900);
   }
@@ -2010,7 +2012,7 @@ function playReveal() {
       theirCard.classList.remove("pending");
       if (dOpp) { dOpp.classList.remove("pending"); dOpp.classList.add("go"); }
       FX.countUp(theirCard.querySelector(".pts b"), S.lastTheirs.points, 900);
-      FX.reveal(theirCard, S.lastTheirs.valid ? S.lastTheirs.zone.key : null, oppName, { theme: eventMatch() ? eventTheme(EVENT) : null });
+      FX.reveal(theirCard, S.lastTheirs.valid ? S.lastTheirs.zone.key : null, oppName, { theme: eventMatch() ? eventTheme(EVENT) : null, odds: S.lastTheirs.share > 0 ? oneIn(S.lastTheirs.share).replace("about ", "") : "" });
       SFX(S.lastTheirs.valid ? S.lastTheirs.zone.key : "miss", 0.6);
       FX.countUp(document.getElementById("pod-opp"), total(S.oppScores), 900);
       const lead = document.getElementById("lead"); if (lead) lead.textContent = leadText(oppName);
@@ -2852,6 +2854,7 @@ function krillWall(list) {
     <div class="krill-wall">${shown.map(k => `
       <div class="krill-card" data-s="${esc((k.a + " " + k.q).toLowerCase())}">
         <p class="kc-a">${esc(k.a)}</p>
+        ${k.share > 0 ? `<p class="kc-odds">1 in ${Math.max(1, Math.round(100 / k.share)).toLocaleString()}</p>` : ""}
         <p class="kc-q">${esc(k.q)}</p>
         <p class="what small" data-what="${esc(k.a)}" data-hint="${esc(topicHint(k.q))}" hidden></p>
         <p class="kc-m">${new Date(k.when).toLocaleDateString(undefined, { month: "short", day: "numeric", year: new Date(k.when).getFullYear() === new Date().getFullYear() ? undefined : "numeric" })} · ${esc(k.mode)} · ${altText(k.depth)}</p>
@@ -3641,7 +3644,7 @@ function krillion(card, who, opts) {
   const th = opts && opts.theme;
   banner.className = "krillion-banner" + (th ? " themed" : "");
   if (th) banner.style.setProperty("--th", th.rgb);
-  banner.innerHTML = `<div class="kb-inner">${th ? `<p class="kb-theme">${escH(th.emojis[0])} ${escH(th.name)} ${escH(th.emojis[0])}</p>` : ""}<p class="kb-who">${opts && opts.avatarHtml ? opts.avatarHtml + " " + escH(opts.label || "") : who === "you" ? "You found it" : escH(who) + " found it"}</p><p class="kb-big"><span>1 in</span> Attillion</p>${opts && opts.avatarHtml ? "" : `<p class="kb-pts">+100</p>`}</div>`;
+  banner.innerHTML = `<div class="kb-inner">${th ? `<p class="kb-theme">${escH(th.emojis[0])} ${escH(th.name)} ${escH(th.emojis[0])}</p>` : ""}<p class="kb-who">${opts && opts.avatarHtml ? opts.avatarHtml + " " + escH(opts.label || "") : who === "you" ? "You found it" : escH(who) + " found it"}</p><p class="kb-big"><span>1 in</span> Attillion</p>${opts && opts.odds ? `<p class="kb-odds">${escH(opts.odds)}</p>` : ""}${opts && opts.avatarHtml ? "" : `<p class="kb-pts">+100</p>`}</div>`;
   document.body.appendChild(banner);
   const end = () => { banner.classList.add("out"); document.body.classList.remove("krillion-hit"); setTimeout(() => banner.remove(), 500); };
   const timer = setTimeout(end, 2600);
