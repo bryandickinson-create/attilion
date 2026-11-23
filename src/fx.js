@@ -251,7 +251,7 @@ function krillion(card, who, opts) {
   const th = opts && opts.theme;
   banner.className = "krillion-banner" + (th ? " themed" : "");
   if (th) banner.style.setProperty("--th", th.rgb);
-  banner.innerHTML = `<div class="kb-inner">${th ? `<p class="kb-theme">${escH(th.emojis[0])} ${escH(th.name)} ${escH(th.emojis[0])}</p>` : ""}<p class="kb-who">${opts && opts.avatarHtml ? opts.avatarHtml + " " + escH(opts.label || "") : who === "you" ? "You found it" : escH(who) + " found it"}</p><p class="kb-big"><span>1 in</span> Attillion</p>${opts && opts.odds ? `<p class="kb-odds">${escH(opts.odds)}</p>` : ""}${opts && opts.avatarHtml ? "" : `<p class="kb-pts">+100</p>`}</div>`;
+  banner.innerHTML = `<div class="kb-inner">${th ? `<p class="kb-theme">${escH(th.emojis[0])} ${escH(th.name)} ${escH(th.emojis[0])}</p>` : ""}<p class="kb-who">${opts && opts.avatarHtml ? opts.avatarHtml + " " + escH(opts.label || "") : who === "you" ? "You found it" : escH(who) + " found it"}</p>${opts && opts.best ? `<p class="kb-big kb-best"><span>👑 The</span> BEST answer</p>` : `<p class="kb-big"><span>1 in</span> Attillion</p>`}${opts && opts.odds ? `<p class="kb-odds">${escH(opts.odds)}</p>` : ""}${opts && opts.avatarHtml ? "" : `<p class="kb-pts">+${opts && opts.best ? 150 : 100}</p>`}</div>`;
   document.body.appendChild(banner);
   const end = () => { banner.classList.add("out"); document.body.classList.remove("krillion-hit"); setTimeout(() => banner.remove(), 500); };
   const timer = setTimeout(end, 2600);

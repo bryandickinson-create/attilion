@@ -57,6 +57,8 @@ const AVATARS = [
   { id: "k1000",    e: "👑", name: "Attillion Crown", krill: 1000 },
   // Secret: only appears after a game where every answer was a 1 in Attillion
   { id: "perfect",  e: "🌌", name: "Perfect Galaxy", perfect: true },
+  // Secret: only appears after you find a question's hidden BEST answer
+  { id: "bestans",  e: "💎", name: "Best Answer Diamond", bestAv: true },
   // Secret avatars: only unlocked by typing a code in Settings. Codes are
   // stored as hashes so they don't show up as plain text in the page source.
   { id: "alien",    e: "👽", name: "Alien",          code: 32697793 },
@@ -229,10 +231,12 @@ function codeHash(raw) { return hashStr("krillion-code:" + String(raw).toUpperCa
 function redeemed(u) { return u ? (u.codes || []) : store.get("guestCodes", []); }
 // The saved list keeps the latest 500, so a separate running total counts every one.
 function krillCount(u) { return u ? Math.max((u.krillions || []).length, u.krillTotal || 0) : Math.max(store.get("guestKrillions", []).length, store.get("guestKrillTotal", 0)); }
+function bestDone(u) { return u ? !!u.bestFound : !!store.get("guestBest", false); }
 function perfectDone(u) { return u ? !!u.perfect : !!store.get("guestPerfect", false); }
 function isOpen(a, u) {
   if (a.ev) return evPrizes(u).includes(a.id);
   if (a.perfect) return perfectDone(u);
+  if (a.bestAv) return bestDone(u);
   if (a.code) return redeemed(u).includes(a.id);
   if (a.krill) return krillCount(u) >= a.krill || (a.krill < 1000 && redeemed(u).includes("krill-all"));
   return a.elo === 0 || (u && a.elo <= u.peak);
@@ -673,7 +677,24 @@ function scoreAnswer(prompt, raw, fixed, useRepeats) {
   if (said) sh = Math.min(prompt.zeroShare, sh * (1 + HUMAN_STEP * said));
   const depth = depthFor(sh, prompt);
   const points = sh <= prompt.krillShare ? 100 : Math.max(2, Math.min(97, Math.round(100 * depth / HADAL_DEPTH)));
-  return { raw, idx, display: prompt.answers[idx].display, points, depth, share: sh, zone: zoneFor(depth), valid: true, used };
+  return applyBest(prompt, { raw, idx, display: prompt.answers[idx].display, points, depth, share: sh, zone: zoneFor(depth), valid: true, used });
+}
+/* The secret BEST answer: every question hides exactly one, picked from its
+   1 in Attillion answers, worth 150 points. Never shown until someone finds it.
+   (Endless keeps its own secret instead.) */
+const BEST_POINTS = 150;
+const BEST_CACHE = {};
+function bestDisplay(prompt) {
+  const baseId = prompt.baseId || prompt.id;
+  if (BEST_CACHE[baseId] !== undefined) return BEST_CACHE[baseId];
+  const base = PROMPT_BY_ID[baseId] || prompt;
+  const span = Math.max(1, base.familiar - base.krillFrom);
+  const idx = Math.min(base.answers.length - 1, base.krillFrom + (hashStr("best:" + baseId) % span));
+  return (BEST_CACHE[baseId] = norm(base.answers[idx].display));
+}
+function applyBest(prompt, res) {
+  if (!res.valid || (S && S.mode === "endless") || norm(res.display) !== bestDisplay(prompt)) return res;
+  return Object.assign({}, res, { points: BEST_POINTS, best: true, depth: MAX_DEPTH, zone: zoneFor(MAX_DEPTH) });
 }
 function oneIn(sh) { return sh <= 0 ? "" : "about 1 in " + Math.max(1, Math.round(100 / sh)).toLocaleString(); }
 
@@ -850,6 +871,7 @@ function roundSecs() { const v = store.get("timerSecs", ROUND_SECONDS); return u
 function sayBtnSize() { const v = store.get("sayBtnSize", "m"); return ["off", "s", "m", "l", "xl"].includes(v) ? v : "m"; }
 function promptSpoken(pr) { return pr ? (pr.twist ? pr.baseQ + " " + pr.twist : pr.q) : ""; }
 function beginRound() {
+  S.bestUnlock = false;
   S.phase = "answer"; S.deadline = isUntimed() ? Infinity : Date.now() + roundSecs() * 1000; S.draft = "";
   S.botLockAt = S.mode === "bot" ? Date.now() + (2 + Math.random() * Math.min(19, roundSecs() * 0.63)) * 1000 : null;
   S.submittedAt = null; S.lastTick = null;
@@ -918,8 +940,12 @@ function reveal() {
   if (S.mode !== "daily") { recordAnswer(prompt.id, S.lastMine.idx); }
   S.scores = S.scores || []; S.oppScores = S.oppScores || [];
   S.scores[S.round] = S.lastMine; if (S.lastTheirs) S.oppScores[S.round] = S.lastTheirs;
-  if (S.lastMine.points === 100) {
-    const found = { q: prompt.twist ? prompt.baseQ + " " + prompt.twist : prompt.q, a: S.lastMine.display, depth: S.lastMine.depth, share: S.lastMine.share, when: Date.now(),
+  if (S.lastMine.best && !bestDone(me())) {
+    if (me()) updateUser(x => { x.bestFound = true; }); else store.set("guestBest", true);
+    S.bestUnlock = true;
+  }
+  if (S.lastMine.points >= 100) {
+    const found = { q: prompt.twist ? prompt.baseQ + " " + prompt.twist : prompt.q, a: S.lastMine.display, depth: S.lastMine.depth, share: S.lastMine.share, best: !!S.lastMine.best, when: Date.now(),
       mode: S.mode === "bot" ? "vs " + BOTS[S.level].name : S.mode === "live" ? "Quick match" : S.mode === "daily" ? "Daily Launch" : S.mode === "solo" ? "Free Launch" : S.mode === "subject" ? subjName() + " Launch" : S.mode === "endless" ? "Endless Launch" : "Friend challenge" };
     const before = krillCount(me());
     if (me()) updateUser(x => { x.krillions = (x.krillions || []); x.krillTotal = Math.max(x.krillTotal || 0, x.krillions.length) + 1; x.krillions.unshift(found); x.krillions = x.krillions.slice(0, 500); });
@@ -936,12 +962,12 @@ function playReveal() {
   const FX = window.KrillionFX; if (!FX) return;
   const mineCard = document.querySelector(".ans.mine"), theirCard = document.querySelector(".ans.theirs");
   const oppName = curOppName() || "";
-  const hitMine = S.lastMine.points === 100;
+  const hitMine = S.lastMine.points >= 100;
   const dMe = document.querySelector(".diver.me"), dOpp = document.querySelector(".diver.opp");
   requestAnimationFrame(() => requestAnimationFrame(() => { if (dMe) dMe.classList.add("go"); }));
   if (mineCard) {
     FX.countUp(mineCard.querySelector(".pts b"), S.lastMine.points, 900);
-    FX.reveal(mineCard, S.lastMine.valid ? S.lastMine.zone.key : null, "you", { devTakeover: ["dev", "rdev", "gdev"].includes(myAvatarObj().id) && !eventMatch() ? myAvatarObj().id : null, theme: myTheme(), odds: S.lastMine.share > 0 ? oneIn(S.lastMine.share).replace("about ", "") : "" });
+    FX.reveal(mineCard, S.lastMine.valid ? S.lastMine.zone.key : null, "you", { devTakeover: ["dev", "rdev", "gdev"].includes(myAvatarObj().id) && !eventMatch() && !S.lastMine.best ? myAvatarObj().id : null, theme: myTheme(), best: !!S.lastMine.best, odds: S.lastMine.share > 0 && !S.lastMine.best ? oneIn(S.lastMine.share).replace("about ", "") : "" });
     SFX(S.lastMine.valid ? S.lastMine.zone.key : "miss");
     FX.countUp(document.getElementById("pod-me"), total(S.scores), 900);
   }
@@ -952,7 +978,7 @@ function playReveal() {
       theirCard.classList.remove("pending");
       if (dOpp) { dOpp.classList.remove("pending"); dOpp.classList.add("go"); }
       FX.countUp(theirCard.querySelector(".pts b"), S.lastTheirs.points, 900);
-      FX.reveal(theirCard, S.lastTheirs.valid ? S.lastTheirs.zone.key : null, oppName, { theme: eventMatch() ? eventTheme(EVENT) : null, odds: S.lastTheirs.share > 0 ? oneIn(S.lastTheirs.share).replace("about ", "") : "" });
+      FX.reveal(theirCard, S.lastTheirs.valid ? S.lastTheirs.zone.key : null, oppName, { theme: eventMatch() ? eventTheme(EVENT) : null, best: !!S.lastTheirs.best, odds: S.lastTheirs.share > 0 && !S.lastTheirs.best ? oneIn(S.lastTheirs.share).replace("about ", "") : "" });
       SFX(S.lastTheirs.valid ? S.lastTheirs.zone.key : "miss", 0.6);
       FX.countUp(document.getElementById("pod-opp"), total(S.oppScores), 900);
       const lead = document.getElementById("lead"); if (lead) lead.textContent = leadText(oppName);
@@ -1032,7 +1058,7 @@ function finishMatch() {
     res.code = b64e({ v: 1, id: c.id, reply: true, p: S.prompts, av: myAvatarObj().id, from: u ? u.name : "Your friend", elo: u ? myElo(u) - (res.elo ? res.elo.delta : 0) : null, a: S.mine, host: c.a, hostName: c.from });
   }
   // every single answer a 1 in Attillion: the secret Perfect Galaxy avatar
-  if (S.mode !== "endless" && S.scores.length >= ROUNDS && S.scores.every(x => x && x.points === 100) && !perfectDone(me())) {
+  if (S.mode !== "endless" && S.scores.length >= ROUNDS && S.scores.every(x => x && x.points >= 100) && !perfectDone(me())) {
     if (me()) updateUser(x => { x.perfect = true; }); else store.set("guestPerfect", true);
     res.perfectUnlocked = true;
   }
@@ -1599,7 +1625,7 @@ function diveY(r) {
 function diveColumn(oppName) {
   const zones = ZONES.slice().reverse().map(z => `<div class="band z-${z.key}"><span>${z.name}</span></div>`).join("");
   // The Developer creature turns gold in the Attillion zone, and spins when tapped.
-  const diver = (cls, av, label, r) => { const gold = isDevAvatar(av) && r && r.points === 100; return `<div class="diver ${cls} ${r && r.valid ? "" : "miss"} ${gold ? "golden" : ""}" style="--y:${diveY(r).toFixed(1)}%" ${gold ? `data-act="spin" title="Tap me"` : ""}><span class="av">${av}</span><span class="tag">${esc(label)}${isDevAvatar(av) ? ` <i class="devtag">DEV</i>` : ""}</span></div>`; };
+  const diver = (cls, av, label, r) => { const gold = isDevAvatar(av) && r && r.points >= 100; return `<div class="diver ${cls} ${r && r.valid ? "" : "miss"} ${gold ? "golden" : ""}" style="--y:${diveY(r).toFixed(1)}%" ${gold ? `data-act="spin" title="Tap me"` : ""}><span class="av">${av}</span><span class="tag">${esc(label)}${isDevAvatar(av) ? ` <i class="devtag">DEV</i>` : ""}</span></div>`; };
   return `<div class="dive ${S.lastTheirs ? "duo" : "solo"}" aria-hidden="true">${zones}
     ${diver("me", myAvatar(), "You", S.lastMine)}
     ${S.lastTheirs ? diver("opp pending", oppAvatar(), oppName, S.lastTheirs) : ""}
@@ -1618,13 +1644,14 @@ function answerCard(label, r, me_) {
       <p class="pts"><b>0</b> pts</p>
       <p class="meta">${r.zone.name} · ${altText(r.depth)} up · ${oneIn(r.share)}</p>${r.used ? `<p class="hint repeat-note">You've said this ${r.used === 1 ? "once" : r.used + " times"} before, so it is worth slightly less now.</p>` : ""}
       <p class="played">Played like <b>${perfElo(r.points, 1).toLocaleString()}</b></p>
-      ${r.points === 100 ? `<p class="what" data-what="${esc(r.display)}" data-hint="${esc(curHint())}" hidden></p>` : ""}`
+      ${r.best ? `<p class="best-tag">👑 THE BEST ANSWER · +${BEST_POINTS}</p>${me_ && S.bestUnlock ? `<p class="unlock-note">You found a secret BEST answer and unlocked the secret ${avMarkup(avatarById("bestans"))} <b>Best Answer Diamond</b> avatar! <button class="link" data-go="avatar">Use it</button></p>` : ""}` : ""}
+      ${r.points >= 100 ? `<p class="what" data-what="${esc(r.display)}" data-hint="${esc(curHint())}" hidden></p>` : ""}`
     : `<p class="pts"><b>0</b> pts</p><p class="meta">${r.raw ? "Not on our list for this prompt" : "Time ran out"}</p><p class="played">Played like <b>${perfElo(0, 1).toLocaleString()}</b></p>`}
   </div>`;
 }
 
 function revealBlock(prompt, oppName) {
-  const deep = prompt.answers.slice(prompt.krillFrom, prompt.familiar).map((a, i) => ({ a, i }));
+  const deep = prompt.answers.slice(prompt.krillFrom, prompt.familiar).filter(a => norm(a.display) !== bestDisplay(prompt)).map((a, i) => ({ a, i }));   // never give away the BEST answer
   const r = rng(hashStr(prompt.id + S.seed));
   const samples = []; const pool = deep.slice();
   while (samples.length < 4 && pool.length) samples.push(pool.splice(Math.floor(r() * pool.length), 1)[0].a.display);
@@ -1730,8 +1757,8 @@ function codeBox(title, code, kind, note) {
 }
 
 function dailyShare(key, scores) {
-  const blocks = scores.map(s => !s.valid ? "⬛" : s.points === 100 ? "🌟" : s.depth >= 4000 ? "🟪" : s.depth >= 1000 ? "🟦" : s.depth >= 200 ? "🟩" : "⬜").join("");
-  const krill = scores.filter(s => s.points === 100).length;
+  const blocks = scores.map(s => !s.valid ? "⬛" : s.best ? "👑" : s.points >= 100 ? "🌟" : s.depth >= 4000 ? "🟪" : s.depth >= 1000 ? "🟦" : s.depth >= 200 ? "🟩" : "⬜").join("");
+  const krill = scores.filter(s => s.points >= 100).length;
   return `Attillion Daily Launch #${dailyNumber(key)}\n${blocks}\n${total(scores)}/700${krill ? ` · ${krill}× 1 in Attillion` : ""}`;
 }
 
@@ -1809,7 +1836,7 @@ function krillWall(list) {
     </div>
     <div class="krill-wall">${shown.map(k => `
       <div class="krill-card" data-s="${esc((k.a + " " + k.q).toLowerCase())}">
-        <p class="kc-a">${esc(k.a)}</p>
+        <p class="kc-a">${esc(k.a)}${k.best ? ` <span class="kc-best">👑 BEST</span>` : ""}</p>
         ${k.share > 0 ? `<p class="kc-odds">1 in ${Math.max(1, Math.round(100 / k.share)).toLocaleString()}</p>` : ""}
         <p class="kc-q">${esc(k.q)}</p>
         <p class="what small" data-what="${esc(k.a)}" data-hint="${esc(topicHint(k.q))}" hidden></p>
@@ -1870,11 +1897,11 @@ function viewAvatar() {
     <p class="lede small">This is you on the launch tower. Rarer answers send it higher. New avatars unlock as your best Elo climbs.${u ? ` Your best so far is <b>${peak}</b>.` : ""}</p>
     ${u ? "" : `<p class="hint"><button class="link" data-go="login">Log in</button> to earn Elo and unlock more avatars.</p>`}
     <div class="avatars">
-      ${AVATARS.filter(a => a.ev ? (isOpen(a, u) || a.ev === EVENT.key) : ((!a.code && !a.perfect) || isOpen(a, u))).map(a => {
+      ${AVATARS.filter(a => a.ev ? (isOpen(a, u) || a.ev === EVENT.key) : ((!a.code && !a.perfect && !a.bestAv) || isOpen(a, u))).map(a => {
         const open = isOpen(a, u);
         const sel = a.e + a.id === current;
         return `<button class="avatar ${sel ? "on" : ""}" ${open ? `data-act="avatar" data-id="${a.id}"` : "disabled"} aria-pressed="${sel}">
-          <span class="ae">${avMarkup(a)}</span><span class="an">${a.name}${a.dev ? ` <i class="devtag">DEV</i>` : a.code || a.perfect ? ` <i class="secrettag">secret</i>` : ""}</span>
+          <span class="ae">${avMarkup(a)}</span><span class="an">${a.name}${a.dev ? ` <i class="devtag">DEV</i>` : a.code || a.perfect || a.bestAv ? ` <i class="secrettag">secret</i>` : ""}</span>
           ${a.ev ? `<span class="asub" title="${esc((findEvent(a.ev) || {}).name || "")}">Event avatar</span>` : ""}
           <span class="al">${open ? (sel ? "Selected" : "Pick") : a.krill ? `🔒 ${a.krill} Attillions` : a.ev ? `🔒 ${EVENT_GOAL} ${EVENT.token}` : `🔒 ${a.elo} Elo`}</span>
         </button>`;
@@ -2263,6 +2290,7 @@ document.addEventListener("submit", async e => {
       const gk = store.get("guestKrillions", []);
       if (gk.length) { all[key].krillions = gk; saveUsers(all); store.set("guestKrillions", []); }
       if (store.get("guestPerfect", false)) { all[key].perfect = true; saveUsers(all); }
+      if (store.get("guestBest", false)) { all[key].bestFound = true; saveUsers(all); }
     } else {
       authBusy(true);
       const res = await cloudLogIn(name, pw);
