@@ -571,3 +571,4 @@ h2 + .layout-bar { justify-content: flex-start; margin-top: 10px; }
 .krillion-banner.themed .kb-big { color: rgb(var(--th)); text-shadow: 0 0 30px rgba(var(--th), .75), 0 0 90px rgba(var(--th), .45), 0 6px 0 rgba(0,0,0,.45); }
 .krillion-banner.themed .kb-who { color: rgb(var(--th)); }
 .kb-theme { font: 700 clamp(16px, 3.4vw, 24px) var(--font-display); color: #fff; margin: 0 0 8px; letter-spacing: .02em; }
+.avatar .asub { font-size: 11px; font-style: italic; color: #ffd98a; margin-top: -2px; }

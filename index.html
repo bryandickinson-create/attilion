@@ -576,6 +576,7 @@ h2 + .layout-bar { justify-content: flex-start; margin-top: 10px; }
 .krillion-banner.themed .kb-big { color: rgb(var(--th)); text-shadow: 0 0 30px rgba(var(--th), .75), 0 0 90px rgba(var(--th), .45), 0 6px 0 rgba(0,0,0,.45); }
 .krillion-banner.themed .kb-who { color: rgb(var(--th)); }
 .kb-theme { font: 700 clamp(16px, 3.4vw, 24px) var(--font-display); color: #fff; margin: 0 0 8px; letter-spacing: .02em; }
+.avatar .asub { font-size: 11px; font-style: italic; color: #ffd98a; margin-top: -2px; }
 </style></head><body>
 <div id="app"></div>
 <script>
@@ -2881,6 +2882,7 @@ function viewAvatar() {
         const sel = a.e + a.id === current;
         return `<button class="avatar ${sel ? "on" : ""}" ${open ? `data-act="avatar" data-id="${a.id}"` : "disabled"} aria-pressed="${sel}">
           <span class="ae">${avMarkup(a)}</span><span class="an">${a.name}${a.dev ? ` <i class="devtag">DEV</i>` : a.code ? ` <i class="secrettag">secret</i>` : ""}</span>
+          ${a.ev ? `<span class="asub" title="${esc((findEvent(a.ev) || {}).name || "")}">Event avatar</span>` : ""}
           <span class="al">${open ? (sel ? "Selected" : "Pick") : a.krill ? `🔒 ${a.krill} Attillions` : a.ev ? `🔒 ${EVENT_GOAL} ${EVENT.token}` : `🔒 ${a.elo} Elo`}</span>
         </button>`;
       }).join("")}
