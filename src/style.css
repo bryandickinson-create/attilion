@@ -560,3 +560,7 @@ h2 + .layout-bar { justify-content: flex-start; margin-top: 10px; }
 /* Bigger progress bar on the event bots page */
 .home .ev-progress { height: 52px; border-radius: 26px; border-width: 2px; margin: 14px 0 16px; }
 .home .ev-progress span { line-height: 48px; font-size: 20px; font-weight: 700; }
+
+/* Attillion Crown: 1000 x 1 in Attillion. Gold with a slow rainbow halo. */
+.av-k1000 { display: inline-block; filter: drop-shadow(0 0 6px rgba(255,201,60,.95)); animation: crownglow 3s linear infinite; }
+@keyframes crownglow { 0% { filter: drop-shadow(0 0 6px #ffc93c) drop-shadow(0 0 2px #ff5fa2); } 33% { filter: drop-shadow(0 0 8px #8fd8ff) drop-shadow(0 0 2px #ffc93c); } 66% { filter: drop-shadow(0 0 8px #a58bff) drop-shadow(0 0 2px #5fe08a); } 100% { filter: drop-shadow(0 0 6px #ffc93c) drop-shadow(0 0 2px #ff5fa2); } }

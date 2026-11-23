@@ -54,6 +54,7 @@ const AVATARS = [
   { id: "k20",      e: "🌘", name: "Eclipse",         krill: 20 },
   { id: "gdragon",  e: "🪐", name: "Golden Saturn",   krill: 50 },
   { id: "rdragon",  e: "🌌", name: "Rainbow Nebula",  krill: 100 },
+  { id: "k1000",    e: "👑", name: "Attillion Crown", krill: 1000 },
   // Secret avatars: only unlocked by typing a code in Settings. Codes are
   // stored as hashes so they don't show up as plain text in the page source.
   { id: "alien",    e: "👽", name: "Alien",          code: 32697793 },
@@ -220,11 +221,12 @@ const BUNDLES = [
 ];
 function codeHash(raw) { return hashStr("krillion-code:" + String(raw).toUpperCase().replace(/[^A-Z0-9]/g, "")); }
 function redeemed(u) { return u ? (u.codes || []) : store.get("guestCodes", []); }
-function krillCount(u) { return u ? (u.krillions || []).length : store.get("guestKrillions", []).length; }
+// The saved list keeps the latest 500, so a separate running total counts every one.
+function krillCount(u) { return u ? Math.max((u.krillions || []).length, u.krillTotal || 0) : Math.max(store.get("guestKrillions", []).length, store.get("guestKrillTotal", 0)); }
 function isOpen(a, u) {
   if (a.ev) return evPrizes(u).includes(a.id);
   if (a.code) return redeemed(u).includes(a.id);
-  if (a.krill) return krillCount(u) >= a.krill || redeemed(u).includes("krill-all");
+  if (a.krill) return krillCount(u) >= a.krill || (a.krill < 1000 && redeemed(u).includes("krill-all"));
   return a.elo === 0 || (u && a.elo <= u.peak);
 }
 function avatarById(x) { return AVATARS.find(a => a.id === x || a.e === x) || null; }
@@ -810,8 +812,8 @@ function reveal() {
     const found = { q: prompt.twist ? prompt.baseQ + " " + prompt.twist : prompt.q, a: S.lastMine.display, depth: S.lastMine.depth, share: S.lastMine.share, when: Date.now(),
       mode: S.mode === "bot" ? "vs " + BOTS[S.level].name : S.mode === "live" ? "Quick match" : S.mode === "daily" ? "Daily Launch" : S.mode === "solo" ? "Free Launch" : S.mode === "subject" ? subjName() + " Launch" : S.mode === "endless" ? "Endless Launch" : "Friend challenge" };
     const before = krillCount(me());
-    if (me()) updateUser(x => { x.krillions = (x.krillions || []); x.krillions.unshift(found); x.krillions = x.krillions.slice(0, 500); });
-    else { const g = store.get("guestKrillions", []); g.unshift(found); store.set("guestKrillions", g.slice(0, 500)); }
+    if (me()) updateUser(x => { x.krillions = (x.krillions || []); x.krillTotal = Math.max(x.krillTotal || 0, x.krillions.length) + 1; x.krillions.unshift(found); x.krillions = x.krillions.slice(0, 500); });
+    else { const g = store.get("guestKrillions", []); store.set("guestKrillTotal", Math.max(store.get("guestKrillTotal", 0), g.length) + 1); g.unshift(found); store.set("guestKrillions", g.slice(0, 500)); }
     const unlocked = AVATARS.find(a => a.krill && before < a.krill && krillCount(me()) >= a.krill);
     S.unlockNote = unlocked ? unlocked : null;
   } else S.unlockNote = null;
@@ -1661,7 +1663,7 @@ function viewProfile() {
       <div><span>Best free launch</span><b>${(u.solo && u.solo.best) || "–"}</b></div>
       ${SUBJECTS.map(x => `<div><span>Best ${x.name.toLowerCase()}</span><b>${(u.subjects && u.subjects[x.key] && u.subjects[x.key].best) || "–"}</b></div>`).join("")}
       <div><span>Best daily</span><b>${dailies.length ? Math.max(...dailies.map(d => d[1].score)) : "–"}</b></div>
-      <div class="gold"><span>Attillions</span><b>${(u.krillions || []).length}</b></div>
+      <div class="gold"><span>Attillions</span><b>${krillCount(u)}</b></div>
     </div>
     <h2>Your 1 in Attillions</h2>
     ${(u.krillions || []).length ? `<div class="krill-wall">${u.krillions.slice(0, 60).map(k => `
