@@ -228,6 +228,8 @@ const ELO_BOOST_CODE = 3265732527;
 const BUNDLES = [
   { id: "krill-all", code: 1175683394, name: "every Attillion trophy", pick: "rdragon" },
   { id: "krill-all", code: 2284514118, name: "every Attillion trophy", pick: "rdragon" },   // the old code still works
+  { id: "k1000", code: 1553214958, name: "the Attillion Crown", pick: "k1000", show: "👑" },
+  { id: "bestans", code: 1753198704, name: "the Best Answer Diamond", pick: "bestans", show: "💎" },
   { id: "perfect", code: 3629488017, name: "the Perfect Nebula", pick: "perfect", show: "🌌" }
 ];
 function codeHash(raw) { return hashStr("krillion-code:" + String(raw).toUpperCase().replace(/[^A-Z0-9]/g, "")); }
@@ -239,9 +241,9 @@ function perfectDone(u) { return u ? !!u.perfect : !!store.get("guestPerfect", f
 function isOpen(a, u) {
   if (a.ev) return evPrizes(u).includes(a.id);
   if (a.perfect) return perfectDone(u) || redeemed(u).includes("perfect");
-  if (a.bestAv) return bestDone(u);
+  if (a.bestAv) return bestDone(u) || redeemed(u).includes("bestans");
   if (a.code) return redeemed(u).includes(a.id);
-  if (a.krill) return krillCount(u) >= a.krill || (a.krill < 1000 && redeemed(u).includes("krill-all"));
+  if (a.krill) return krillCount(u) >= a.krill || redeemed(u).includes(a.id) || (a.krill < 1000 && redeemed(u).includes("krill-all"));
   return a.elo === 0 || (u && a.elo <= u.peak);
 }
 function avatarById(x) { return AVATARS.find(a => a.id === x || a.e === x) || null; }
@@ -760,6 +762,7 @@ function eventMatch() { return S.mode === "bot" && BOTS[S.level] && BOTS[S.level
 // the two secret avatars bring their own 1 in Attillion animation
 const AVATAR_THEMES = {
   perfect: { name: "Perfect Nebula", rgb: "190,140,255", emojis: ["🌌", "✨", "💫", "🌠", "⭐", "🪐"], style: "galaxy" },
+  k1000: { name: "Attillion Crown", rgb: "255,200,60", emojis: ["👑", "🪙", "💰", "💎", "✨"], style: "crown" },
   bestans: { name: "Best Answer Diamond", rgb: "120,230,255", emojis: ["💎", "💎", "✨", "💠", "🔷"], style: "diamond" }
 };
 function myTheme() { const a = myAvatarObj(); if (AVATAR_THEMES[a.id]) return AVATAR_THEMES[a.id]; if (eventMatch()) return eventTheme(EVENT); return a.ev ? eventTheme(findEvent(a.ev)) : null; }
@@ -2334,7 +2337,7 @@ document.addEventListener("submit", async e => {
     const bundle = BUNDLES.find(x => x.code === h);
     if (bundle) {
       const u = me();
-      if (redeemed(u).includes(bundle.id) || (bundle.id === "perfect" && perfectDone(u))) { go("avatar", { codeMsg: `You already unlocked ${bundle.name}.` }); return; }
+      if (redeemed(u).includes(bundle.id) || (bundle.id === "perfect" && perfectDone(u)) || (bundle.id === "k1000" && krillCount(u) >= 1000) || (bundle.id === "bestans" && bestDone(u))) { go("avatar", { codeMsg: `You already unlocked ${bundle.name}.` }); return; }
       if (u) updateUser(x => { x.codes = (x.codes || []).concat(bundle.id); x.avatar = bundle.pick; });
       else { store.set("guestCodes", redeemed(null).concat(bundle.id)); store.set("guestAvatar", bundle.pick); }
       go("avatar", { codeMsg: `Unlocked ${bundle.name}: ${bundle.show || "☄️ 🌘 🪐 🌌"}` });

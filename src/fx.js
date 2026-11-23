@@ -259,6 +259,7 @@ function krillion(card, who, opts) {
 
   if (th && th.style === "galaxy") { galaxyBurst(x, y, th); return; }
   if (th && th.style === "diamond") { diamondBurst(x, y, th); return; }
+  if (th && th.style === "crown") { crownBurst(x, y, th); return; }
   if (th) { themedBurst(x, y, th); return; }
   // a burst of gold stars shoots out from the altitude marker and swirls
   for (let i = 0; i < 200; i++) {
@@ -389,6 +390,47 @@ function diamondBurst(x, y, th) {
       c.beginPath(); c.moveTo(x, y - R); c.lineTo(x + R, y); c.lineTo(x, y + R); c.lineTo(x - R, y); c.closePath(); c.stroke();   // diamond-shaped shockwaves
     }
   });
+}
+
+/* Attillion Crown: royal light rays spin out from the marker, a giant crown
+   drops down and lands on it, and gold coins and jewels fountain up and rain down. */
+function crownBurst(x, y, th) {
+  parts.push({ life: 3, max: 3, update() {},
+    draw(c, p) {
+      const k = 1 - p.life / p.max, R = Math.max(W, H) * (0.3 + k * 0.7), a0 = k * 1.4;
+      c.save(); c.globalAlpha = Math.min(1, p.life) * 0.35;
+      for (let i = 0; i < 16; i++) {
+        const a = a0 + i * TAU / 16;
+        const g = c.createLinearGradient(x, y, x + Math.cos(a) * R, y + Math.sin(a) * R);
+        g.addColorStop(0, "rgba(255,230,140,1)"); g.addColorStop(1, "rgba(255,180,40,0)");
+        c.fillStyle = g; c.beginPath(); c.moveTo(x, y); c.arc(x, y, R, a - 0.08, a + 0.08); c.closePath(); c.fill();
+      }
+      c.restore();
+    }
+  });
+  parts.push({ life: 3, max: 3, update() {},
+    draw(c, p) {
+      const k = 1 - p.life / p.max, land = Math.min(1, k / 0.35), bounce = land < 1 ? 1 - Math.pow(1 - land, 3) : 1 + Math.sin((k - 0.35) * 18) * 0.05 * Math.max(0, 1 - (k - 0.35) * 3);
+      const cy = (y - H * 0.6) + (H * 0.6 - 30) * Math.min(1, bounce);
+      emoji(c, "👑", x, cy, 90 + 20 * Math.max(0, 1 - Math.abs(k - 0.4) * 5), Math.min(1, p.life * 1.5), Math.sin(k * 10) * 0.08 * (1 - land));
+    }
+  });
+  for (let i = 0; i < 90; i++) {
+    const a = -Math.PI / 2 + rand(-1.1, 1.1), sp = rand(300, 760);
+    parts.push({
+      x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, rot: rand(0, TAU), spin: rand(-6, 6), size: rand(16, 28), life: rand(2.2, 3.2), delay: rand(0, 0.4), ch: th.emojis[1 + Math.floor(Math.random() * (th.emojis.length - 1))],
+      update(p, dt) { if (p.delay > 0) { p.delay -= dt; p.life += dt; return; } p.vy += 900 * dt; p.vx *= 0.99; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.spin * dt; },
+      draw(c, p) { if (p.delay > 0) return; emoji(c, p.ch, p.x, p.y, p.size, Math.min(1, p.life), p.rot); }
+    });
+  }
+  for (let i = 0; i < 120; i++) {
+    const a = rand(0, TAU), sp = rand(80, 420);
+    parts.push({
+      x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, rot: rand(0, TAU), spin: rand(-6, 6), size: rand(3, 7), life: rand(1.4, 2.6),
+      update(p, dt) { p.vx *= 0.97; p.vy *= 0.97; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.spin * dt; },
+      draw(c, p) { sparkle(c, p.x, p.y, p.size, Math.random() < 0.2 ? "#fff6d0" : "#ffc93c", Math.min(1, p.life), p.rot); }
+    });
+  }
 }
 
 function countUp(el, to, ms) {
