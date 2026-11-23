@@ -1700,13 +1700,14 @@ function eloDelta(mine, theirs, result, games) {
   const expected = 1 / (1 + Math.pow(10, (theirs - mine) / 400));
   return Math.round(k * (result - expected));
 }
-function applyMatchResult(oppName, oppElo, myTotal, oppTotal, kind, matchId) {
+function applyMatchResult(oppName, oppElo, myTotal, oppTotal, kind, matchId, noLoss) {
   const u = me(); if (!u) return null;
   const result = myTotal > oppTotal ? 1 : myTotal < oppTotal ? 0 : 0.5;
   let delta = 0;
   updateUser(x => {
     if (matchId && x.history.some(h => h.id === matchId)) return;
     delta = eloDelta(x.elo, oppElo, result, x.games);
+    if (noLoss) delta = Math.max(0, delta);   // event bots can only raise your Elo
     x.elo += delta; x.peak = Math.max(x.peak, x.elo); x.games++;
     if (result === 1) x.wins++; else if (result === 0) x.losses++; else x.draws++;
     x.history.unshift({ id: matchId || String(Date.now()), when: Date.now(), kind, opp: oppName, oppElo, me: myTotal, them: oppTotal, delta });
@@ -1901,7 +1902,7 @@ function finishMatch() {
   const res = { my, their };
   if (S.mode === "bot") {
     const b = BOTS[S.level];
-    res.elo = applyMatchResult(b.name + " (computer)", b.elo, my, their, "computer");
+    res.elo = applyMatchResult(b.name + " (computer)", b.elo, my, their, "computer", null, !!b.event);
     if (b.event) { res.tokens = my > their ? b.win : my === their ? b.draw : b.loss; res.evUnlocked = awardTokens(res.tokens); }
   } else if (S.mode === "live") {
     const L = S.live;
@@ -2401,7 +2402,7 @@ function viewEventBots() {
   const pct = Math.min(100, Math.round(have / EVENT_GOAL * 100));
   return `${header()}<button class="link back-link menu-back" data-go="bots">← Back to Play bots</button>
   <main class="home">
-    <p class="ev-blurb">Beat the event bots to collect <b>${EVENT.token} ${esc(EVENT.tokenName)}</b>. Collect ${EVENT_GOAL} to unlock the ${avMarkup(prize)} <b>${esc(prize.name)}</b> avatar. ${daysLeft()} day${daysLeft() === 1 ? "" : "s"} left.</p>
+    <p class="ev-blurb">You never lose Elo to event bots. Beat them to collect <b>${EVENT.token} ${esc(EVENT.tokenName)}</b>. Collect ${EVENT_GOAL} to unlock the ${avMarkup(prize)} <b>${esc(prize.name)}</b> avatar. ${daysLeft()} day${daysLeft() === 1 ? "" : "s"} left.</p>
     <div class="ev-progress"><div class="ev-bar" style="--p:${pct}%"></div><span>${got ? `Unlocked! ${have} collected` : `${have} / ${EVENT_GOAL}`} ${EVENT.token}</span></div>
     <div class="play-grid ev-grid">${[0, 1, 2].map(i => { const b = BOTS["ev" + i]; return botBox("ev" + i, b, 3 + i * 2, ` Win +${b.win}, lose +${b.loss}.`); }).join("")}</div>
   </main>`;
