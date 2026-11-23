@@ -443,7 +443,7 @@ const CAT_OF = {
 /* ---------- Little Kid Mode ----------
    Its own prompts (no twists), 1 in Attillion much easier to reach, and its own
    Elo, daily launch and leaderboard. Switched in Settings, saved on this device. */
-const KID_FAMILIAR = 40, KID_KRILL_FROM = 0.78;
+const KID_FAMILIAR = 40, KID_KRILL_FROM = 0.72;
 const KID_EXTRA = {   // kid topics also accept answers from matching grown-up lists
   "k-fruit": "fruit", "k-color": "color", "k-ocean": "ocean fish", "k-body": "body bone", "k-dino": "dino", "k-pet": "pet dog breed_cat", "k-bug": "insect",
   "k-vehicle": "vehicle wheels boat", "k-clothes": "clothing hat shoe wintercloth", "k-sport": "sport", "k-dessert": "dessert candy cake cookie icecream", "k-animal": "mammal bird reptile pet",
