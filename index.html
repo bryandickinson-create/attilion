@@ -572,7 +572,7 @@ h2 + .layout-bar { justify-content: flex-start; margin-top: 10px; }
 
 .kid-chip { font-size: 13px; font-weight: 700; color: #ffd36b; border: 1px solid #ffd36b; border-radius: 999px; padding: 4px 10px; }
 /* event-themed 1 in Attillion */
-.krillion-banner.themed { background: radial-gradient(ellipse at center, rgba(var(--th), .28), rgba(3,4,14,.9) 70%); }
+.krillion-banner.themed { background: radial-gradient(ellipse at center, rgba(var(--th), .22), rgba(3,4,14,.6) 70%), rgba(3,4,14,.82); }
 .krillion-banner.themed .kb-big { color: rgb(var(--th)); text-shadow: 0 0 30px rgba(var(--th), .75), 0 0 90px rgba(var(--th), .45), 0 6px 0 rgba(0,0,0,.45); }
 .krillion-banner.themed .kb-who { color: rgb(var(--th)); }
 .kb-theme { font: 700 clamp(16px, 3.4vw, 24px) var(--font-display); color: #fff; margin: 0 0 8px; letter-spacing: .02em; }
@@ -1295,7 +1295,7 @@ const AVATARS = [
   { id: "rdragon",  e: "🌌", name: "Rainbow Nebula",  krill: 100 },
   { id: "k1000",    e: "👑", name: "Attillion Crown", krill: 1000 },
   // Secret: only appears after a game where every answer was a 1 in Attillion
-  { id: "perfect",  e: "🌌", name: "Perfect Galaxy", perfect: true },
+  { id: "perfect",  e: "🌌", name: "Perfect Nebula", perfect: true },
   // Secret: only appears after you find a question's hidden BEST answer
   { id: "bestans",  e: "💎", name: "Best Answer Diamond", bestAv: true },
   // Secret avatars: only unlocked by typing a code in Settings. Codes are
@@ -1462,10 +1462,11 @@ function viewEventCard() {
 }
 
 // Bundle codes unlock a whole group at once.
+const ELO_BOOST_CODE = 3265732527;
 const BUNDLES = [
   { id: "krill-all", code: 1175683394, name: "every Attillion trophy", pick: "rdragon" },
   { id: "krill-all", code: 2284514118, name: "every Attillion trophy", pick: "rdragon" },   // the old code still works
-  { id: "perfect", code: 3629488017, name: "the Perfect Galaxy", pick: "perfect", show: "🌌" }
+  { id: "perfect", code: 3629488017, name: "the Perfect Nebula", pick: "perfect", show: "🌌" }
 ];
 function codeHash(raw) { return hashStr("krillion-code:" + String(raw).toUpperCase().replace(/[^A-Z0-9]/g, "")); }
 function redeemed(u) { return u ? (u.codes || []) : store.get("guestCodes", []); }
@@ -1994,7 +1995,12 @@ function myAvatarObj() {
 function myAvatar() { return avMarkup(myAvatarObj()); }
 // event bot matches use the event's theme; wearing an event avatar themes your own 1 in Attillion everywhere
 function eventMatch() { return S.mode === "bot" && BOTS[S.level] && BOTS[S.level].event; }
-function myTheme() { if (eventMatch()) return eventTheme(EVENT); const a = myAvatarObj(); return a.ev ? eventTheme(findEvent(a.ev)) : null; }
+// the two secret avatars bring their own 1 in Attillion animation
+const AVATAR_THEMES = {
+  perfect: { name: "Perfect Nebula", rgb: "190,140,255", emojis: ["🌌", "✨", "💫", "🌠", "⭐", "🪐"], style: "galaxy" },
+  bestans: { name: "Best Answer Diamond", rgb: "120,230,255", emojis: ["💎", "💎", "✨", "💠", "🔷"], style: "diamond" }
+};
+function myTheme() { const a = myAvatarObj(); if (AVATAR_THEMES[a.id]) return AVATAR_THEMES[a.id]; if (eventMatch()) return eventTheme(EVENT); return a.ev ? eventTheme(findEvent(a.ev)) : null; }
 function curOppName() {
   return S.mode === "bot" ? BOTS[S.level].name : S.mode === "challenge-guest" ? S.challenge.from : S.mode === "live" && S.live ? S.live.opp.name : null;
 }
@@ -2297,7 +2303,7 @@ function finishMatch() {
     if (c.elo != null) res.elo = applyMatchResult(c.from, c.elo, my, their, "friend", c.id);
     res.code = b64e({ v: 1, id: c.id, reply: true, p: S.prompts, av: myAvatarObj().id, from: u ? u.name : "Your friend", elo: u ? myElo(u) - (res.elo ? res.elo.delta : 0) : null, a: S.mine, host: c.a, hostName: c.from });
   }
-  // every single answer a 1 in Attillion: the secret Perfect Galaxy avatar
+  // every single answer a 1 in Attillion: the secret Perfect Nebula avatar
   if (S.mode !== "endless" && S.scores.length >= ROUNDS && S.scores.every(x => x && x.points >= 100) && !perfectDone(me())) {
     if (me()) updateUser(x => { x.perfect = true; }); else store.set("guestPerfect", true);
     res.perfectUnlocked = true;
@@ -2307,7 +2313,7 @@ function finishMatch() {
   render();
   if (res.perfectUnlocked) setTimeout(() => {
     const a = avatarById("perfect"), el = document.querySelector(".perfect-note");
-    if (a && el && window.KrillionFX && window.KrillionFX.celebrate) { SFX("hadal"); window.KrillionFX.celebrate(el, a.id, avMarkup(a), a.name); }
+    if (a && el && window.KrillionFX && window.KrillionFX.celebrate) { SFX("hadal"); window.KrillionFX.celebrate(el, a.id, avMarkup(a), a.name, AVATAR_THEMES.perfect); }
   }, 400);
   if (res.evUnlocked) setTimeout(() => {   // the event prize arrives with the event's own animation
     const a = avatarById("ev-" + EVENT.key), el = document.querySelector(".unlock-note");
@@ -2674,7 +2680,7 @@ function celebrateAvatar(id) {
   const a = avatarById(id); if (!a) return;
   SFX("hadal");
   const el = document.querySelector(`[data-act="avatar"][data-id="${id}"]`) || document.querySelector(".avbtn");
-  if (window.KrillionFX && window.KrillionFX.celebrate) window.KrillionFX.celebrate(el, a.id, avMarkup(a), a.name, a.ev ? eventTheme(findEvent(a.ev)) : null);
+  if (window.KrillionFX && window.KrillionFX.celebrate) window.KrillionFX.celebrate(el, a.id, avMarkup(a), a.name, AVATAR_THEMES[a.id] || (a.ev ? eventTheme(findEvent(a.ev)) : null));
 }
 
 /* ---------- views ---------- */
@@ -2930,7 +2936,7 @@ function viewResults() {
     extra += `<p class="hint"><button class="link" data-go="login">Log in</button> to have games count toward your Elo.</p>`;
   }
   if (S.mode === "live" && res.forfeit) extra += `<p class="hint">${esc(oppName)} left before the end, so their missing rounds scored 0.</p>`;
-  if (res.perfectUnlocked) extra += `<p class="unlock-note perfect-note">PERFECT GAME! Every answer was a 1 in Attillion. You unlocked the secret ${avMarkup(avatarById("perfect"))} <b>Perfect Galaxy</b> avatar! <button class="link" data-go="avatar">Use it</button></p>`;
+  if (res.perfectUnlocked) extra += `<p class="unlock-note perfect-note">PERFECT GAME! Every answer was a 1 in Attillion. You unlocked the secret ${avMarkup(avatarById("perfect"))} <b>Perfect Nebula</b> avatar! <button class="link" data-go="avatar">Use it</button></p>`;
   if (res.tokens) {
     const prize = avatarById("ev-" + EVENT.key);
     extra += `<p class="best-note ev-note">+${res.tokens} ${EVENT.token} ${esc(EVENT.tokenName)} · ${eventTokens(me())} / ${EVENT_GOAL}</p>`;
@@ -3548,6 +3554,22 @@ document.addEventListener("submit", async e => {
   else if (e.target.id === "code-form") {
     const input = document.getElementById("unlock-code");
     const h = codeHash(input.value);
+    // one-time Elo boost: +100 to your current level's Elo, once per account
+    if (h === ELO_BOOST_CODE) {
+      const u = me();
+      if (!u) { go("avatar", { codeMsg: "Log in first. The Elo boost goes on your account." }); return; }
+      if ((u.codes || []).includes("elo-boost")) { go("avatar", { codeMsg: "You already used the Elo boost on this account." }); return; }
+      const k = tierKey();
+      updateUser(x => {
+        x.codes = (x.codes || []).concat("elo-boost");
+        const r = k ? (x[k] = x[k] || { elo: START_ELO, peak: START_ELO, games: 0, wins: 0, losses: 0, draws: 0, history: [] }) : x;
+        r.elo += 100; r.peak = Math.max(r.peak || START_ELO, r.elo);
+        if (k) x[k + "Elo"] = r.elo;
+      });
+      SFX("win");
+      go("avatar", { codeMsg: `+100 Elo! Your ${k === "kid" ? "Kid " : k === "big" ? "Big kid " : ""}Elo is now ${myElo()}.` });
+      return;
+    }
     const bundle = BUNDLES.find(x => x.code === h);
     if (bundle) {
       const u = me();
@@ -3914,6 +3936,8 @@ function krillion(card, who, opts) {
   const timer = setTimeout(end, 2600);
   banner.addEventListener("click", () => { clearTimeout(timer); end(); });
 
+  if (th && th.style === "galaxy") { galaxyBurst(x, y, th); return; }
+  if (th && th.style === "diamond") { diamondBurst(x, y, th); return; }
   if (th) { themedBurst(x, y, th); return; }
   // a burst of gold stars shoots out from the altitude marker and swirls
   for (let i = 0; i < 200; i++) {
@@ -3975,6 +3999,74 @@ function themedBurst(x, y, th) {
     x, y, life: 1.4, max: 1.4, delay: i * 0.18,
     update(p, dt) { if (p.delay > 0) { p.delay -= dt; p.life += dt; } },
     draw(c, p) { if (p.delay > 0) return; const k = 1 - p.life / p.max; c.strokeStyle = `rgba(${th.rgb},${(1 - k) * 0.9})`; c.lineWidth = 4 * (1 - k) + 1; c.beginPath(); c.arc(p.x, p.y, 20 + k * Math.max(W, H) * 0.6, 0, TAU); c.stroke(); }
+  });
+}
+
+/* Perfect Nebula: a spiral galaxy spins up around the marker. Colour-shifting
+   stars ride out along four arms, a glowing core pulses, and small galaxy emojis
+   orbit before drifting away. */
+function galaxyBurst(x, y, th) {
+  const arms = 4;
+  for (let i = 0; i < 260; i++) {
+    const arm = i % arms, t = Math.random();
+    parts.push({
+      a0: arm * TAU / arms + t * 2.6, r0: 8 + t * 40, grow: rand(140, 320), spin: rand(1.6, 2.6), hue: rand(200, 330), size: rand(2, 6), life: rand(2.2, 3.4), max: 3.4, rot: rand(0, TAU),
+      update(p, dt) { p.age = (p.age || 0) + dt; p.rot += dt * 4; },
+      draw(c, p) {
+        const k = p.age || 0, r = p.r0 + p.grow * Math.min(1.6, k * 0.7), a = p.a0 + k * p.spin - r * 0.004;
+        sparkle(c, x + Math.cos(a) * r, y + Math.sin(a) * r * 0.82, p.size, `hsl(${(p.hue + k * 90) % 360},95%,72%)`, Math.min(1, p.life), p.rot);
+      }
+    });
+  }
+  for (let i = 0; i < 22; i++) parts.push({
+    a0: rand(0, TAU), r: rand(60, 190), spin: rand(0.9, 1.6) * (Math.random() < 0.5 ? -1 : 1), size: rand(20, 34), life: 3.2, ch: th.emojis[i % th.emojis.length],
+    update(p, dt) { p.age = (p.age || 0) + dt; p.r += dt * 50; },
+    draw(c, p) { const a = p.a0 + (p.age || 0) * p.spin; emoji(c, p.ch, x + Math.cos(a) * p.r, y + Math.sin(a) * p.r * 0.82, p.size, Math.min(1, p.life), 0); }
+  });
+  parts.push({ life: 2.6, max: 2.6,
+    update() {},
+    draw(c, p) {
+      const k = 1 - p.life / p.max, R = 40 + k * 260;
+      const g = c.createRadialGradient(x, y, 0, x, y, R);
+      g.addColorStop(0, `rgba(255,255,255,${0.9 * (1 - k)})`); g.addColorStop(0.25, `rgba(255,140,230,${0.5 * (1 - k)})`); g.addColorStop(0.6, `rgba(120,110,255,${0.25 * (1 - k)})`); g.addColorStop(1, "rgba(0,0,0,0)");
+      c.fillStyle = g; c.beginPath(); c.arc(x, y, R, 0, TAU); c.fill();
+    }
+  });
+}
+/* Best Answer Diamond: the marker cracks into a burst of spinning crystal
+   shards that throw rainbow glints, then a ring of diamonds expands outward. */
+function diamondBurst(x, y, th) {
+  for (let i = 0; i < 120; i++) {
+    const a = rand(0, TAU), sp = rand(200, 700);
+    parts.push({
+      x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, rot: rand(0, TAU), spin: rand(-8, 8), size: rand(6, 16), life: rand(1.6, 2.8), hue: rand(170, 230),
+      update(p, dt) { p.vx *= 0.965; p.vy = p.vy * 0.965 + 140 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.spin * dt; },
+      draw(c, p) {
+        c.save(); c.translate(p.x, p.y); c.rotate(p.rot); c.globalAlpha = Math.min(1, p.life);
+        const glint = (Math.sin(p.rot * 3) + 1) / 2;
+        c.fillStyle = `hsl(${p.hue + glint * 120},90%,${70 + glint * 20}%)`;
+        c.beginPath(); c.moveTo(0, -p.size); c.lineTo(p.size * 0.6, 0); c.lineTo(0, p.size); c.lineTo(-p.size * 0.6, 0); c.closePath(); c.fill();
+        c.strokeStyle = "rgba(255,255,255,.8)"; c.lineWidth = 1; c.stroke();
+        c.restore();
+      }
+    });
+  }
+  for (let i = 0; i < 16; i++) {
+    const a = i * TAU / 16;
+    parts.push({
+      a, life: 2.4, max: 2.4, ch: th.emojis[i % th.emojis.length],
+      update() {},
+      draw(c, p) { const k = 1 - p.life / p.max, r = 30 + k * Math.max(W, H) * 0.45; emoji(c, p.ch, x + Math.cos(p.a + k) * r, y + Math.sin(p.a + k) * r, 26, Math.min(1, p.life * 1.2), k * 6); }
+    });
+  }
+  for (let i = 0; i < 4; i++) parts.push({
+    life: 1.5, max: 1.5, delay: i * 0.15,
+    update(p, dt) { if (p.delay > 0) { p.delay -= dt; p.life += dt; } },
+    draw(c, p) {
+      if (p.delay > 0) return; const k = 1 - p.life / p.max, R = 20 + k * Math.max(W, H) * 0.6;
+      c.strokeStyle = `hsla(${180 + i * 40},100%,75%,${(1 - k) * 0.9})`; c.lineWidth = 3 * (1 - k) + 1;
+      c.beginPath(); c.moveTo(x, y - R); c.lineTo(x + R, y); c.lineTo(x, y + R); c.lineTo(x - R, y); c.closePath(); c.stroke();   // diamond-shaped shockwaves
+    }
   });
 }
 

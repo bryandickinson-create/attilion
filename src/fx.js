@@ -257,6 +257,8 @@ function krillion(card, who, opts) {
   const timer = setTimeout(end, 2600);
   banner.addEventListener("click", () => { clearTimeout(timer); end(); });
 
+  if (th && th.style === "galaxy") { galaxyBurst(x, y, th); return; }
+  if (th && th.style === "diamond") { diamondBurst(x, y, th); return; }
   if (th) { themedBurst(x, y, th); return; }
   // a burst of gold stars shoots out from the altitude marker and swirls
   for (let i = 0; i < 200; i++) {
@@ -318,6 +320,74 @@ function themedBurst(x, y, th) {
     x, y, life: 1.4, max: 1.4, delay: i * 0.18,
     update(p, dt) { if (p.delay > 0) { p.delay -= dt; p.life += dt; } },
     draw(c, p) { if (p.delay > 0) return; const k = 1 - p.life / p.max; c.strokeStyle = `rgba(${th.rgb},${(1 - k) * 0.9})`; c.lineWidth = 4 * (1 - k) + 1; c.beginPath(); c.arc(p.x, p.y, 20 + k * Math.max(W, H) * 0.6, 0, TAU); c.stroke(); }
+  });
+}
+
+/* Perfect Nebula: a spiral galaxy spins up around the marker. Colour-shifting
+   stars ride out along four arms, a glowing core pulses, and small galaxy emojis
+   orbit before drifting away. */
+function galaxyBurst(x, y, th) {
+  const arms = 4;
+  for (let i = 0; i < 260; i++) {
+    const arm = i % arms, t = Math.random();
+    parts.push({
+      a0: arm * TAU / arms + t * 2.6, r0: 8 + t * 40, grow: rand(140, 320), spin: rand(1.6, 2.6), hue: rand(200, 330), size: rand(2, 6), life: rand(2.2, 3.4), max: 3.4, rot: rand(0, TAU),
+      update(p, dt) { p.age = (p.age || 0) + dt; p.rot += dt * 4; },
+      draw(c, p) {
+        const k = p.age || 0, r = p.r0 + p.grow * Math.min(1.6, k * 0.7), a = p.a0 + k * p.spin - r * 0.004;
+        sparkle(c, x + Math.cos(a) * r, y + Math.sin(a) * r * 0.82, p.size, `hsl(${(p.hue + k * 90) % 360},95%,72%)`, Math.min(1, p.life), p.rot);
+      }
+    });
+  }
+  for (let i = 0; i < 22; i++) parts.push({
+    a0: rand(0, TAU), r: rand(60, 190), spin: rand(0.9, 1.6) * (Math.random() < 0.5 ? -1 : 1), size: rand(20, 34), life: 3.2, ch: th.emojis[i % th.emojis.length],
+    update(p, dt) { p.age = (p.age || 0) + dt; p.r += dt * 50; },
+    draw(c, p) { const a = p.a0 + (p.age || 0) * p.spin; emoji(c, p.ch, x + Math.cos(a) * p.r, y + Math.sin(a) * p.r * 0.82, p.size, Math.min(1, p.life), 0); }
+  });
+  parts.push({ life: 2.6, max: 2.6,
+    update() {},
+    draw(c, p) {
+      const k = 1 - p.life / p.max, R = 40 + k * 260;
+      const g = c.createRadialGradient(x, y, 0, x, y, R);
+      g.addColorStop(0, `rgba(255,255,255,${0.9 * (1 - k)})`); g.addColorStop(0.25, `rgba(255,140,230,${0.5 * (1 - k)})`); g.addColorStop(0.6, `rgba(120,110,255,${0.25 * (1 - k)})`); g.addColorStop(1, "rgba(0,0,0,0)");
+      c.fillStyle = g; c.beginPath(); c.arc(x, y, R, 0, TAU); c.fill();
+    }
+  });
+}
+/* Best Answer Diamond: the marker cracks into a burst of spinning crystal
+   shards that throw rainbow glints, then a ring of diamonds expands outward. */
+function diamondBurst(x, y, th) {
+  for (let i = 0; i < 120; i++) {
+    const a = rand(0, TAU), sp = rand(200, 700);
+    parts.push({
+      x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, rot: rand(0, TAU), spin: rand(-8, 8), size: rand(6, 16), life: rand(1.6, 2.8), hue: rand(170, 230),
+      update(p, dt) { p.vx *= 0.965; p.vy = p.vy * 0.965 + 140 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.spin * dt; },
+      draw(c, p) {
+        c.save(); c.translate(p.x, p.y); c.rotate(p.rot); c.globalAlpha = Math.min(1, p.life);
+        const glint = (Math.sin(p.rot * 3) + 1) / 2;
+        c.fillStyle = `hsl(${p.hue + glint * 120},90%,${70 + glint * 20}%)`;
+        c.beginPath(); c.moveTo(0, -p.size); c.lineTo(p.size * 0.6, 0); c.lineTo(0, p.size); c.lineTo(-p.size * 0.6, 0); c.closePath(); c.fill();
+        c.strokeStyle = "rgba(255,255,255,.8)"; c.lineWidth = 1; c.stroke();
+        c.restore();
+      }
+    });
+  }
+  for (let i = 0; i < 16; i++) {
+    const a = i * TAU / 16;
+    parts.push({
+      a, life: 2.4, max: 2.4, ch: th.emojis[i % th.emojis.length],
+      update() {},
+      draw(c, p) { const k = 1 - p.life / p.max, r = 30 + k * Math.max(W, H) * 0.45; emoji(c, p.ch, x + Math.cos(p.a + k) * r, y + Math.sin(p.a + k) * r, 26, Math.min(1, p.life * 1.2), k * 6); }
+    });
+  }
+  for (let i = 0; i < 4; i++) parts.push({
+    life: 1.5, max: 1.5, delay: i * 0.15,
+    update(p, dt) { if (p.delay > 0) { p.delay -= dt; p.life += dt; } },
+    draw(c, p) {
+      if (p.delay > 0) return; const k = 1 - p.life / p.max, R = 20 + k * Math.max(W, H) * 0.6;
+      c.strokeStyle = `hsla(${180 + i * 40},100%,75%,${(1 - k) * 0.9})`; c.lineWidth = 3 * (1 - k) + 1;
+      c.beginPath(); c.moveTo(x, y - R); c.lineTo(x + R, y); c.lineTo(x, y + R); c.lineTo(x - R, y); c.closePath(); c.stroke();   // diamond-shaped shockwaves
+    }
   });
 }
 

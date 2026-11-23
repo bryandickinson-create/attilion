@@ -56,7 +56,7 @@ const AVATARS = [
   { id: "rdragon",  e: "🌌", name: "Rainbow Nebula",  krill: 100 },
   { id: "k1000",    e: "👑", name: "Attillion Crown", krill: 1000 },
   // Secret: only appears after a game where every answer was a 1 in Attillion
-  { id: "perfect",  e: "🌌", name: "Perfect Galaxy", perfect: true },
+  { id: "perfect",  e: "🌌", name: "Perfect Nebula", perfect: true },
   // Secret: only appears after you find a question's hidden BEST answer
   { id: "bestans",  e: "💎", name: "Best Answer Diamond", bestAv: true },
   // Secret avatars: only unlocked by typing a code in Settings. Codes are
@@ -223,10 +223,11 @@ function viewEventCard() {
 }
 
 // Bundle codes unlock a whole group at once.
+const ELO_BOOST_CODE = 3265732527;
 const BUNDLES = [
   { id: "krill-all", code: 1175683394, name: "every Attillion trophy", pick: "rdragon" },
   { id: "krill-all", code: 2284514118, name: "every Attillion trophy", pick: "rdragon" },   // the old code still works
-  { id: "perfect", code: 3629488017, name: "the Perfect Galaxy", pick: "perfect", show: "🌌" }
+  { id: "perfect", code: 3629488017, name: "the Perfect Nebula", pick: "perfect", show: "🌌" }
 ];
 function codeHash(raw) { return hashStr("krillion-code:" + String(raw).toUpperCase().replace(/[^A-Z0-9]/g, "")); }
 function redeemed(u) { return u ? (u.codes || []) : store.get("guestCodes", []); }
@@ -755,7 +756,12 @@ function myAvatarObj() {
 function myAvatar() { return avMarkup(myAvatarObj()); }
 // event bot matches use the event's theme; wearing an event avatar themes your own 1 in Attillion everywhere
 function eventMatch() { return S.mode === "bot" && BOTS[S.level] && BOTS[S.level].event; }
-function myTheme() { if (eventMatch()) return eventTheme(EVENT); const a = myAvatarObj(); return a.ev ? eventTheme(findEvent(a.ev)) : null; }
+// the two secret avatars bring their own 1 in Attillion animation
+const AVATAR_THEMES = {
+  perfect: { name: "Perfect Nebula", rgb: "190,140,255", emojis: ["🌌", "✨", "💫", "🌠", "⭐", "🪐"], style: "galaxy" },
+  bestans: { name: "Best Answer Diamond", rgb: "120,230,255", emojis: ["💎", "💎", "✨", "💠", "🔷"], style: "diamond" }
+};
+function myTheme() { const a = myAvatarObj(); if (AVATAR_THEMES[a.id]) return AVATAR_THEMES[a.id]; if (eventMatch()) return eventTheme(EVENT); return a.ev ? eventTheme(findEvent(a.ev)) : null; }
 function curOppName() {
   return S.mode === "bot" ? BOTS[S.level].name : S.mode === "challenge-guest" ? S.challenge.from : S.mode === "live" && S.live ? S.live.opp.name : null;
 }
@@ -1058,7 +1064,7 @@ function finishMatch() {
     if (c.elo != null) res.elo = applyMatchResult(c.from, c.elo, my, their, "friend", c.id);
     res.code = b64e({ v: 1, id: c.id, reply: true, p: S.prompts, av: myAvatarObj().id, from: u ? u.name : "Your friend", elo: u ? myElo(u) - (res.elo ? res.elo.delta : 0) : null, a: S.mine, host: c.a, hostName: c.from });
   }
-  // every single answer a 1 in Attillion: the secret Perfect Galaxy avatar
+  // every single answer a 1 in Attillion: the secret Perfect Nebula avatar
   if (S.mode !== "endless" && S.scores.length >= ROUNDS && S.scores.every(x => x && x.points >= 100) && !perfectDone(me())) {
     if (me()) updateUser(x => { x.perfect = true; }); else store.set("guestPerfect", true);
     res.perfectUnlocked = true;
@@ -1068,7 +1074,7 @@ function finishMatch() {
   render();
   if (res.perfectUnlocked) setTimeout(() => {
     const a = avatarById("perfect"), el = document.querySelector(".perfect-note");
-    if (a && el && window.KrillionFX && window.KrillionFX.celebrate) { SFX("hadal"); window.KrillionFX.celebrate(el, a.id, avMarkup(a), a.name); }
+    if (a && el && window.KrillionFX && window.KrillionFX.celebrate) { SFX("hadal"); window.KrillionFX.celebrate(el, a.id, avMarkup(a), a.name, AVATAR_THEMES.perfect); }
   }, 400);
   if (res.evUnlocked) setTimeout(() => {   // the event prize arrives with the event's own animation
     const a = avatarById("ev-" + EVENT.key), el = document.querySelector(".unlock-note");
@@ -1435,7 +1441,7 @@ function celebrateAvatar(id) {
   const a = avatarById(id); if (!a) return;
   SFX("hadal");
   const el = document.querySelector(`[data-act="avatar"][data-id="${id}"]`) || document.querySelector(".avbtn");
-  if (window.KrillionFX && window.KrillionFX.celebrate) window.KrillionFX.celebrate(el, a.id, avMarkup(a), a.name, a.ev ? eventTheme(findEvent(a.ev)) : null);
+  if (window.KrillionFX && window.KrillionFX.celebrate) window.KrillionFX.celebrate(el, a.id, avMarkup(a), a.name, AVATAR_THEMES[a.id] || (a.ev ? eventTheme(findEvent(a.ev)) : null));
 }
 
 /* ---------- views ---------- */
@@ -1691,7 +1697,7 @@ function viewResults() {
     extra += `<p class="hint"><button class="link" data-go="login">Log in</button> to have games count toward your Elo.</p>`;
   }
   if (S.mode === "live" && res.forfeit) extra += `<p class="hint">${esc(oppName)} left before the end, so their missing rounds scored 0.</p>`;
-  if (res.perfectUnlocked) extra += `<p class="unlock-note perfect-note">PERFECT GAME! Every answer was a 1 in Attillion. You unlocked the secret ${avMarkup(avatarById("perfect"))} <b>Perfect Galaxy</b> avatar! <button class="link" data-go="avatar">Use it</button></p>`;
+  if (res.perfectUnlocked) extra += `<p class="unlock-note perfect-note">PERFECT GAME! Every answer was a 1 in Attillion. You unlocked the secret ${avMarkup(avatarById("perfect"))} <b>Perfect Nebula</b> avatar! <button class="link" data-go="avatar">Use it</button></p>`;
   if (res.tokens) {
     const prize = avatarById("ev-" + EVENT.key);
     extra += `<p class="best-note ev-note">+${res.tokens} ${EVENT.token} ${esc(EVENT.tokenName)} · ${eventTokens(me())} / ${EVENT_GOAL}</p>`;
@@ -2309,6 +2315,22 @@ document.addEventListener("submit", async e => {
   else if (e.target.id === "code-form") {
     const input = document.getElementById("unlock-code");
     const h = codeHash(input.value);
+    // one-time Elo boost: +100 to your current level's Elo, once per account
+    if (h === ELO_BOOST_CODE) {
+      const u = me();
+      if (!u) { go("avatar", { codeMsg: "Log in first. The Elo boost goes on your account." }); return; }
+      if ((u.codes || []).includes("elo-boost")) { go("avatar", { codeMsg: "You already used the Elo boost on this account." }); return; }
+      const k = tierKey();
+      updateUser(x => {
+        x.codes = (x.codes || []).concat("elo-boost");
+        const r = k ? (x[k] = x[k] || { elo: START_ELO, peak: START_ELO, games: 0, wins: 0, losses: 0, draws: 0, history: [] }) : x;
+        r.elo += 100; r.peak = Math.max(r.peak || START_ELO, r.elo);
+        if (k) x[k + "Elo"] = r.elo;
+      });
+      SFX("win");
+      go("avatar", { codeMsg: `+100 Elo! Your ${k === "kid" ? "Kid " : k === "big" ? "Big kid " : ""}Elo is now ${myElo()}.` });
+      return;
+    }
     const bundle = BUNDLES.find(x => x.code === h);
     if (bundle) {
       const u = me();
