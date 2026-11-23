@@ -5,6 +5,9 @@
 "use strict";
 let ctx = null, master = null;
 let vol = 0.5;
+let pvol = 0.5, pstyle = "chime";
+try { const v = localStorage.getItem("krillion:promptVolume"); if (v != null) pvol = Math.max(0, Math.min(1, +JSON.parse(v))); } catch (e) {}
+try { const v = localStorage.getItem("krillion:promptStyle"); if (v != null) pstyle = JSON.parse(v); } catch (e) {}
 try { const v = localStorage.getItem("krillion:volume"); if (v != null) vol = Math.max(0, Math.min(1, +JSON.parse(v))); } catch (e) {}
 
 function ensure() {
@@ -74,6 +77,29 @@ window.KrillionSound = {
     // a per-call gain stage lets opponent sounds play a little quieter
     out = ctx.createGain(); out.gain.value = gain == null ? 1 : gain; out.connect(master);
     try { SOUNDS[name](); } catch (e) {}
+  },
+  // the "new question" sound has its own volume, separate from everything else
+  get promptVolume() { return pvol; },
+  set promptVolume(v) { pvol = Math.max(0, Math.min(1, v)); try { localStorage.setItem("krillion:promptVolume", JSON.stringify(pvol)); } catch (e) {} },
+  get promptStyle() { return pstyle; },
+  set promptStyle(v) { pstyle = ["off", "chime", "voice", "both"].includes(v) ? v : "chime"; try { localStorage.setItem("krillion:promptStyle", JSON.stringify(pstyle)); } catch (e) {} },
+  say(text) {
+    if (pvol <= 0 || !text || !window.speechSynthesis) return;
+    try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.volume = pvol; speechSynthesis.speak(u); } catch (e) {}
+  },
+  prompt(text) {
+    if (pvol <= 0 || pstyle === "off") return;
+    if (pstyle !== "voice" && ensure()) {
+      out = ctx.createGain(); out.gain.value = pvol * pvol; out.connect(ctx.destination);
+      try { [76, 83, 88].forEach((n, i) => tone(N(n), i * 0.09, 0.28, "sine", 0.3)); } catch (e) {}
+    }
+    if (pstyle !== "chime" && text && window.speechSynthesis) {
+      try {
+        speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text); u.volume = pvol; u.rate = 1;
+        setTimeout(() => speechSynthesis.speak(u), pstyle === "both" ? 350 : 0);
+      } catch (e) {}
+    }
   },
   get volume() { return vol; },
   set volume(v) {

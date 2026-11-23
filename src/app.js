@@ -786,6 +786,8 @@ function fixedRarity() { return S.mode === "endless" || S.mode === "live" || S.m
 // Settings switch: Endless and Free Launch can be played with no timer (neither mode changes Elo).
 function untimedOk() { return S.mode === "endless" || S.mode === "solo"; }
 function isUntimed() { return untimedOk() && store.get("untimed", false); }
+function sayBtnSize() { const v = store.get("sayBtnSize", "m"); return ["off", "s", "m", "l", "xl"].includes(v) ? v : "m"; }
+function promptSpoken(pr) { return pr ? (pr.twist ? pr.baseQ + " " + pr.twist : pr.q) : ""; }
 function beginRound() {
   S.phase = "answer"; S.deadline = isUntimed() ? Infinity : Date.now() + ROUND_SECONDS * 1000; S.draft = "";
   S.botLockAt = S.mode === "bot" ? Date.now() + (3 + Math.random() * 19) * 1000 : null;
@@ -793,6 +795,7 @@ function beginRound() {
   if (S.live) { S.live.at = S.round; livePresence(); }
   render();
   const input = document.getElementById("answer"); if (input) input.focus();
+  if (window.KrillionSound && window.KrillionSound.prompt) { const pr = PROMPT_BY_ID[S.prompts[S.round]]; window.KrillionSound.prompt(promptSpoken(pr)); }
   clearInterval(timer);
   timer = setInterval(tick, 100);
 }
@@ -1482,6 +1485,7 @@ function viewPlay() {
         <div class="ring ${isUntimed() ? "untimed" : ""}" id="ring" style="--p:1"><span id="clock">${isUntimed() ? "∞" : ROUND_SECONDS}</span></div>
         <p class="round-label">${roundLabel()}${prompt.twist ? ` · <span class="twist-warn">twist round, read the rule!</span>` : ""}</p>
         <h2 class="prompt">${promptTitle(prompt)}</h2>
+        ${sayBtnSize() !== "off" ? `<button type="button" class="say-btn say-${sayBtnSize()}" data-act="say" aria-label="Hear the question">🔊</button>` : ""}
         ${S.phase === "answer" ? `
         <form id="answer-form" autocomplete="off">
           <label for="answer" class="sr">Your answer</label>
@@ -1845,6 +1849,23 @@ function viewSettings() {
     </div>
     <p class="hint">Set it to 0% to turn sound off. Saved on this device.</p>
 
+    <h2>Question sound</h2>
+    <div class="seg-pick" role="group" aria-label="New question sound">
+      ${[["off", "Off"], ["chime", "Chime"], ["voice", "Read it out loud"], ["both", "Both"]].map(([v, l]) => `<button data-act="pstyle" data-v="${v}" aria-pressed="${(window.KrillionSound ? window.KrillionSound.promptStyle : "chime") === v}">${l}</button>`).join("")}
+    </div>
+    <div class="setting-row">
+      <label for="pvol">Loudness</label>
+      <input id="pvol" type="range" min="0" max="100" step="5" value="${Math.round((window.KrillionSound ? window.KrillionSound.promptVolume : 0.5) * 100)}">
+      <output id="pvol-out" for="pvol">${Math.round((window.KrillionSound ? window.KrillionSound.promptVolume : 0.5) * 100)}%</output>
+      <button class="btn ghost small" data-act="pvol-test">Test</button>
+    </div>
+    <h3 class="sub-h">🔊 Hear the question button</h3>
+    <div class="seg-pick" role="group" aria-label="Button size">
+      ${[["off", "Hide"], ["s", "Small"], ["m", "Medium"], ["l", "Large"], ["xl", "Huge"]].map(([v, l]) => `<button data-act="saysize" data-v="${v}" aria-pressed="${sayBtnSize() === v}">${l}</button>`).join("")}
+      ${sayBtnSize() !== "off" ? `<button type="button" class="say-btn say-${sayBtnSize()}" data-act="pvol-say" aria-label="Preview">🔊</button>` : ""}
+    </div>
+    <p class="hint">The sound plays each time a new question appears, and the 🔊 button next to each question reads it out loud when you tap it. Both use this loudness, so you can make it louder or quieter than the other sounds. Set it to 0% to turn it off. Saved on this device.</p>
+
     ${u ? `
     <h2>Account</h2>
     <form id="rename-form" class="stack">
@@ -2091,6 +2112,11 @@ document.addEventListener("click", async e => {
   else if (act === "quick") go("queue");
   else if (act === "quick-cancel") go("modes");
   else if (act === "sound-test") SFX("hadal");
+  else if (act === "pstyle") { if (window.KrillionSound) window.KrillionSound.promptStyle = t.dataset.v; const y = window.scrollY; render(); window.scrollTo(0, y); if (window.KrillionSound) window.KrillionSound.prompt("Name a fruit"); }
+  else if (act === "saysize") { store.set("sayBtnSize", t.dataset.v); const y = window.scrollY; render(); window.scrollTo(0, y); }
+  else if (act === "pvol-say") { if (window.KrillionSound) window.KrillionSound.say("Name a fruit"); }
+  else if (act === "say") { if (window.KrillionSound) window.KrillionSound.say(promptSpoken(PROMPT_BY_ID[S.prompts[S.round]])); const a = document.getElementById("answer"); if (a) a.focus(); }
+  else if (act === "pvol-test") { if (window.KrillionSound) window.KrillionSound.prompt("Name a fruit"); }
   else if (act === "skip") endlessSkip();
   else if (act === "skips") { store.set("endlessSkips", Number(t.dataset.v)); render(); }
   else if (act === "kidmode") { store.set("kidMode", t.dataset.v === "1"); render(); }
@@ -2239,6 +2265,10 @@ document.addEventListener("input", e => {
     const q = e.target.value.trim().toLowerCase(); let n = 0;
     document.querySelectorAll(".krill-wall .krill-card").forEach(c => { const hit = !q || c.dataset.s.includes(q); c.hidden = !hit; if (hit) n++; });
     const none = document.getElementById("krill-none"); if (none) none.hidden = n > 0;
+  }
+  if (e.target.id === "pvol" && window.KrillionSound) {
+    window.KrillionSound.promptVolume = +e.target.value / 100;
+    const o = document.getElementById("pvol-out"); if (o) o.textContent = e.target.value + "%";
   }
   if (e.target.id === "vol" && window.KrillionSound) {
     window.KrillionSound.volume = +e.target.value / 100;

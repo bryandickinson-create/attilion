@@ -582,3 +582,12 @@ h2 + .layout-bar { justify-content: flex-start; margin-top: 10px; }
 .krill-card[hidden] { display: none; }
 .kc-odds { font: 700 13px var(--font-data); color: #ffe9a8; margin-top: 4px !important; letter-spacing: .02em; }
 .kb-odds { font: 700 clamp(18px, 3.6vw, 28px) var(--font-data); color: #fff4cf; margin: 10px 0 0; animation: rise 1s .25s both; }
+/* hear-the-question button */
+.say-btn { display: inline-grid; place-items: center; border-radius: 999px; border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08); color: var(--foam); cursor: pointer; line-height: 1; padding: 0; margin: -14px auto 18px; vertical-align: middle; }
+.say-btn:hover { background: rgba(255,255,255,.16); }
+.say-s { width: 34px; height: 34px; font-size: 16px; }
+.say-m { width: 48px; height: 48px; font-size: 22px; }
+.say-l { width: 68px; height: 68px; font-size: 32px; }
+.say-xl { width: 96px; height: 96px; font-size: 46px; }
+.seg-pick .say-btn { margin: 0 0 0 8px; }
+.sub-h { font-size: 15px; margin: 16px 0 8px; }
