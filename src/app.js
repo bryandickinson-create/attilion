@@ -225,7 +225,8 @@ function viewEventCard() {
 // Bundle codes unlock a whole group at once.
 const BUNDLES = [
   { id: "krill-all", code: 1175683394, name: "every Attillion trophy", pick: "rdragon" },
-  { id: "krill-all", code: 2284514118, name: "every Attillion trophy", pick: "rdragon" }   // the old code still works
+  { id: "krill-all", code: 2284514118, name: "every Attillion trophy", pick: "rdragon" },   // the old code still works
+  { id: "perfect", code: 3185317828, name: "the Perfect Galaxy", pick: "perfect", show: "🌌" }
 ];
 function codeHash(raw) { return hashStr("krillion-code:" + String(raw).toUpperCase().replace(/[^A-Z0-9]/g, "")); }
 function redeemed(u) { return u ? (u.codes || []) : store.get("guestCodes", []); }
@@ -235,7 +236,7 @@ function bestDone(u) { return u ? !!u.bestFound : !!store.get("guestBest", false
 function perfectDone(u) { return u ? !!u.perfect : !!store.get("guestPerfect", false); }
 function isOpen(a, u) {
   if (a.ev) return evPrizes(u).includes(a.id);
-  if (a.perfect) return perfectDone(u);
+  if (a.perfect) return perfectDone(u) || redeemed(u).includes("perfect");
   if (a.bestAv) return bestDone(u);
   if (a.code) return redeemed(u).includes(a.id);
   if (a.krill) return krillCount(u) >= a.krill || (a.krill < 1000 && redeemed(u).includes("krill-all"));
@@ -2311,10 +2312,10 @@ document.addEventListener("submit", async e => {
     const bundle = BUNDLES.find(x => x.code === h);
     if (bundle) {
       const u = me();
-      if (redeemed(u).includes(bundle.id)) { go("avatar", { codeMsg: `You already unlocked ${bundle.name}.` }); return; }
+      if (redeemed(u).includes(bundle.id) || (bundle.id === "perfect" && perfectDone(u))) { go("avatar", { codeMsg: `You already unlocked ${bundle.name}.` }); return; }
       if (u) updateUser(x => { x.codes = (x.codes || []).concat(bundle.id); x.avatar = bundle.pick; });
       else { store.set("guestCodes", redeemed(null).concat(bundle.id)); store.set("guestAvatar", bundle.pick); }
-      go("avatar", { codeMsg: `Unlocked ${bundle.name}: ☄️ 🌘 🪐 🌌` });
+      go("avatar", { codeMsg: `Unlocked ${bundle.name}: ${bundle.show || "☄️ 🌘 🪐 🌌"}` });
       celebrateAvatar(bundle.pick);
       return;
     }
