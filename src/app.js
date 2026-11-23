@@ -903,7 +903,8 @@ function usePower(k) {
   if (k === "double") { S.doubles = S.doubles || {}; S.doubles[S.round] = true; }
   if (k === "hint") {
     const pool = prompt.answers.slice(prompt.krillFrom, prompt.familiar).filter(a => norm(a.display) !== bestDisplay(prompt) && (!prompt.test || prompt.answers.indexOf(a) >= 0));
-    const a = pool[Math.floor(Math.random() * pool.length)] || prompt.answers[prompt.krillFrom];
+    // Endless has exactly one secret 1 in Attillion per prompt, so the hint points at that one
+    const a = S.mode === "endless" ? prompt.answers[endlessSecret(prompt)] : pool[Math.floor(Math.random() * pool.length)] || prompt.answers[prompt.krillFrom];
     const d = a.display; S.hintText = `Try one that starts with “${d[0].toUpperCase()}” and has ${d.replace(/[^a-z]/gi, "").length} letters`;
   }
   used[k] = true; addPower(k, -1); SFX("pop");
