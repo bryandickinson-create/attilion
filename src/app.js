@@ -903,7 +903,9 @@ function hintFor(prompt) {
   else {
     const fixed = fixedRarity(), rep = repeatsCount(), best = bestDisplay(prompt);
     const good = prompt.answers.filter(a => norm(a.display) !== best && /^[a-z0-9 '\-&.]+$/i.test(a.display) && (() => { try { return scoreAnswer(prompt, a.display, fixed, rep).points >= 100; } catch (e) { return false; } })());
-    pick = good[Math.floor(Math.random() * good.length)];
+    // point at the secret BEST answer (150 pts) when it fits this question; otherwise a 1 in Attillion
+    const bi = matchAnswer(prompt, best);
+    pick = bi >= 0 && norm(prompt.answers[bi].display) === best ? prompt.answers[bi] : good[Math.floor(Math.random() * good.length)];
   }
   if (!pick) return "";
   const d = pick.display, chars = [...d];

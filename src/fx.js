@@ -3,6 +3,9 @@
  */
 (function () {
 "use strict";
+// a delayed shockwave can start a hair before its timer, giving a tiny negative radius; clamp it
+const _arc = CanvasRenderingContext2D.prototype.arc;
+CanvasRenderingContext2D.prototype.arc = function (x, y, r, a, b, ccw) { return _arc.call(this, x, y, Math.max(0, r), a, b, ccw); };
 const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
 const rand = (a, b) => a + Math.random() * (b - a);
 const TAU = Math.PI * 2;
