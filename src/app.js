@@ -71,6 +71,25 @@ const AVATARS = [
   { id: "spacedog", e: "🐕", name: "Space dog",      code: 1213739381 },
   { id: "cheese",   e: "🧀", name: "Moon cheese",    code: 190172967 },
   { id: "saturn",   e: "🪐", name: "Saturn",         code: 812187123 },
+  // Shop avatars: bought with Attillion Gems 💠 (shop: price tier)
+  { id: "sh-volcano", e: "🌋", name: "Volcano Planet", shop: 10 },
+  { id: "sh-rainbow", e: "🌈", name: "Space Rainbow",  shop: 10 },
+  { id: "sh-squid",   e: "🦑", name: "Space Squid",    shop: 10 },
+  { id: "sh-octo",    e: "🐙", name: "Moon Octopus",   shop: 10 },
+  { id: "sh-newmoon", e: "🌑", name: "New Moon",       shop: 10 },
+  { id: "sh-ice",     e: "🧊", name: "Ice Comet",      shop: 10 },
+  { id: "sh-unicorn", e: "🦄", name: "Star Unicorn",   shop: 40 },
+  { id: "sh-dragon",  e: "🐉", name: "Cosmic Dragon",  shop: 40 },
+  { id: "sh-rex",     e: "🦖", name: "Astro-Rex",      shop: 40 },
+  { id: "sh-whale",   e: "🐋", name: "Space Whale",    shop: 40 },
+  { id: "sh-eagle",   e: "🦅", name: "Star Eagle",     shop: 40 },
+  { id: "sh-orb",     e: "🔮", name: "Crystal Orb",    shop: 40 },
+  { id: "sh-wizard",  e: "🧙", name: "Star Wizard",    shop: 70 },
+  { id: "sh-nebdragon", e: "🐲", name: "Nebula Dragon", shop: 70 },
+  { id: "sh-peacock", e: "🦚", name: "Galaxy Peacock", shop: 70 },
+  { id: "sh-castle",  e: "🏰", name: "Moon Castle",    shop: 70 },
+  { id: "sh-wormhole", e: "🌀", name: "Wormhole",      shop: 70 },
+  { id: "sh-bolt",    e: "⚡", name: "Lightning Bolt", shop: 70 },
   // the Developer avatars always sit last, in this order
   { id: "dev",      e: "👾", name: "Developer",      code: 4277053133, dev: true },
   { id: "gdev",     e: "👾", name: "Gold Developer", code: 2110502093, dev: true },
@@ -128,10 +147,11 @@ function avHow(a, open) {
     : a.bestAv ? "Find a question's hidden BEST answer (or use its secret code)."
     : a.ev ? `Collect ${EVENT_GOAL} ${ev ? ev.tokenName + " " + ev.token : "tokens"} by playing the event bots while ${ev ? ev.name : "the event"} is on.`
     : a.code ? (a.dev ? "Typed in a secret developer code." : "Typed in a secret code.")
+    : a.shop ? `Buy it in the Avatar Shop for ${a.shop} 💠 Attillion Gems when it's for sale.`
     : `Reach a best Elo of ${a.elo}.`;
   return open ? (a.elo === 0 ? how : "You unlocked it: " + how.charAt(0).toLowerCase() + how.slice(1)) : "How to get it: " + how;
 }
-function avLock(a) { return a.krill ? `🔒 ${a.krill} Attillions` : a.ev ? `🔒 ${EVENT_GOAL} ${EVENT.token}` : a.streak ? `🔒 ${a.streak}-day streak` : a.allBadges ? `🔒 All ${BADGES.length} badges` : `🔒 ${a.elo} Elo`; }
+function avLock(a) { return a.shop ? `🔒 Shop · ${a.shop} 💠` : a.krill ? `🔒 ${a.krill} Attillions` : a.ev ? `🔒 ${EVENT_GOAL} ${EVENT.token}` : a.streak ? `🔒 ${a.streak}-day streak` : a.allBadges ? `🔒 All ${BADGES.length} badges` : `🔒 ${a.elo} Elo`; }
 function showAvInfo(id) {
   const a = AVATARS.find(x => x.id === id); if (!a) return;
   const u = me(), open = isOpen(a, u), sel = a.id === myAvatarObj().id;
@@ -330,6 +350,7 @@ function isOpen(a, u) {
   if (a.perfect) return perfectDone(u) || redeemed(u).includes("perfect");
   if (a.bestAv) return bestDone(u) || redeemed(u).includes("bestans");
   if (a.code) return redeemed(u).includes(a.id);
+  if (a.shop) return shopOwned(u).includes(a.id);
   if (a.krill) return krillCount(u) >= a.krill || redeemed(u).includes(a.id) || (a.krill < 1000 && redeemed(u).includes("krill-all"));
   return a.elo === 0 || (u && a.elo <= u.peak);
 }
@@ -1534,6 +1555,7 @@ function finishMatch() {
     if (c.elo != null) res.elo = applyMatchResult(c.from, c.elo, my, their, "friend", c.id);
     res.code = b64e({ v: 1, id: c.id, reply: true, p: S.prompts, av: myAvatarObj().id, from: u ? u.name : "Your friend", elo: u ? myElo(u) - (res.elo ? res.elo.delta : 0) : null, a: S.mine, host: c.a, hostName: c.from });
   }
+  res.gems = gemsFor(S.scores); if (res.gems) ugSet("gems", n => n + res.gems, 0);
   res.powersEarned = earnPowers(res);
   ugSet("streakBest", n => Math.max(n || 0, streakBest(me())), 0);
   res.badges = newBadges();
@@ -1994,6 +2016,46 @@ function viewSubjects() {
     </div>
   </main>`;
 }
+/* ---------- Attillion Gems 💠 and the Avatar Shop ----------
+ * Gems only come from 1 in Attillions: more in one game is worth a lot more.
+ * The shop shows 3 avatars (10, 40 and 70 gems) and changes every other
+ * Saturday; you can also pay 100 gems for a new set right away. */
+const GEM_TABLE = [0, 1, 4, 6, 8, 12, 20, 50];   // 1 in Attillions in one game -> gems
+const SHOP_PRICES = [10, 40, 70], SHOP_REFRESH = 100;
+const SHOP_START = Date.UTC(2026, 10, 21);       // a Saturday; the shop changes every 14 days from here
+function gems() { return ugGet("gems", 0); }
+function gemsFor(scores) { const k = (scores || []).filter(x => x && x.points >= 100).length; return GEM_TABLE[Math.min(k, GEM_TABLE.length - 1)]; }
+function shopOwned(u) { return (u ? u.shopOwned : store.get("guest_shopOwned", null)) || []; }
+function shopDay() { const d = new Date(); return Math.floor((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - SHOP_START) / 864e5); }
+function shopPeriod() { return Math.floor(shopDay() / 14); }
+function shopNext() { const days = (shopPeriod() + 1) * 14 - shopDay(); const d = new Date(); d.setDate(d.getDate() + days); return { days, date: d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }) }; }
+function shopRoll() { const r = ugGet("shopRoll", null); return r && r.p === shopPeriod() ? r.n : 0; }
+function shopOffers() {
+  const r = rng(hashStr("shop:" + shopPeriod() + ":" + shopRoll()));
+  const owned = shopOwned(me());
+  return SHOP_PRICES.map(price => {
+    const all = AVATARS.filter(a => a.shop === price), fresh = all.filter(a => !owned.includes(a.id));
+    const pool = fresh.length ? fresh : all;
+    return pool[Math.floor(r() * pool.length)];
+  });
+}
+function viewShop() {
+  const owned = shopOwned(me()), g = gems(), nx = shopNext();
+  return `${header()}<button class="link back-link menu-back" data-go="avatar">← Back to Avatars</button>
+  <main class="narrow shop">
+    <div class="shop-top"><h1>Avatar Shop</h1><span class="gem-bal">💠 ${g}</span></div>
+    <p class="hint shop-how">Earn 💠 Gems with 1 in Attillions: 1 in a game = 1, 2 = 4, 3 = 6, 4 = 8, 5 = 12, 6 = 20, 7 = 50.</p>
+    <div class="shop-grid">${shopOffers().map(a => {
+      const have = owned.includes(a.id), can = g >= a.shop;
+      return `<div class="shop-card ${have ? "owned" : ""}"><span class="shop-e">${avMarkup(a)}</span><b>${esc(a.name)}</b>
+        ${have ? `<span class="shop-owned">✓ Yours</span>` : `<button class="btn ${can ? "primary" : "ghost"} small" data-act="shop-buy" data-id="${a.id}" ${can ? "" : "disabled"}>💠 ${a.shop}</button>`}</div>`;
+    }).join("")}</div>
+    <p class="shop-msg" role="status">${esc(S.shopMsg || "")}</p>
+    <button class="btn ghost shop-refresh" data-act="shop-refresh" ${g >= SHOP_REFRESH ? "" : "disabled"}>🔄 New avatars now · 💠 ${SHOP_REFRESH}</button>
+    <p class="hint">New avatars ${nx.days === 1 ? "tomorrow" : "in " + nx.days + " days"} (${nx.date}).</p>
+  </main>`;
+}
+
 /* ---------- friends: requests, who's online, messages, invites ----------
  * Needs an online (cloud) account. Data lives in the Supabase "friendships" and
  * "messages" tables (supabase-friends.sql); only the two friends can read them.
@@ -2306,6 +2368,7 @@ function viewResults() {
   }
   if (S.mode === "live" && res.forfeit) extra += `<p class="hint">${esc(oppName)} left before the end, so their missing rounds scored 0.</p>`;
   if (S.mode === "bot") extra += botBubble(S.level, res.my > res.their ? "lose" : res.my < res.their ? "win" : "tie");
+  if (res.gems) extra += `<p class="best-note gem-note">💠 +${res.gems} Attillion Gem${res.gems > 1 ? "s" : ""} for ${S.scores.filter(x => x && x.points >= 100).length} 1 in Attillion${S.scores.filter(x => x && x.points >= 100).length > 1 ? "s" : ""}! You have ${gems()}. <button class="link" data-go="shop">Shop</button></p>`;
   if (res.powersEarned && res.powersEarned.length) extra += `<p class="best-note power-note">🎁 Power-up${res.powersEarned.length > 1 ? "s" : ""} earned: ${res.powersEarned.map(k => POWERS[k].ic + " " + POWERS[k].name).join(", ")}</p>`;
   if (res.badges && res.badges.length && badgesEarned(me()).length >= BADGES.length) extra += `<p class="unlock-note badge-note grand-note">🏆 You earned every badge! <b>Grand Champion</b> avatar unlocked.</p>`;
   if (res.badges && res.badges.length) extra += res.badges.map(b => `<p class="unlock-note badge-note">New badge: <b>${b.ic} ${esc(b.name)}</b> · ${esc(b.what)}</p>`).join("");
@@ -2537,11 +2600,12 @@ function viewAvatar() {
     <h1>Your avatar</h1>
     <p class="lede small">This is you on the launch tower. Rarer answers send it higher. New avatars unlock as your best Elo climbs.${u ? ` Your best so far is <b>${peak}</b>.` : ""}</p>
     ${u ? "" : `<p class="hint"><button class="link" data-go="login">Log in</button> to earn Elo and unlock more avatars.</p>`}
+    <button class="btn shop-btn" data-go="shop">🛒 Avatar Shop · 💠 ${gems()}</button>
     <div class="av-search"><input id="av-search" type="search" placeholder="🔍 Search avatars" autocomplete="off" aria-label="Search avatars"></div>
     <p class="av-swipe-hint">Swipe to see every avatar · tap one to learn how to get it</p>
     <p class="hint av-none" id="av-none" hidden>No avatars match that search.</p>
     <div class="avatars">
-      ${AVATARS.filter(a => a.ev ? (isOpen(a, u) || a.ev === EVENT.key) : ((!a.code && !a.perfect && !a.bestAv) || isOpen(a, u))).map(a => {
+      ${AVATARS.filter(a => a.ev ? (isOpen(a, u) || a.ev === EVENT.key) : ((!a.code && !a.perfect && !a.bestAv && !a.shop) || isOpen(a, u))).map(a => {
         const open = isOpen(a, u);
         const sel = a.e + a.id === current;
         const tip = (avDesc(a) ? avDesc(a) + " " : "") + avHow(a, open);
@@ -2877,7 +2941,7 @@ function fillDescriptions() {
 function render() {
   const v = S.view;
   const html = v === "play" ? viewPlay() : v === "results" ? viewResults() : v === "login" ? viewLogin()
-    : v === "mystery" ? viewMystery() : v === "settings" ? viewSettings() : v === "avatar" ? viewAvatar() : v === "bots" ? viewBots() : v === "modes" ? viewHome() : v === "party" ? viewParty() : v === "computer" ? viewComputer() : v === "event" ? viewEventBots() : v === "subjects" ? viewSubjects() : v === "friends" ? viewFriends() : v === "profile" ? viewProfile() : v === "leaderboard" ? viewLeaderboard() : v === "join" ? viewJoin()
+    : v === "mystery" ? viewMystery() : v === "settings" ? viewSettings() : v === "avatar" ? viewAvatar() : v === "bots" ? viewBots() : v === "modes" ? viewHome() : v === "party" ? viewParty() : v === "computer" ? viewComputer() : v === "event" ? viewEventBots() : v === "subjects" ? viewSubjects() : v === "friends" ? viewFriends() : v === "shop" ? viewShop() : v === "profile" ? viewProfile() : v === "leaderboard" ? viewLeaderboard() : v === "join" ? viewJoin()
     : v === "queue" ? viewQueue() : v === "challenge" ? viewChallengeIntro() : v === "reply" ? viewReplyResult() : v === "daily-done" ? viewDailyDone() : viewHub();
   $app().innerHTML = html;
   document.body.dataset.view = v;
@@ -3276,6 +3340,20 @@ document.addEventListener("click", async e => {
   else if (act === "tab") { S.tab = t.dataset.tab; render(); }
   else if (act === "auth-mode") go("login", { mode: t.dataset.m });
   else if (act === "tour") { go("home"); setTimeout(tourStart, 200); }
+  else if (act === "shop-buy") {
+    const a = avatarById(t.dataset.id);
+    if (!a || !a.shop || !shopOffers().some(x => x.id === a.id) || shopOwned(me()).includes(a.id)) return;
+    if (gems() < a.shop) { go("shop", { shopMsg: `You need ${a.shop - gems()} more 💠.` }); return; }
+    ugSet("gems", n => n - a.shop, 0); ugSet("shopOwned", l => (l || []).concat(a.id), []);
+    if (me()) updateUser(x => { x.avatar = a.id; }); else store.set("guestAvatar", a.id);
+    go("shop", { shopMsg: `You bought the ${a.name}! It's your avatar now.` });
+    setTimeout(() => { const el = document.querySelector(".shop-card.owned .shop-e"); if (el && window.KrillionFX && window.KrillionFX.celebrate) { SFX("hadal"); window.KrillionFX.celebrate(el, a.id, avMarkup(a), a.name); } }, 60);
+  }
+  else if (act === "shop-refresh") {
+    if (gems() < SHOP_REFRESH) return;
+    ugSet("gems", n => n - SHOP_REFRESH, 0); const n = shopRoll() + 1; ugSet("shopRoll", () => ({ p: shopPeriod(), n }), null);
+    go("shop", { shopMsg: "Here are 3 new avatars!" });
+  }
   else if (act === "gamekb") { store.set("gameKb", t.dataset.v); const y = window.scrollY; render(); window.scrollTo(0, y); }
   else if (act === "fr-chat") { FR.chat = t.dataset.id || null; if (FR.chat) frMarkSeen(FR.chat); frPaint(); frBadge(); const i = document.getElementById("fr-text"); if (i && FR.chat) i.focus(); }
   else if (act === "fr-accept" || act === "fr-remove") {
