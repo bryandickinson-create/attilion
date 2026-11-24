@@ -76,6 +76,47 @@ const AVATARS = [
   { id: "rdev",     e: "👾", name: "Rainbow Developer", code: 207743465, dev: true }
 ];
 
+// A short description for every avatar, shown on the avatar page
+const AV_DESC = {
+  rocket: "Every journey starts on the launch pad. Strap in!",
+  satellite: "Quietly circles the planet, listening for rare answers.",
+  moon: "A sliver of moon for the late-night thinkers.",
+  scope: "Spots answers nobody else can see from down here.",
+  astro: "Suited up and ready to walk among the stars.",
+  earth: "Home base. Big, blue and full of answers.",
+  shoot: "Make a wish. Then make it a rare one.",
+  robot: "Rolls across strange planets collecting odd answers.",
+  fullmoon: "Bright, round and shining on the whole board.",
+  planet: "Wears its rings like a champion's medals.",
+  star: "You're officially a star. Keep shining.",
+  sun: "So bright the other players need sunglasses.",
+  galaxy: "Swirls of stardust for a player who's seen a lot of sky.",
+  hole: "Nothing escapes its pull, not even the rarest answer. The top Elo avatar.",
+  k10: "Earned by finding ten 1 in Attillions. Your first streak across the sky.",
+  k20: "Earned by finding twenty 1 in Attillions. You've blocked out the sun.",
+  gdragon: "Earned by finding fifty 1 in Attillions. Glows solid gold.",
+  rdragon: "Earned by finding a hundred 1 in Attillions. Shimmers through every color.",
+  k1000: "Earned by finding a thousand 1 in Attillions. Royalty of the rare answer, with its own crown animation.",
+  streak7: "Play the Daily Launch 7 days in a row. Flickers like a real flame, with a wall-of-fire animation.",
+  streak30: "Play the Daily Launch 30 days in a row. A whole month of sunshine, with the same fire animation.",
+  allbadges: "Collect all 16 badges. A spinning golden trophy for the ultimate Attillion player.",
+  perfect: "Secret. Make every answer in one game a 1 in Attillion. Shifts between purple, green and blue.",
+  bestans: "Secret. Find a question's hidden BEST answer. Sparkles with its own diamond animation.",
+  alien: "Secret. Visiting from a galaxy far, far away to play one round.",
+  ufo: "Secret. Spotted hovering over the leaderboard late at night.",
+  spacedog: "Secret. A very good dog who has been to space and back.",
+  cheese: "Secret. Proof that the moon really is made of cheese.",
+  saturn: "Secret. The planet with the fanciest rings in the solar system.",
+  dev: "Secret developer code. The original builder's badge, with a full-screen takeover animation.",
+  gdev: "Secret developer code. Dipped in gold, with a golden takeover animation.",
+  rdev: "Secret developer code. Cycles through the rainbow, with a rainbow takeover animation."
+};
+function avDesc(a) {
+  if (AV_DESC[a.id]) return AV_DESC[a.id];
+  if (a.ev) { const ev = findEvent(a.ev); return ev ? `Event prize from ${ev.name}. Collect ${EVENT_GOAL} ${ev.tokenName} ${ev.token} while the event is on to keep it forever.` : "Event prize."; }
+  return "";
+}
+
 /* ---------- seasonal events ----------
  * Every two weeks a new event starts, themed to the time of year. It brings three
  * event bots (easy, medium, hard) and a token. Every game against them earns
@@ -2294,6 +2335,7 @@ function viewAvatar() {
           ${open ? `<span class="av-stars" title="1 in Attillions found wearing this avatar">⭐ ${(avKrill(u)[a.id] || 0).toLocaleString()}</span>` : ""}
           <span class="ae">${avMarkup(a)}</span><span class="an">${a.name}${a.dev ? ` <i class="devtag">DEV</i>` : a.code || a.perfect || a.bestAv ? ` <i class="secrettag">secret</i>` : ""}</span>
           ${a.ev ? `<span class="asub" title="${esc((findEvent(a.ev) || {}).name || "")}">Event avatar</span>` : ""}
+          ${avDesc(a) ? `<span class="adesc">${esc(avDesc(a))}</span>` : ""}
           <span class="al">${open ? (sel ? "Selected" : "Pick") : a.krill ? `🔒 ${a.krill} Attillions` : a.ev ? `🔒 ${EVENT_GOAL} ${EVENT.token}` : a.streak ? `🔒 ${a.streak}-day streak` : a.allBadges ? `🔒 All ${BADGES.length} badges` : `🔒 ${a.elo} Elo`}</span>
         </button>`;
       }).join("")}
