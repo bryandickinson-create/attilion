@@ -1113,6 +1113,19 @@ function finishMystery() {
 }
 
 /* What other players said: the most common answers given for this question. */
+function saidCounts(prompt) {
+  const base = prompt.baseId || prompt.id, counts = {};
+  Object.entries(HC[base] || {}).forEach(([k, n]) => { counts[k] = Math.max(counts[k] || 0, n); });
+  const local = store.get("humanCounts", {});
+  Object.keys(local).forEach(k => { if (k.startsWith(base + ":")) { const a = k.slice(base.length + 1); counts[a] = Math.max(counts[a] || 0, local[k]); } });
+  return counts;
+}
+// how many answers all players have given to this question so far
+function answersGiven(prompt) { return Object.values(saidCounts(prompt)).reduce((a, n) => a + n, 0); }
+function answerCounter(prompt) {
+  const n = answersGiven(prompt);
+  return `<p class="ans-counter">🧮 <b>${n.toLocaleString()}</b> ${n === 1 ? "answer" : "answers"} given by players so far</p>`;
+}
 function topSaid(prompt) {
   const base = prompt.baseId || prompt.id, counts = {};
   Object.entries(HC[base] || {}).forEach(([k, n]) => { counts[k] = Math.max(counts[k] || 0, n); });
@@ -1123,8 +1136,8 @@ function topSaid(prompt) {
 }
 function topSaidBlock(prompt) {
   const top = topSaid(prompt);
-  if (!top.length) return "";
-  return `<div class="top-said"><p class="ts-h">What players said most</p><ol>${top.map(t => `<li><span>${esc(t.a)}</span><b>${t.n.toLocaleString()}×</b></li>`).join("")}</ol></div>`;
+  if (!top.length) return answerCounter(prompt);
+  return `<div class="top-said"><p class="ts-h">What players said most</p><ol>${top.map(t => `<li><span>${esc(t.a)}</span><b>${t.n.toLocaleString()}×</b></li>`).join("")}</ol>${answerCounter(prompt)}</div>`;
 }
 
 /* Bot personalities: what each bot says when the game ends, or when it finds a 1 in Attillion. */
@@ -1956,6 +1969,7 @@ function viewPlay() {
         <p class="answer-error" id="answer-error" role="alert"></p>
         ${powerBar()}
         ${chatBox()}
+        ${answerCounter(prompt)}
         ${S.mode === "endless" && skipLimit() > 0 ? `<button class="btn ghost small skip-btn" data-act="skip" ${skipsLeft() ? "" : "disabled"}>⏭ Skip this one ${skipLimit() === Infinity ? "" : `(${skipsLeft()} left)`}</button>` : ""}` : `<p class="waiting">Locked in: <b>${esc(S.mine[S.round] || "(blank)")}</b>. Waiting for ${esc(oppName)}…</p>`}
         ${oppName ? `<p class="opp-status" id="opplock">${S.live && S.live.gone ? `${esc(oppName)} left the match. Finish your rounds and the win is yours.` : S.mode === "challenge-guest" ? `${esc(oppName)} already answered. You'll see it at the end of the round.` : `<span class="dot"></span>${esc(oppName)} is thinking`}</p>` : ""}
       </div>`;
