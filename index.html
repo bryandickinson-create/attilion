@@ -710,6 +710,7 @@ h2 small.sub { font-size: 13px; font-weight: 500; color: var(--kelp); margin-lef
 .save-online span{flex:1 1 240px;line-height:1.4}
 .move-box{margin:8px 0 16px}
 .move-box summary{cursor:pointer;font-weight:600;padding:6px 0}
+.move-box label{display:block;margin-top:10px;font-size:14px}
 .move-box textarea{width:100%;font-family:ui-monospace,monospace;font-size:12px;margin:8px 0;word-break:break-all}
 </style></head><body>
 <div id="app"></div>
@@ -3842,17 +3843,62 @@ function viewAvatar() {
     <p class="error" id="code-msg" role="alert">${esc(S.codeMsg || "")}</p>
   </main>`;
 }
-function moveCode(u) { return "ATTMOVE1:" + btoa(unescape(encodeURIComponent(JSON.stringify(Object.assign({}, u, { cloud: false }))))); }
-function readMoveCode(text) {
-  const m = String(text || "").replace(/\s+/g, "").match(/ATTMOVE1:([A-Za-z0-9+/=]+)/); if (!m) return null;
-  try { const u = JSON.parse(decodeURIComponent(escape(atob(m[1])))); return u && typeof u.name === "string" && typeof u.hash === "string" && /^[A-Za-z0-9_-]{2,20}$/.test(u.name) ? u : null; } catch (e) { return null; }
+const SITE_URL = "https://bryandickinson-create.github.io/attilion/";
+const b64u = bytes => { let s = ""; bytes.forEach(b => { s += String.fromCharCode(b); }); return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); };
+const unb64u = str => { str = str.replace(/-/g, "+").replace(/_/g, "/"); while (str.length % 4) str += "="; const bin = atob(str); return Uint8Array.from(bin, c => c.charCodeAt(0)); };
+async function pipeBytes(bytes, stream) { const buf = await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer(); return new Uint8Array(buf); }
+// The code holds the whole account (with its password hash, never the password). v2 is compressed and ends in "~END" so a cut-off code is easy to spot.
+async function moveCode(u) {
+  const json = new TextEncoder().encode(JSON.stringify(Object.assign({}, u, { cloud: false })));
+  if (typeof CompressionStream === "function") { try { return "ATTMOVE2." + b64u(await pipeBytes(json, new CompressionStream("deflate-raw"))) + "~END"; } catch (e) {} }
+  return "ATTMOVE3." + b64u(json) + "~END";
+}
+function moveOk(u) { return u && typeof u.name === "string" && typeof u.hash === "string" && /^[A-Za-z0-9_-]{2,20}$/.test(u.name) ? u : null; }
+// Returns the account, or { error } explaining what went wrong.
+async function readMoveCode(text) {
+  const t = String(text || "").replace(/\s+/g, "");
+  try {
+    let m = t.match(/ATTMOVE1:([A-Za-z0-9+/=]+)/);
+    if (m) return moveOk(JSON.parse(decodeURIComponent(escape(atob(m[1]))))) || { error: "bad" };
+    m = t.match(/ATTMOVE([23])[.:]([A-Za-z0-9_-]+)(~END)?/);
+    if (!m) return { error: "none" };
+    if (!m[3]) return { error: "cut" };
+    let bytes = unb64u(m[2]);
+    if (m[1] === "2") { if (typeof DecompressionStream !== "function") return { error: "old" }; bytes = await pipeBytes(bytes, new DecompressionStream("deflate-raw")); }
+    return moveOk(JSON.parse(new TextDecoder().decode(bytes))) || { error: "bad" };
+  } catch (e) { return { error: "bad" }; }
+}
+function moveErrText(err) {
+  return err === "cut" ? "That code is cut off. It should end with ~END. Copy it again with the Copy button."
+    : err === "none" ? "That doesn't look like a move code. It starts with ATTMOVE."
+    : err === "old" ? "This browser is too old to open the code. Use the move link instead."
+    : "That code didn't work. Copy it again with the Copy button and paste the whole thing.";
+}
+async function importMove(text) {
+  const u = await readMoveCode(text);
+  if (!u || u.error) { go("login", { mode: "login", moveErr: moveErrText(u && u.error) }); return; }
+  const all = users(); const key = u.name.toLowerCase();
+  all[key] = Object.assign({}, u, { cloud: false, updated: Date.now() }); saveUsers(all);
+  store.set("session", null);
+  go("login", { mode: "login", prefill: u.name, error: "", moved: true });
+}
+async function fillMoveCode() {
+  const u = me(); const box = document.getElementById("move-code"); if (!u || !box) return;
+  const code = await moveCode(u);
+  box.value = code;
+  const link = document.getElementById("move-link"); if (link) link.value = SITE_URL + "#move=" + code;
 }
 function moveSection(u) {
   if (!u) return "";
+  setTimeout(fillMoveCode, 0);
   return `<h2>Move my account</h2>
-    <p class="hint">Playing in more than one place, like the Claude app and a website? Copy this code, then on the other one go to Log in, open “Have a move code?”, and paste it. Your Elo, avatars and progress come with it.</p>
-    <details class="move-box"><summary>Show my move code</summary>
-      <textarea id="move-code" rows="4" readonly>${esc(moveCode(u))}</textarea>
+    <p class="hint">Playing in more than one place, like the Claude app and your phone? Send yourself the move link and tap it on the other device. Or copy the code and paste it under Log in › “Have a move code?”. Your Elo, avatars and progress come with it. Don't share these with anyone else.</p>
+    <details class="move-box"><summary>Show my move link and code</summary>
+      <label for="move-link">Move link (easiest: text it to yourself, then tap it on your phone)</label>
+      <textarea id="move-link" rows="3" readonly></textarea>
+      <button class="btn small" data-act="copy" data-target="move-link">Copy link</button>
+      <label for="move-code">Move code</label>
+      <textarea id="move-code" rows="3" readonly></textarea>
       <button class="btn small" data-act="copy" data-target="move-code">Copy code</button>
     </details>`;
 }
@@ -4366,12 +4412,7 @@ document.addEventListener("submit", async e => {
     SFX("lock"); go("profile");
   }
   else if (e.target.id === "move-form") {
-    const u = readMoveCode(document.getElementById("move-in").value);
-    if (!u) { go("login", { mode: "login", moveErr: "That code didn't work. Copy the whole code and try again." }); return; }
-    const all = users(); const key = u.name.toLowerCase();
-    all[key] = Object.assign({}, u, { cloud: false, updated: Date.now() }); saveUsers(all);
-    store.set("session", null);
-    go("login", { mode: "login", prefill: u.name, error: "", moved: true });
+    await importMove(document.getElementById("move-in").value);
   }
   else if (e.target.id === "join-form") {
     const err = openCode(document.getElementById("join-code").value);
@@ -4422,6 +4463,9 @@ window.Krillion = { loadHumanCounts, humanCount, getRoom, awardTokens, EVENT, PR
 
 if (!fromHash()) render();
 setTimeout(cloudPull, 500);
+// opened from a move link: bring the account in, then ask for its password
+function fromMoveLink() { if (/^#move=/.test(location.hash)) { const code = decodeURIComponent(location.hash.slice(6)); try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {} importMove(code); } }
+fromMoveLink(); window.addEventListener("hashchange", fromMoveLink);
 })();
 </script>
 <script>

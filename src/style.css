@@ -705,4 +705,5 @@ h2 small.sub { font-size: 13px; font-weight: 500; color: var(--kelp); margin-lef
 .save-online span{flex:1 1 240px;line-height:1.4}
 .move-box{margin:8px 0 16px}
 .move-box summary{cursor:pointer;font-weight:600;padding:6px 0}
+.move-box label{display:block;margin-top:10px;font-size:14px}
 .move-box textarea{width:100%;font-family:ui-monospace,monospace;font-size:12px;margin:8px 0;word-break:break-all}
