@@ -1314,6 +1314,11 @@ function beginRound() {
   clearInterval(timer);
   timer = setInterval(tick, 100);
 }
+function clockLeft() {
+  if (!S.deadline || S.deadline === Infinity) return { p: 1, secs: roundSecs() };
+  const left = Math.max(0, Math.min(roundSecs() * 1000, S.deadline - Date.now()));
+  return { p: (left / (roundSecs() * 1000)).toFixed(3), secs: Math.ceil(left / 1000) };
+}
 function tick() {
   if (S.view !== "play") { clearInterval(timer); return; }
   const now = Date.now();
@@ -1334,8 +1339,15 @@ function tick() {
     }
     if (ol && S.live) ol.classList.toggle("on", liveOppAnswered(S.round));
     if (left <= 0) submit(true);
-  } else if (S.phase === "waiting" && !S.live) {
-    if (now >= S.botLockAt || now >= S.deadline) reveal();
+  } else if (S.phase === "waiting") {
+    // you've locked in, but the clock keeps running until the other side answers
+    if (S.deadline !== Infinity) {
+      const left = Math.max(0, S.deadline - now);
+      const t = document.getElementById("clock"); if (t) t.textContent = Math.ceil(left / 1000);
+      const ring = document.getElementById("ring"); if (ring) ring.style.setProperty("--p", (left / (roundSecs() * 1000)).toFixed(3));
+    }
+    const ol = document.getElementById("opplock"); if (ol && S.botLockAt) ol.classList.toggle("on", now >= S.botLockAt);
+    if (!S.live && (now >= S.botLockAt || now >= S.deadline)) reveal();
   }
 }
 function submit(timeUp) {
@@ -2042,7 +2054,7 @@ function viewPlay() {
   if (S.phase === "answer" || S.phase === "waiting") {
     body = `
       <div class="prompt-card">
-        <div class="ring ${isUntimed() ? "untimed" : ""}" id="ring" style="--p:1"><span id="clock">${isUntimed() ? "∞" : roundSecs()}</span></div>
+        <div class="ring ${isUntimed() ? "untimed" : ""}" id="ring" style="--p:${clockLeft().p}"><span id="clock">${isUntimed() ? "∞" : clockLeft().secs}</span></div>
         <p class="round-label">${roundLabel()}${prompt.twist ? ` · <span class="twist-warn">twist round, read the rule!</span>` : ""}</p>
         <h2 class="prompt">${promptTitle(prompt)}</h2>
         ${sayBtnSize() !== "off" ? `<button type="button" class="say-btn say-${sayBtnSize()}" data-act="say" aria-label="Hear the question">🔊</button>` : ""}
