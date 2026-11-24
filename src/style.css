@@ -701,3 +701,5 @@ h2 small.sub { font-size: 13px; font-weight: 500; color: var(--kelp); margin-lef
 .avs-anim { margin-top: 12px; }
 /* Thirty-Day Sun: a blazing sun with a gold ring, so it doesn't look like the plain Sun */
 .av-streak30 { border-radius: 50%; padding: .04em; box-shadow: 0 0 0 .06em rgba(255,201,60,.95), 0 0 .35em .08em rgba(255,110,30,.75); background: radial-gradient(circle, rgba(255,140,40,.35), rgba(255,80,20,0) 70%); }
+.save-online{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 16px;padding:12px 16px;border-radius:14px;background:rgba(120,170,255,.12);border:1px solid rgba(120,170,255,.35)}
+.save-online span{flex:1 1 240px;line-height:1.4}

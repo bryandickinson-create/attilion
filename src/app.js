@@ -1654,7 +1654,7 @@ async function cloudLogIn(name, pw) {
     return { user: Object.assign(newUser(r.data.name, ""), r.data.data || {}, { name: r.data.name, elo: r.data.elo, peak: r.data.peak }) };
   } catch (e) { return null; }
 }
-let pushTimer = null;
+let pushTimer = null, CLOUD_MSG = "";
 function cloudPush() {
   clearTimeout(pushTimer);
   pushTimer = setTimeout(async () => {
@@ -1914,6 +1914,7 @@ function viewHome() {
   const box = (cls, attrs, ic, name, sub, tag) => `<button class="hub-box play-box ${cls}" ${attrs}>${tag ? `<span class="pb-tag">${tag}</span>` : ""}<span class="hub-ic" aria-hidden="true">${ic}</span><span class="hub-name">${name}</span><span class="hub-sub">${sub}</span></button>`;
   return `${header()}${tabsBar("modes")}
   <main class="home">
+    ${saveOnlineBanner()}
     <div class="play-grid">
       ${box("pb-quick", `data-act="quick"`, "⚡", "Quick match", "Play a real person near your Elo, right now", `<span id="online">${onlineText()}</span>`)}
       ${done ? box("pb-daily", `data-act="daily-view"`, cal, "Daily Launch", `Done today: ${done.score}. New one at midnight`, (streakNow() ? "🔥 " + streakNow() + " · " : "") + "#" + dailyNumber(key))
@@ -2264,10 +2265,10 @@ function viewLogin() {
   </main>`;
   return `${header()}<main class="narrow">
     <h1>${mode === "login" ? "Log in" : "Create an account"}</h1>
-    <p class="lede small">Your Elo, match history and Daily Launch scores are saved to your account.</p>
+    <p class="lede small">${S.prefill ? "Type your password once to save this account online. Then it works on every device." : "Your Elo, match history and Daily Launch scores are saved to your account, on every device."}</p>
     <form id="auth-form" class="stack" autocomplete="on">
       <label for="auth-name">Username</label>
-      <input id="auth-name" name="username" required minlength="2" maxlength="20" pattern="[A-Za-z0-9_\\-]+" autocomplete="username">
+      <input id="auth-name" name="username" required minlength="2" maxlength="20" pattern="[A-Za-z0-9_\\-]+" autocomplete="username" value="${esc(S.prefill || "")}">
       <label for="auth-pw">Password</label>
       <span class="pw-wrap"><input id="auth-pw" name="password" type="password" required minlength="4" autocomplete="${mode === "login" ? "current-password" : "new-password"}"><button type="button" class="pw-eye" data-act="pw-eye" data-for="auth-pw" aria-label="Show password" aria-pressed="false">👁</button></span>
       <p class="error" id="auth-error" role="alert">${esc(S.error || "")}</p>
@@ -2353,8 +2354,13 @@ function tabsBar(active) {
   return `<button class="link back-link menu-back" data-go="home">← Menu</button>`;
 }
 // The main menu: four big boxes that fill the screen.
+function saveOnlineBanner() {
+  const u = me();
+  return u && !u.cloud ? `<div class="save-online"><span>☁️ <strong>${esc(u.name)}</strong> is only saved on this device. ${esc(CLOUD_MSG || "Save it online to use it on your phone, iPad and computer.")}</span><button class="btn primary small" data-act="save-online">Save online</button></div>` : "";
+}
 function viewHub() {
   return `${header()}<main class="hub">
+    ${saveOnlineBanner()}
     <div class="hub-grid">
       ${SECTIONS.map(([v, ic, l, sub]) => `<button class="hub-box hub-${v}" data-go="${v}"><span class="hub-ic" aria-hidden="true">${v === "avatar" ? avMarkup(myAvatarObj()) : ic}</span><span class="hub-name">${l}</span><span class="hub-sub">${sub}</span></button>`).join("")}
     </div>
@@ -2501,11 +2507,13 @@ function viewLeaderboard() {
   if (tab === "kids" || tab === "big") return viewKidBoard(local, tab === "big" ? "big" : "kid");
   const all = BOARD ? BOARD.elo.map(r => ({ online: true, name: r.name, elo: r.elo, avatar: r.avatar, wins: r.wins, losses: r.losses, daily: {} })) : local;
   if (BOARD) BOARD.daily.forEach(r => { const x = all.find(u => u.name === r.name); if (x) x.daily[todayKey()] = { score: r.today_score }; else all.push({ name: r.name, elo: 0, avatar: null, wins: 0, losses: 0, daily: { [todayKey()]: { score: r.today_score } }, onlyDaily: true }); });
+  // accounts on this device that are not online yet still show, so your own name is never missing
+  if (BOARD) local.forEach(u => { if (!all.some(x => x.name.toLowerCase() === u.name.toLowerCase())) all.push(Object.assign({}, u, { daily: u.daily || {}, deviceOnly: true })); });
   const key = todayKey();
   let rows;
   if (tab === "elo") {
     const avOf = u => avMarkup((u.online ? avatarById(u.avatar) : AVATARS.find(x => x.id === u.avatar && isOpen(x, u))) || AVATARS[0]);
-    const list = all.filter(u => !u.onlyDaily).map(u => ({ av: avOf(u), name: u.name, raw: u.name, val: u.elo, sub: `${u.wins}–${u.losses}`, human: true }))
+    const list = all.filter(u => !u.onlyDaily).map(u => ({ av: avOf(u), name: u.name, raw: u.name, val: u.elo, sub: `${u.wins || 0}–${u.losses || 0}` + (u.deviceOnly ? " · this device" : ""), human: true }))
       .concat(regularBots().map(([, b]) => b).map(b => ({ av: b.av, name: b.name, raw: b.name, val: b.elo, sub: "computer", human: false })))
       .sort((a, b) => b.val - a.val);
     rows = list.map((r, i) => `<tr class="${r.human ? "" : "botrow"} ${me() && r.raw === me().name ? "you" : ""}"><td class="n">${i + 1}</td><td>${r.av} ${esc(r.name)}</td><td class="sub">${esc(r.sub)}</td><td class="n">${r.val}</td></tr>`).join("");
@@ -2523,15 +2531,15 @@ function viewLeaderboard() {
       <button role="tab" aria-selected="false" data-act="tab" data-tab="kids">🧸 Little kids</button>
     </div>
     <div class="table-wrap"><table class="board"><thead><tr><th>#</th><th>Player</th><th></th><th>${tab === "elo" ? "Elo" : "Score"}</th></tr></thead><tbody>${rows}</tbody></table></div>
-    <p class="note">${BOARD ? "Worldwide board: every player with an online account, plus the computer opponents for reference." : "Showing accounts made in this browser, plus the computer opponents. The worldwide board appears when the game can reach the server."}</p>
+    <p class="note">${BOARD ? "Worldwide board: every player with an online account, plus the computer opponents for reference. Names marked “this device” aren't saved online yet." : "Showing accounts made in this browser, plus the computer opponents. The worldwide board appears when the game can reach the server."}</p>
   </main>`;
 }
 
 function viewKidBoard(local, k) {
   k = k || "kid"; const big = k === "big";
   const avOf = u => avMarkup((u.online ? avatarById(u.avatar) : AVATARS.find(x => x.id === u.avatar && isOpen(x, u))) || AVATARS[0]);
-  const players = BOARD && BOARD[k] ? BOARD[k].map(r => Object.assign({ online: true }, r))
-    : local.filter(u => u[k]).map(u => ({ name: u.name, avatar: u.avatar, elo: u[k].elo, wins: u[k].wins || 0, losses: u[k].losses || 0, krillions: u.krillions, krillTotal: u.krillTotal, peak: u.peak, codes: u.codes }));
+  const players = (BOARD && BOARD[k] ? BOARD[k].map(r => Object.assign({ online: true }, r)) : [])
+    .concat(local.filter(u => u[k] && !(BOARD && BOARD[k] && BOARD[k].some(r => r.name.toLowerCase() === u.name.toLowerCase()))).map(u => ({ name: u.name, avatar: u.avatar, elo: u[k].elo, wins: u[k].wins || 0, losses: u[k].losses || 0, krillions: u.krillions, krillTotal: u.krillTotal, peak: u.peak, codes: u.codes })));
   const list = players.map(u => ({ av: avOf(u), name: u.name, val: u.elo, sub: `${u.wins}–${u.losses}`, human: true }))
     .concat(regularBots().map(([, b]) => ({ av: b.av, name: b.name, val: b.elo, sub: "computer", human: false })))
     .sort((a, b) => b.val - a.val);
@@ -2739,6 +2747,7 @@ document.addEventListener("click", async e => {
   else if (act === "device") { setDeviceMode(t.dataset.v); render(); }
   else if (act === "tab") { S.tab = t.dataset.tab; render(); }
   else if (act === "auth-mode") go("login", { mode: t.dataset.m });
+  else if (act === "save-online") { const u = me(); if (u) go("login", { mode: "login", prefill: u.name, error: "" }); }
   else if (act === "logout") { cloudSignOut(); store.set("session", null); go("home"); }
   else if (act === "copy") {
     const el = document.getElementById(t.dataset.target);
@@ -2781,12 +2790,13 @@ document.addEventListener("submit", async e => {
         all[key] = Object.assign(res.user, { hash: h, cloud: true }); saveUsers(all);
       } else if (all[key] && all[key].hash === h) {
         // an account made before cloud saves: move it online now if the name is free
-        if (!all[key].cloud && !(res && res.wrong)) { const err = await cloudSignUp(all[key], pw); if (err === "") { all[key].cloud = true; saveUsers(all); } }
+        if (!all[key].cloud && !(res && res.wrong)) { const err = await cloudSignUp(all[key], pw); if (err === "") { all[key].cloud = true; saveUsers(all); CLOUD_MSG = ""; }
+          else CLOUD_MSG = err ? "Another account online already uses this name, so it can't be saved under it. Rename it in Settings, then press Save online." : "The online save couldn't be reached just now. Try Save online again in a minute."; }
       } else {
         authBusy(false);
         go("login", { mode: "login", error: res && res.wrong ? "That password doesn't match this account."
           : all[key] ? "Username or password doesn't match."
-          : "There's no account called “" + name + "” on this device. If you made it somewhere else (like the Claude app or another device), log in there. Accounts only work on every device once the online save is turned on." });
+          : "There's no account called “" + name + "” online or on this device. If you made it on another device, log in there once (or press Save online on its home screen) and it will work here too." });
         return;
       }
       authBusy(false);
