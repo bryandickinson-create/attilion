@@ -911,6 +911,23 @@ html[data-device="phone"] body { padding-bottom: 6px; }
 .fr-send{display:flex;gap:8px;margin:0 0 8px}
 .fr-chall{margin-top:12px}
 .fr-chall .row{display:flex;gap:8px;flex-wrap:wrap}
+/* game keyboard */
+#gkb{position:fixed;left:0;right:0;bottom:0;z-index:70;padding:6px 4px calc(6px + env(safe-area-inset-bottom));background:linear-gradient(180deg,rgba(18,24,64,.96),rgba(8,10,32,.98));border-top:1px solid rgba(255,201,60,.35);box-shadow:0 -10px 30px rgba(0,0,0,.5);user-select:none;-webkit-user-select:none;touch-action:manipulation}
+#gkb[hidden]{display:none}
+.gkb-sug{display:flex;gap:6px;min-height:36px;margin:0 2px 6px;align-items:center}
+.gkb-sug button{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:rgba(255,201,60,.14);border:1px solid rgba(255,201,60,.4);color:#ffe9a8;border-radius:10px;padding:7px 6px;font:600 15px var(--font-body)}
+.gkb-sug span{flex:1;text-align:center;font-size:13px;color:var(--kelp)}
+.gkb-row{display:flex;gap:5px;justify-content:center;margin-bottom:6px}
+.gkb-k{flex:1;max-width:44px;height:44px;border-radius:9px;border:1px solid rgba(140,160,255,.25);background:rgba(60,72,150,.55);color:#fff;font:600 19px var(--font-body);box-shadow:0 2px 0 rgba(0,0,0,.45);padding:0}
+.gkb-k.hit{background:var(--krill);transform:translateY(1px)}
+.gkb-sm{max-width:34px}
+.gkb-wide{max-width:58px;flex:1.4;background:rgba(90,60,140,.6)}
+.gkb-space{max-width:none;flex:5;font-size:15px}
+.gkb-go{max-width:none;flex:3;background:var(--krill);color:var(--krill-ink,#1a1020);font-size:15px;font-weight:800}
+body.gkb-on{padding-bottom:250px !important}
+.gkb-input{caret-color:transparent;cursor:default}
+.gkb-input:focus{outline:2px solid rgba(255,201,60,.5)}
+@container app (max-width: 520px) { body.gkb-on .prompt-card .say-btn{display:none} body.gkb-on #answer-form .btn{display:none} body.gkb-on .party .answer-row .btn{display:none} }
 </style></head><body>
 <div id="app"></div>
 <script>
@@ -4341,6 +4358,9 @@ function viewSettings() {
     <div class="set-row"><span class="set-l">Endless skips</span><div class="seg-pick" role="group" aria-label="Skips per Endless run">
       ${[[0, "Off"], [3, "3"], [5, "5"], [10, "10"], [-1, "∞"]].map(([v, l]) => `<button data-act="skips" data-v="${v}" aria-pressed="${store.get("endlessSkips", 3) === v}">${l}</button>`).join("")}
     </div></div>
+    <div class="set-row"><span class="set-l">Game keyboard</span><div class="seg-pick" role="group" aria-label="Game keyboard">
+      ${[["auto", "Auto"], ["on", "On"], ["off", "Off"]].map(([v, l]) => `<button data-act="gamekb" data-v="${v}" aria-pressed="${store.get("gameKb", "auto") === v}">${l}</button>`).join("")}
+    </div></div>
     <div class="set-row"><label class="set-l" for="vol">Volume</label><div class="set-slide">
       <input id="vol" type="range" min="0" max="100" step="5" value="${Math.round((window.KrillionSound ? window.KrillionSound.volume : 0.5) * 100)}">
       <output id="vol-out" for="vol">${Math.round((window.KrillionSound ? window.KrillionSound.volume : 0.5) * 100)}%</output>
@@ -4976,6 +4996,7 @@ document.addEventListener("click", async e => {
   else if (act === "tab") { S.tab = t.dataset.tab; render(); }
   else if (act === "auth-mode") go("login", { mode: t.dataset.m });
   else if (act === "tour") { go("home"); setTimeout(tourStart, 200); }
+  else if (act === "gamekb") { store.set("gameKb", t.dataset.v); const y = window.scrollY; render(); window.scrollTo(0, y); }
   else if (act === "fr-chat") { FR.chat = t.dataset.id || null; if (FR.chat) frMarkSeen(FR.chat); frPaint(); frBadge(); const i = document.getElementById("fr-text"); if (i && FR.chat) i.focus(); }
   else if (act === "fr-accept" || act === "fr-remove") {
     const c = await cloud(); if (!c) return;
@@ -5222,7 +5243,75 @@ function fromHash() {
 }
 
 // test hook
-window.Krillion = { go: v => go(v), party: () => P, loadHumanCounts, humanCount, getRoom, awardTokens, EVENT, PROMPTS, BASES, pickSet, noteUsed, state: () => S, scoreAnswer, matchAnswer, pickPrompts, dailyPrompts, endlessQueue, depthFor, botAnswer, BOTS, todayKey };
+/* ---------- game keyboard: a space-themed on-screen keyboard with spelling suggestions ----------
+ * Shown on touch screens while you type an answer (Settings > Game keyboard).
+ * Suggestions come from the answers to every question in the game, not just
+ * this one, so they help you spell without giving the answer away. */
+let KB_WORDS = null;
+function kbWords() {
+  if (KB_WORDS) return KB_WORDS;
+  const n = new Map();
+  PROMPTS.forEach(p => (p.answers || []).forEach(a => { const w = String(a.display || "").toLowerCase(); if (w && w.length <= 30) n.set(w, (n.get(w) || 0) + 1); }));
+  KB_WORDS = [...n.entries()].sort((a, b) => b[1] - a[1] || a[0].length - b[0].length).map(x => x[0]);
+  return KB_WORDS;
+}
+function kbEdit1(a, b) { // true when b is one typo away from a
+  if (Math.abs(a.length - b.length) > 1) return false;
+  let i = 0, j = 0, d = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) { i++; j++; continue; }
+    if (++d > 1) return false;
+    if (a.length > b.length) i++; else if (b.length > a.length) j++; else if (a[i + 1] === b[j] && a[i] === b[j + 1]) { i += 2; j += 2; } else { i++; j++; }
+  }
+  return d + (a.length - i) + (b.length - j) <= 1;
+}
+function kbSuggest(typed) {
+  const t = typed.toLowerCase().replace(/\s+/g, " ").trimStart(); if (t.length < 2) return [];
+  const W = kbWords(), out = [];
+  for (const w of W) { if (w !== t && w.startsWith(t)) { out.push(w); if (out.length >= 3) return out; } }
+  if (t.length >= 3) for (const w of W) { if (out.includes(w) || w === t) continue; if (kbEdit1(w.slice(0, t.length), t) || kbEdit1(w, t)) { out.push(w); if (out.length >= 3) break; } }
+  return out;
+}
+function kbWanted() { const v = store.get("gameKb", "auto"); return v === "on" || (v === "auto" && matchMedia("(pointer: coarse)").matches); }
+let KB_INPUT = null;
+function kbEl() {
+  let k = document.getElementById("gkb"); if (k) return k;
+  k = document.createElement("div"); k.id = "gkb"; k.setAttribute("aria-hidden", "true"); k.hidden = true;
+  const rows = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
+  k.innerHTML = `<div class="gkb-sug" id="gkb-sug"></div>` + rows.map((r, i) => `<div class="gkb-row">${i === 2 ? `<button type="button" data-k="'" class="gkb-k gkb-sm">'</button>` : ""}${[...r].map(c => `<button type="button" data-k="${c}" class="gkb-k">${c}</button>`).join("")}${i === 2 ? `<button type="button" data-k="back" class="gkb-k gkb-wide" aria-label="Delete">⌫</button>` : ""}</div>`).join("")
+    + `<div class="gkb-row"><button type="button" data-k="-" class="gkb-k gkb-sm">-</button><button type="button" data-k=" " class="gkb-k gkb-space">space</button><button type="button" data-k="enter" class="gkb-k gkb-go">Lock in 🚀</button></div>`;
+  document.body.appendChild(k);
+  const press = e => {
+    const b = e.target.closest("button"); if (!b || !KB_INPUT) return; e.preventDefault();
+    const inp = KB_INPUT, k2 = b.dataset.k, s = b.dataset.s;
+    if (s !== undefined) inp.value = s + " ";
+    else if (k2 === "back") inp.value = inp.value.slice(0, -1);
+    else if (k2 === "enter") { inp.value = inp.value.trim(); const f = inp.form; if (f) (f.requestSubmit ? f.requestSubmit() : f.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }))); KB_LAST = null; kbSugPaint(); return; }
+    else if (inp.value.length < (+inp.maxLength > 0 ? +inp.maxLength : 60)) inp.value += k2;
+    inp.dispatchEvent(new Event("input", { bubbles: true }));
+    kbSugPaint(); b.classList.add("hit"); setTimeout(() => b.classList.remove("hit"), 120);
+  };
+  k.addEventListener("pointerdown", press);
+  return k;
+}
+let KB_LAST = null;
+function kbSugPaint() {
+  const s = document.getElementById("gkb-sug"); if (!s || !KB_INPUT) return;
+  if (KB_LAST === KB_INPUT.value) return; KB_LAST = KB_INPUT.value;
+  const list = kbSuggest(KB_INPUT.value.trim());
+  s.innerHTML = list.length ? list.map(w => `<button type="button" data-s="${esc(w)}">${esc(w)}</button>`).join("") : `<span>${KB_INPUT.value.trim().length < 2 ? "Type to see spelling help" : "No suggestions"}</span>`;
+}
+function kbSync() {
+  const inp = document.getElementById("answer") || document.getElementById("party-ans");
+  const k = kbEl();
+  if (inp !== KB_INPUT) KB_LAST = null;
+  if (!inp || !kbWanted() || inp.disabled) { k.hidden = true; document.body.classList.remove("gkb-on"); KB_INPUT = null; return; }
+  KB_INPUT = inp; inp.readOnly = true; inp.setAttribute("inputmode", "none"); inp.classList.add("gkb-input");
+  k.hidden = false; document.body.classList.add("gkb-on"); kbSugPaint();
+}
+new MutationObserver(() => kbSync()).observe(document.getElementById("app"), { childList: true, subtree: true });
+
+window.Krillion = { kbSuggest, go: v => go(v), party: () => P, loadHumanCounts, humanCount, getRoom, awardTokens, EVENT, PROMPTS, BASES, pickSet, noteUsed, state: () => S, scoreAnswer, matchAnswer, pickPrompts, dailyPrompts, endlessQueue, depthFor, botAnswer, BOTS, todayKey };
 
 if (!fromHash()) render();
 setTimeout(cloudPull, 500);
