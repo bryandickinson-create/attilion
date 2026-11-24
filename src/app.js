@@ -554,6 +554,22 @@ function looseMatch(prompt, k) {
   const t = prompt.tails.get(k) ?? prompt.tails.get(singular(k));
   return t === undefined ? -1 : t;
 }
+// Kid mode, for questions whose answers are little phrases ("do the dishes"):
+// a single key word counts too ("dishes", "vacuuming", "sweeping"), matching the
+// most common answer that uses it.
+const KID_STOP = new Set(["the", "a", "an", "my", "up", "in", "on", "out", "of", "to", "with", "and", "for", "at", "help", "be", "do", "get", "put", "make", "take", "go", "play", "say", "give"]);
+function kidKeyword(prompt, k) {
+  if (!prompt.kid || k.includes(" ") || k.length < 3 || KID_STOP.has(k)) return -1;
+  const phrases = prompt.answers.filter(a => a.display.includes(" ")).length;
+  if (phrases < prompt.answers.length * 0.4) return -1;
+  const stems = new Set([k, singular(k)]);
+  if (/ing$/.test(k)) { const b = k.slice(0, -3); stems.add(b); stems.add(b + "e"); if (/(.)\1$/.test(b)) stems.add(b.slice(0, -1)); }
+  for (let i = 0; i < prompt.answers.length; i++) {
+    const words = norm(prompt.answers[i].display).split(" ");
+    if (words.some(w => !KID_STOP.has(w) && (stems.has(w) || stems.has(singular(w))))) return i;
+  }
+  return -1;
+}
 function matchAnswer(prompt, raw) {
   const k = norm(raw);
   if (!k) return -1;
@@ -562,6 +578,8 @@ function matchAnswer(prompt, raw) {
   if (prompt.index.has(s)) return prompt.index.get(s);
   const loose = looseMatch(prompt, k);
   if (loose >= 0) return loose;
+  const kw = kidKeyword(prompt, k);
+  if (kw >= 0) return kw;
   // Spelling forgiveness grows with length: 1 typo from 4 letters, 2 from 6, 3 from 13.
   const tight = k.replace(/ /g, "");
   const tolFor = n => n < 4 ? 0 : n < 6 ? 1 : n < 13 ? 2 : 3;
