@@ -2061,11 +2061,19 @@ function repeatsCount() { return S.mode === "solo" || S.mode === "subject" || S.
 /* ---------- Endless Launch ----------
    Prompts never run out, and each prompt hides exactly ONE secret answer that is
    the 1 in Attillion. Everything else tops out just below it. */
-function endlessQueue(seed) {
-  const r = rng(seed);
-  const ids = modeBases().map(p => p.id);
+// Never repeat a question within the last 15 you played: questions you haven't seen
+// lately come first (shuffled), then the ones you saw longest ago.
+const NO_REPEAT = 15;
+function freshOrder(ids, r, seenList) {
+  ids = ids.slice();
   for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
-  return ids;
+  const seen = (seenList || []).map(id => id.split("~")[0]);
+  const age = new Map(seen.map((id, i) => [id, i]));   // smaller = longer ago
+  return ids.filter(id => !age.has(id)).concat(ids.filter(id => age.has(id)).sort((a, b) => age.get(a) - age.get(b)));
+}
+function endlessQueue(seed, recent) {
+  const ids = modeBases().map(p => p.id);
+  return freshOrder(ids, rng(seed), store.get("seenPrompts", []).concat(recent || []));
 }
 function endlessSecret(prompt) {
   // somewhere in the less-obvious half of the answers people know
@@ -2087,7 +2095,7 @@ function endlessSkip() {
   if (S.mode !== "endless" || S.phase !== "answer" || !skipsLeft()) return;
   S.skipsUsed = (S.skipsUsed || 0) + 1;
   S.prompts.splice(S.round, 1);
-  if (S.round >= S.prompts.length - 1) S.prompts = S.prompts.concat(endlessQueue(S.seed + S.prompts.length + 7));
+  if (S.round >= S.prompts.length - 1) S.prompts = S.prompts.concat(endlessQueue(S.seed + S.prompts.length + 7, S.prompts.slice(-NO_REPEAT)));
   beginRound();
 }
 function endlessStats() { const u = me(); return (u ? u.endless : store.get("guestEndless", null)) || {}; }
@@ -2134,8 +2142,10 @@ function pickSet(seed, seenList, cat, n) {
   const r = rng(seed);
   const catWant = cat === "seasonal" ? "season-" + seasonKey() : cat;
   const ids = modeBases().filter(p => !catWant || p.cats.includes(catWant)).map(p => p.id);
-  for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
-  const bases = ids.filter(id => !seen.has(id)).concat(ids.filter(id => seen.has(id))).slice(0, n || ROUNDS);
+  const bases = freshOrder(ids, r, seenList).slice(0, n || ROUNDS);
+  return addTwists(bases, r);
+}
+function addTwists(bases, r) {
   const twistable = bases.map((id, i) => i).filter(i => VARIANTS[bases[i]].length);
   const want = kidMode() || bigMode() ? 0 : r() < 0.5 ? 2 : 3;
   const twistSlots = new Set();
@@ -2155,6 +2165,15 @@ function pickSet(seed, seenList, cat, n) {
   });
 }
 function pickPrompts(seed) { return pickSet(seed, []); }
+const DAILY_ROTATE_FROM = "2026-11-24";
+function dailyPrompts(key) {
+  const day = String(key).replace(/^(kids|big)-/, "");
+  if (day < DAILY_ROTATE_FROM) return pickPrompts(hashStr("daily:" + key));
+  const tier = ageMode(), ids = freshOrder(modeBases().map(p => p.id).sort(), rng(hashStr("daily-order:" + tier)), []);
+  const d = Math.round((Date.parse(day + "T12:00:00") - Date.parse(DAILY_ROTATE_FROM + "T12:00:00")) / 864e5);
+  const bases = []; for (let i = 0; i < ROUNDS; i++) bases.push(ids[(d * ROUNDS + i) % ids.length]);
+  return addTwists(bases, rng(hashStr("daily:" + key)));
+}
 function markSeen(ids) {
   const baseIds = ids.map(id => id.split("~")[0]);
   const seen = store.get("seenPrompts", []).map(id => id.split("~")[0]).filter(id => !baseIds.includes(id)).concat(baseIds);
@@ -2558,7 +2577,7 @@ function startMatch(opts) {
   // opts: { mode: "bot"|"daily"|"challenge-host"|"challenge-guest", level, seed, prompts, opp }
   const seed = opts.seed != null ? opts.seed : Math.floor(Math.random() * 2 ** 31);
   const prompts = opts.prompts || (opts.mode === "endless" ? endlessQueue(seed) : pickFresh(seed, opts.cat, roundsSetting(opts.mode)));
-  markSeen(prompts);
+  if (opts.mode !== "endless") markSeen(prompts);
   loadHumanCounts(prompts);
   go("play", {
     mode: opts.mode, level: opts.level, seed, prompts, round: 0,
@@ -2583,6 +2602,7 @@ function sayBtnSize() { const v = store.get("sayBtnSize", "m"); return ["off", "
 function promptSpoken(pr) { return pr ? (pr.twist ? pr.baseQ + " " + pr.twist : pr.q) : ""; }
 function beginRound() {
   S.bestUnlock = false; S.hintText = "";
+  if (S.mode === "endless" && S.prompts[S.round]) markSeen([S.prompts[S.round]]);
   S.phase = "answer"; S.deadline = isUntimed() ? Infinity : Date.now() + roundSecs() * 1000; S.draft = "";
   S.botLockAt = S.mode === "bot" ? Date.now() + (2 + Math.random() * Math.min(19, roundSecs() * 0.63)) * 1000 : null;
   S.submittedAt = null; S.lastTick = null; S.chat = ""; S.chatKind = "";
@@ -2725,7 +2745,7 @@ function nextRound() {
     return;
   }
   if (S.mode === "endless") {
-    if (S.round + 1 >= S.prompts.length) S.prompts = S.prompts.concat(endlessQueue(S.seed + S.prompts.length));
+    if (S.round + 1 >= S.prompts.length) S.prompts = S.prompts.concat(endlessQueue(S.seed + S.prompts.length, S.prompts.slice(-NO_REPEAT)));
     S.round++; beginRound(); return;
   }
   if (S.round < nRounds() - 1) { S.round++; beginRound(); }
@@ -3507,7 +3527,7 @@ function viewDailyDone() {
   const key = dailyKeyNow();
   const u = me();
   const done = u ? u.daily[key] : store.get("guestDaily", {})[key];
-  const prompts = pickPrompts(hashStr("daily:" + key));
+  const prompts = dailyPrompts(key);
   const scores = done.answers.map((a, i) => scoreAnswer(PROMPT_BY_ID[prompts[i]], a.raw, true));
   return `${header()}<main class="results">
     <p class="eyebrow">Daily Launch #${dailyNumber(key)}</p>
@@ -3956,7 +3976,7 @@ document.addEventListener("click", async e => {
   if (act === "bot") startMatch({ mode: "bot", level: t.dataset.level });
   else if (act === "daily") {
     const key = dailyKeyNow();
-    startMatch({ mode: "daily", seed: hashStr("daily:" + key), prompts: pickPrompts(hashStr("daily:" + key)), dailyKey: key });
+    startMatch({ mode: "daily", seed: hashStr("daily:" + key), prompts: dailyPrompts(key), dailyKey: key });
   }
   else if (act === "daily-view") go("daily-done");
   else if (act === "solo") startMatch({ mode: "solo" });
@@ -4204,7 +4224,7 @@ function fromHash() {
 }
 
 // test hook
-window.Krillion = { loadHumanCounts, humanCount, getRoom, awardTokens, EVENT, PROMPTS, BASES, pickSet, noteUsed, state: () => S, scoreAnswer, matchAnswer, pickPrompts, depthFor, botAnswer, BOTS, todayKey };
+window.Krillion = { loadHumanCounts, humanCount, getRoom, awardTokens, EVENT, PROMPTS, BASES, pickSet, noteUsed, state: () => S, scoreAnswer, matchAnswer, pickPrompts, dailyPrompts, endlessQueue, depthFor, botAnswer, BOTS, todayKey };
 
 if (!fromHash()) render();
 setTimeout(cloudPull, 500);
