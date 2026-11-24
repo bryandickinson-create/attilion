@@ -1006,7 +1006,7 @@ body.gkb-on{padding-bottom:250px !important}
 .rover-boost{display:block;color:#ffc93c;font-weight:700}
 </style></head><body>
 <div id="app"></div>
-<script>window.ATT_BUILD='6095e6cd93'</script>
+<script>window.ATT_BUILD='0d5c898c98'</script>
 <script>
 /* Attillion prompt bank.
  * GUESS: rarity comes from the ORDER of each answer list. Answers are written
@@ -2167,7 +2167,10 @@ function isOwner(u) { u = u === undefined ? me() : u; return !!(u && u.name.toLo
 const BOOST_FOREVER = 8.64e15;       // a switch in Settings keeps a boost on until it's switched off
 /* The owner's "POWERHOUR any time" switch is saved on the owner's account (adminFlags),
  * which goes online with the rest of the account, so every player's game can read it. */
-async function ownerFlags() {
+let OWNER_FLAGS = {};                // last known owner switches, so scoring can read them without waiting
+function ownerFlagsNow() { return isOwner() ? (me().adminFlags || {}) : OWNER_FLAGS; }
+async function ownerFlags() { OWNER_FLAGS = await ownerFlagsFetch(); return OWNER_FLAGS; }
+async function ownerFlagsFetch() {
   if (isOwner()) return me().adminFlags || {};
   try {
     const c = await withTimeout(cloud(), 6000); if (!c) return {};
@@ -2177,7 +2180,12 @@ async function ownerFlags() {
 }
 function powerHourLeft() { return Math.max(0, store.get("powerHourUntil", 0) - Date.now()); }
 // share of answers that are forced to be a 1 in Attillion right now (0 = normal)
-function krillBoost() { return S.mode === "bot" && powerHourLeft() > 0 ? 2 / 3 : roverBoostOn() ? 1 / 2 : 0; }
+// With the owner's "Stack" switch on, both together against Rover give 5 in 6 (each one gets its own chance).
+function krillBoost() {
+  const ph = S.mode === "bot" && powerHourLeft() > 0, rj = roverBoostOn();
+  if (ph && rj && ownerFlagsNow().stack) return 5 / 6;
+  return ph ? 2 / 3 : rj ? 1 / 2 : 0;
+}
 const POWER_RESET_CODE = 2919067109; // lets BOLTCACHE58 be used again today
 const POWER_CODE = 3522492995; // +3 of each power-up, once a day
 const BUNDLES = [
@@ -3168,6 +3176,7 @@ function chatBox() {
 
 /* ---------- match flow ---------- */
 function startMatch(opts) {
+  if (opts.mode === "bot" && !isOwner()) ownerFlags();   // refresh the owner's switches for this game
   // opts: { mode: "bot"|"daily"|"challenge-host"|"challenge-guest", level, seed, prompts, opp }
   const seed = opts.seed != null ? opts.seed : Math.floor(Math.random() * 2 ** 31);
   const prompts = opts.prompts || (opts.mode === "endless" ? endlessQueue(seed) : pickFresh(seed, opts.cat, roundsSetting(opts.mode)));
@@ -4620,13 +4629,16 @@ function viewSettings() {
     <div class="set-row"><span class="set-l">ROVERJACKPOT for everyone</span><div class="seg-pick" role="group" aria-label="ROVERJACKPOT for everyone">
       ${[["on", "On"], ["off", "Off"]].map(([v, l]) => `<button data-act="adm-rjall" data-v="${v}" aria-pressed="${!!(u.adminFlags || {}).rjAll === (v === "on")}">${l}</button>`).join("")}
     </div></div>
+    <div class="set-row"><span class="set-l">Stack Rover jackpot + Power hour</span><div class="seg-pick" role="group" aria-label="Stack Rover jackpot and Power hour">
+      ${[["on", "On"], ["off", "Off"]].map(([v, l]) => `<button data-act="adm-stack" data-v="${v}" aria-pressed="${!!(u.adminFlags || {}).stack === (v === "on")}">${l}</button>`).join("")}
+    </div></div>
     <div class="set-row"><span class="set-l">Power hour</span><div class="seg-pick" role="group" aria-label="Power hour">
       ${[["on", "On"], ["off", "Off"]].map(([v, l]) => `<button data-act="adm-ph" data-v="${v}" aria-pressed="${(powerHourLeft() > 0) === (v === "on")}">${l}</button>`).join("")}
     </div></div>
     <div class="set-row"><span class="set-l">POWERHOUR any time for everyone</span><div class="seg-pick" role="group" aria-label="POWERHOUR any time for everyone">
       ${[["on", "On"], ["off", "Off"]].map(([v, l]) => `<button data-act="adm-phall" data-v="${v}" aria-pressed="${!!(u.adminFlags || {}).phAnyTime === (v === "on")}">${l}</button>`).join("")}
     </div></div>
-    <p class="hint">Your boosts stay on until you switch them off. The "for everyone" switches let every player use ROVERJACKPOT (20 minutes) and POWERHOUR at any time (15 minutes).${u.cloud ? "" : " Save this account online first."}</p>
+    <p class="hint">Your boosts stay on until you switch them off. Stack: with both on against Rover, 5 in 6 answers are a 1 in Attillion (off: 2 in 3). The "for everyone" switches let every player use ROVERJACKPOT (20 minutes) and POWERHOUR at any time (15 minutes).${u.cloud ? "" : " Save this account online first."}</p>
     </details>` : ""}
 
     <details class="set-group"${store.get("setOpen-screen", false) ? " open" : ""} data-key="setOpen-screen"><summary>📱 Screen layout</summary>
@@ -5263,12 +5275,12 @@ document.addEventListener("click", async e => {
     ugSet("gems", n => n - SHOP_REFRESH, 0); const n = shopRoll() + 1; ugSet("shopRoll", () => ({ p: shopPeriod(), n }), null);
     go("shop", { shopMsg: "Here are 3 new avatars!" });
   }
-  else if (act === "adm-rover" || act === "adm-ph" || act === "adm-phall" || act === "adm-rjall") {
+  else if (act === "adm-rover" || act === "adm-ph" || act === "adm-phall" || act === "adm-rjall" || act === "adm-stack") {
     if (!isOwner()) return;
     const on = t.dataset.v === "on";
     if (act === "adm-rover") store.set("roverBoostUntil", on ? BOOST_FOREVER : 0);
     else if (act === "adm-ph") store.set("powerHourUntil", on ? BOOST_FOREVER : 0);
-    else updateUser(x => { x.adminFlags = Object.assign({}, x.adminFlags, act === "adm-rjall" ? { rjAll: on } : { phAnyTime: on }); });
+    else updateUser(x => { x.adminFlags = Object.assign({}, x.adminFlags, act === "adm-rjall" ? { rjAll: on } : act === "adm-stack" ? { stack: on } : { phAnyTime: on }); });
     const y = window.scrollY; render(); window.scrollTo(0, y);
   }
   else if (act === "gamekb") { store.set("gameKb", t.dataset.v); const y = window.scrollY; render(); window.scrollTo(0, y); }
@@ -5619,6 +5631,7 @@ window.Krillion = { promptById: id => PROMPT_BY_ID[id], isKrill, kbSuggest, go: 
 
 if (!fromHash()) render();
 setTimeout(cloudPull, 500);
+setTimeout(ownerFlags, 1500);
 // opened from a move link: bring the account in, then ask for its password
 function fromMoveLink() { if (/^#move=/.test(location.hash)) { const code = decodeURIComponent(location.hash.slice(6)); try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {} importMove(code); } }
 fromMoveLink(); window.addEventListener("hashchange", fromMoveLink);
