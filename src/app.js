@@ -964,6 +964,21 @@ function dailyDays(u) {
   const d = u === undefined ? (me() ? me().daily : store.get("guestDaily", {})) : u ? u.daily : store.get("guestDaily", {});
   return [...new Set(Object.keys(d || {}).map(k => k.replace(/^(kids|big)-/, "")))].sort();
 }
+// Play streak: any finished game counts for the day (shown as the flame in the top bar)
+function playDays() { return [...new Set((ugGet("playDays", []) || []).concat(dailyDays()))].sort(); }
+function markPlayed() { const k = todayKey(); ugSet("playDays", l => (l || []).includes(k) ? l : (l || []).concat(k).slice(-400), []); }
+function playedToday() { return playDays().includes(todayKey()); }
+function playStreak() {
+  const days = new Set(playDays()); let k = todayKey();
+  if (!days.has(k)) k = dayShift(k, -1);
+  let n = 0; while (days.has(k)) { n++; k = dayShift(k, -1); }
+  return n;
+}
+function flameBadge() {
+  const lit = playedToday(), n = playStreak();
+  const tip = lit ? `${n}-day streak! You played today.` : n ? `${n}-day streak. Finish a game today to keep it going!` : "Finish a game today to start a streak!";
+  return `<span class="streak-flame ${lit ? "lit" : "cold"}" title="${tip}" aria-label="${tip}"><span class="sf-fire" aria-hidden="true">🔥</span><b class="sf-n">${n}</b></span>`;
+}
 function dayShift(key, n) { const t = new Date(key + "T12:00:00"); t.setDate(t.getDate() + n); return todayKey(t); }
 function streakNow(u) {
   const days = new Set(dailyDays(u)); let k = todayKey();
@@ -1325,6 +1340,7 @@ function nextRound() {
 }
 function total(list) { return (list || []).reduce((s, x) => s + (x ? x.points : 0), 0); }
 function finishMatch() {
+  markPlayed();
   if (S.mode === "mystery") { finishMystery(); return; }
   const my = total(S.scores), their = total(S.oppScores);
   const res = { my, their };
@@ -1767,6 +1783,7 @@ function header() {
       <button data-go="leaderboard">Leaderboard</button>
       <button data-go="avatar" class="avbtn" aria-label="Change your avatar" title="Change your avatar">${myAvatar()}</button>
       ${kidMode() ? `<span class="kid-chip">🧸 Kid mode</span>` : bigMode() ? `<span class="kid-chip">🎒 Big kid mode</span>` : ""}${u ? `<button data-go="profile" class="chip">${esc(u.name)} · <b>${myElo(u)}</b></button>` : `<button data-go="login" class="chip">Log in</button>`}
+      ${flameBadge()}
     </nav>
   </header>`;
 }
