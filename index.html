@@ -704,6 +704,8 @@ h2 small.sub { font-size: 13px; font-weight: 500; color: var(--kelp); margin-lef
   .avatars .avatar .av-stars { font-size: 14px; top: 12px; right: 12px; }
 }
 .avs-anim { margin-top: 12px; }
+/* Thirty-Day Sun: a blazing sun with a gold ring, so it doesn't look like the plain Sun */
+.av-streak30 { border-radius: 50%; padding: .04em; box-shadow: 0 0 0 .06em rgba(255,201,60,.95), 0 0 .35em .08em rgba(255,110,30,.75); background: radial-gradient(circle, rgba(255,140,40,.35), rgba(255,80,20,0) 70%); }
 </style></head><body>
 <div id="app"></div>
 <script>
@@ -1486,7 +1488,7 @@ const AVATARS = [
   { id: "k1000",    e: "👑", name: "Attillion Crown", krill: 1000 },
   // Daily Launch streaks
   { id: "streak7",  e: "🔥", name: "Streak Flame",    streak: 7 },
-  { id: "streak30", e: "🌞", name: "Thirty-Day Sun",  streak: 30 },
+  { id: "streak30", e: "☀️", name: "Thirty-Day Sun",  streak: 30 },
   { id: "allbadges", e: "🏆", name: "Grand Champion",  allBadges: true },
   // Secret: only appears after a game where every answer was a 1 in Attillion
   { id: "perfect",  e: "🌌", name: "Perfect Nebula", perfect: true },

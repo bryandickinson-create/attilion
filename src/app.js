@@ -57,7 +57,7 @@ const AVATARS = [
   { id: "k1000",    e: "👑", name: "Attillion Crown", krill: 1000 },
   // Daily Launch streaks
   { id: "streak7",  e: "🔥", name: "Streak Flame",    streak: 7 },
-  { id: "streak30", e: "🌞", name: "Thirty-Day Sun",  streak: 30 },
+  { id: "streak30", e: "☀️", name: "Thirty-Day Sun",  streak: 30 },
   { id: "allbadges", e: "🏆", name: "Grand Champion",  allBadges: true },
   // Secret: only appears after a game where every answer was a 1 in Attillion
   { id: "perfect",  e: "🌌", name: "Perfect Nebula", perfect: true },
