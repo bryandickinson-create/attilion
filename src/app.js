@@ -9,7 +9,8 @@
 const ROUNDS = 7;
 const ROUND_SECONDS = 30;
 const VALID_SHARE = 92;          // GUESS: % of players who give a valid answer
-const FAMILIAR = 115;            // how deep the "fair" part of a list goes (was 65; raised 2026-11-24 so 1 in Attillions are rarer)
+const FAMILIAR = 65;             // the first 65 answers of a list are the ones a fair player could think of
+const KRILL_TOP = 0.10;          // only the rarest 10% of a list is 1 in Attillion (Bryan, 2026-11-24)
 const KRILLION_FROM = 0.85;      // 1 in Attillion starts 85% of the way down that familiar part
 const HADAL_DEPTH = 6000;        // metres where the Attillion zone starts
 const MAX_DEPTH = 10935;         // Challenger Deep
@@ -450,9 +451,11 @@ function buildPrompt(id, q, entries, familiarCount, extra) {
   // 85% of the way down the familiar answers; anything past them also counts.
   const familiar = Math.max(4, Math.min(answers.length, familiarCount));
   const krillFrom = Math.min(answers.length - 1, Math.floor(familiar * ((extra && extra.krillFrac) || KRILLION_FROM)));
+  // only about KRILL_TOP of the whole list counts: a fixed, fair pick among the rare answers
+  const krillP = Math.min(1, KRILL_TOP * answers.length / Math.max(1, answers.length - krillFrom));
   const zeroShare = answers[0].base;
   const krillShare = answers[krillFrom].base;
-  return Object.assign({ id, q, answers, index, zeroShare, krillShare, familiar, krillFrom }, extra || {});
+  return Object.assign({ id, q, answers, index, zeroShare, krillShare, familiar, krillFrom, krillP }, extra || {});
 }
 
 /* Twists change how you search a list instead of shrinking it to a handful of
@@ -534,7 +537,7 @@ const CAT_OF = {
 /* ---------- Little Kid Mode ----------
    Its own prompts (no twists), 1 in Attillion much easier to reach, and its own
    Elo, daily launch and leaderboard. Switched in Settings, saved on this device. */
-const KID_FAMILIAR = 80, KID_KRILL_FROM = 0.72;
+const KID_FAMILIAR = 40, KID_KRILL_FROM = 0.72;
 const KID_EXTRA = {   // kid topics also accept answers from matching grown-up lists
   "k-fruit": "fruit", "k-color": "color", "k-ocean": "ocean fish", "k-body": "body bone", "k-dino": "dino", "k-pet": "pet dog breed_cat", "k-bug": "insect",
   "k-vehicle": "vehicle wheels boat", "k-clothes": "clothing hat shoe wintercloth", "k-sport": "sport", "k-dessert": "dessert candy cake cookie icecream", "k-animal": "mammal bird reptile pet",
@@ -563,7 +566,7 @@ Object.values(KID_LETTER).forEach(l => { const set = new Set(); BASES.forEach(b 
 /* ---------- Big Kid Mode ----------
    Between Little kids and Regular: its own topics plus easier regular topics, no
    twists, 1 in Attillion a bit easier than regular, and its own Elo, daily and board. */
-const BIG_FAMILIAR = 95, BIG_KRILL_FROM = 0.82;
+const BIG_FAMILIAR = 52, BIG_KRILL_FROM = 0.82;
 const BIG_EXTRA = {   // big kid topics also accept answers from matching regular lists
   "b-videogame": "", "b-country": "country africa europe asia samerica", "b-hero": "superhero", "b-pokemonlike": "myth", "b-lunch": "sandwich soup pizza fastfood",
   "b-board": "game", "b-gadget": "", "b-ocean2": "ocean fish", "b-snackfood": "candy", "b-outside": "playground", "b-mythbeast": "myth",
@@ -785,6 +788,11 @@ function endlessSkip() {
   beginRound();
 }
 function endlessStats() { const u = me(); return (u ? u.endless : store.get("guestEndless", null)) || {}; }
+function isKrill(prompt, idx) {
+  if (idx < prompt.krillFrom) return false;
+  const p = prompt.krillP === undefined ? 1 : prompt.krillP;
+  return p >= 1 || (hashStr("krill:" + (prompt.baseId || prompt.id) + ":" + norm(prompt.answers[idx].display)) % 10000) < p * 10000;
+}
 function scoreAnswer(prompt, raw, fixed, useRepeats) {
   const idx = matchAnswer(prompt, raw);
   if (idx < 0) return { raw: raw || "", idx: -1, points: 0, depth: 0, share: 0, zone: null, valid: false };
@@ -794,8 +802,10 @@ function scoreAnswer(prompt, raw, fixed, useRepeats) {
   const used = useRepeats ? timesUsed(prompt, idx) : 0;
   const sh = share(prompt, idx, fixed);
   const depth = depthFor(sh, prompt);
-  const points = sh <= prompt.krillShare ? 100 : Math.max(2, Math.min(97, Math.round(100 * depth / HADAL_DEPTH)));
-  const res = applyBest(prompt, { raw, idx, display: prompt.answers[idx].display, points, depth, share: sh, zone: zoneFor(depth), valid: true, used });
+  let points = sh <= prompt.krillShare ? 100 : Math.max(2, Math.min(97, Math.round(100 * depth / HADAL_DEPTH)));
+  let dep = depth;
+  if (points >= 100 && !isKrill(prompt, idx)) { points = 88 + (hashStr("near:" + norm(prompt.answers[idx].display)) % 10); dep = Math.round(HADAL_DEPTH * points / 100); }   // rare, but not one of the few 1 in Attillions
+  const res = applyBest(prompt, { raw, idx, display: prompt.answers[idx].display, points, depth: dep, share: sh, zone: zoneFor(dep), valid: true, used });
   // once ANY player has given an answer, it's worth less every time after that
   const said = useRepeats ? humanCount(prompt, idx) : 0;
   return said ? usedPenalty(res, said) : res;
@@ -816,8 +826,8 @@ function bestDisplay(prompt) {
   const baseId = prompt.baseId || prompt.id;
   if (BEST_CACHE[baseId] !== undefined) return BEST_CACHE[baseId];
   const base = PROMPT_BY_ID[baseId] || prompt;
-  const span = Math.max(1, base.familiar - base.krillFrom);
-  const idx = Math.min(base.answers.length - 1, base.krillFrom + (hashStr("best:" + baseId) % span));
+  const pool = []; for (let i = base.krillFrom; i < base.answers.length && pool.length < 6; i++) if (isKrill(base, i)) pool.push(i);
+  const idx = pool.length ? pool[hashStr("best:" + baseId) % pool.length] : Math.min(base.answers.length - 1, base.krillFrom);
   return (BEST_CACHE[baseId] = norm(base.answers[idx].display));
 }
 function applyBest(prompt, res) {
@@ -964,7 +974,7 @@ function botAnswer(level, prompt) {
   if (Math.random() < b.miss) return "";
   const n = prompt.familiar;
   const idx = Math.random() < b.lucky
-    ? prompt.krillFrom + Math.floor(Math.random() * (n - prompt.krillFrom))   // a lucky deep dive
+    ? (() => { const ks = []; for (let i = prompt.krillFrom; i < prompt.answers.length && ks.length < 8; i++) if (isKrill(prompt, i)) ks.push(i); return ks.length ? ks[Math.floor(Math.random() * ks.length)] : prompt.krillFrom; })()   // a lucky deep dive
     : Math.min(n - 1, Math.floor(b.pick() * (prompt.kid ? KID_KRILL_FROM / KRILLION_FROM : prompt.big ? BIG_KRILL_FROM / KRILLION_FROM : 1) * n));   // kid lists reach 1 in Attillion sooner, so bots aim shallower there
   return prompt.answers[idx].display;
 }
@@ -2260,7 +2270,7 @@ function answerCard(label, r, me_) {
 }
 
 function revealBlock(prompt, oppName) {
-  const deep = prompt.answers.slice(prompt.krillFrom, prompt.familiar).filter(a => norm(a.display) !== bestDisplay(prompt)).map((a, i) => ({ a, i }));   // never give away the BEST answer
+  const deep = prompt.answers.slice(prompt.krillFrom, prompt.krillFrom + 20).filter(a => norm(a.display) !== bestDisplay(prompt)).map((a, i) => ({ a, i }));   // never give away the BEST answer
   const r = rng(hashStr(prompt.id + S.seed));
   const samples = []; const pool = deep.slice();
   while (samples.length < 4 && pool.length) samples.push(pool.splice(Math.floor(r() * pool.length), 1)[0].a.display);
@@ -3587,7 +3597,7 @@ function kbSync() {
 }
 new MutationObserver(() => kbSync()).observe(document.getElementById("app"), { childList: true, subtree: true });
 
-window.Krillion = { kbSuggest, go: v => go(v), party: () => P, loadHumanCounts, humanCount, getRoom, awardTokens, EVENT, PROMPTS, BASES, pickSet, noteUsed, state: () => S, scoreAnswer, matchAnswer, pickPrompts, dailyPrompts, endlessQueue, depthFor, botAnswer, BOTS, todayKey };
+window.Krillion = { isKrill, kbSuggest, go: v => go(v), party: () => P, loadHumanCounts, humanCount, getRoom, awardTokens, EVENT, PROMPTS, BASES, pickSet, noteUsed, state: () => S, scoreAnswer, matchAnswer, pickPrompts, dailyPrompts, endlessQueue, depthFor, botAnswer, BOTS, todayKey };
 
 if (!fromHash()) render();
 setTimeout(cloudPull, 500);
