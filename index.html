@@ -1006,7 +1006,7 @@ body.gkb-on{padding-bottom:250px !important}
 .rover-boost{display:block;color:#ffc93c;font-weight:700}
 </style></head><body>
 <div id="app"></div>
-<script>window.ATT_BUILD='ed96cf4635'</script>
+<script>window.ATT_BUILD='7856d458f6'</script>
 <script>
 /* Attillion prompt bank.
  * GUESS: rarity comes from the ORDER of each answer list. Answers are written
@@ -2163,6 +2163,18 @@ function roverBoostLeft() { return Math.max(0, store.get("roverBoostUntil", 0) -
 function roverBoostOn() { return !!S.roverBoost && S.mode === "bot" && S.level === "rover"; }   // set when the match starts, so it lasts the whole game
 const POWER_HOUR_CODE = 1478332066;  // POWERHOUR: only in the first 15 minutes of an hour, 2 in 3 answers vs any bot are a 1 in Attillion, until :15
 const STOP_CODE = 2464494451;        // STOP: turns off ROVERJACKPOT and POWERHOUR
+function isOwner(u) { u = u === undefined ? me() : u; return !!(u && u.name.toLowerCase() === OWNER_NAME.toLowerCase()); }
+const BOOST_FOREVER = 8.64e15;       // a switch in Settings keeps a boost on until it's switched off
+/* The owner's "POWERHOUR any time" switch is saved on the owner's account (adminFlags),
+ * which goes online with the rest of the account, so every player's game can read it. */
+async function ownerFlags() {
+  if (isOwner()) return me().adminFlags || {};
+  try {
+    const c = await withTimeout(cloud(), 6000); if (!c) return {};
+    const { data } = await withTimeout(c.from("profiles").select("f:data->adminFlags").ilike("name", OWNER_NAME).limit(1), 6000);
+    return (data && data[0] && data[0].f) || {};
+  } catch (e) { return {}; }
+}
 function powerHourLeft() { return Math.max(0, store.get("powerHourUntil", 0) - Date.now()); }
 // share of answers that are forced to be a 1 in Attillion right now (0 = normal)
 function krillBoost() { return S.mode === "bot" && powerHourLeft() > 0 ? 2 / 3 : roverBoostOn() ? 1 / 2 : 0; }
@@ -4047,7 +4059,7 @@ function viewBots() {
 }
 const BOT_COLORS = ["#8fd8ff", "#7aa2ff", "#5fe08a", "#ffc93c", "#ff8a4c", "#ff5fa2", "#a58bff", "#e86bff"];
 function botBox(k, b, i, extra) {
-  return `<button class="hub-box play-box bot-box bot-${k}" data-act="bot" data-level="${k}" style="--hc:${BOT_COLORS[i % BOT_COLORS.length]}"><span class="pb-tag">${b.elo} Elo</span><span class="hub-ic" aria-hidden="true">${b.av || "🤖"}</span><span class="hub-name">${esc(b.name)}</span><span class="hub-sub">${esc(b.blurb)}${extra || ""}${k === "rover" && roverBoostLeft() ? `<b class="rover-boost"> 🛻 Jackpot: ${Math.ceil(roverBoostLeft() / 60000)} min left</b>` : ""}</span></button>`;
+  return `<button class="hub-box play-box bot-box bot-${k}" data-act="bot" data-level="${k}" style="--hc:${BOT_COLORS[i % BOT_COLORS.length]}"><span class="pb-tag">${b.elo} Elo</span><span class="hub-ic" aria-hidden="true">${b.av || "🤖"}</span><span class="hub-name">${esc(b.name)}</span><span class="hub-sub">${esc(b.blurb)}${extra || ""}${k === "rover" && roverBoostLeft() ? `<b class="rover-boost"> 🛻 Jackpot ${roverBoostLeft() > 864e5 ? "on" : `: ${Math.ceil(roverBoostLeft() / 60000)} min left`}</b>` : ""}</span></button>`;
 }
 function viewComputer() {
   const u = me();
@@ -4591,6 +4603,19 @@ function viewSettings() {
       ${sayBtnSize() !== "off" ? `<button type="button" class="say-btn say-${sayBtnSize()}" data-act="pvol-say" aria-label="Preview">🔊</button>` : ""}
     </div>
     </details>
+
+    ${isOwner(u) ? `<details class="set-group"${store.get("setOpen-admin", false) ? " open" : ""} data-key="setOpen-admin"><summary>🛠️ Admin boosts</summary>
+    <div class="set-row"><span class="set-l">Rover jackpot</span><div class="seg-pick" role="group" aria-label="Rover jackpot">
+      ${[["on", "On"], ["off", "Off"]].map(([v, l]) => `<button data-act="adm-rover" data-v="${v}" aria-pressed="${(roverBoostLeft() > 0) === (v === "on")}">${l}</button>`).join("")}
+    </div></div>
+    <div class="set-row"><span class="set-l">Power hour</span><div class="seg-pick" role="group" aria-label="Power hour">
+      ${[["on", "On"], ["off", "Off"]].map(([v, l]) => `<button data-act="adm-ph" data-v="${v}" aria-pressed="${(powerHourLeft() > 0) === (v === "on")}">${l}</button>`).join("")}
+    </div></div>
+    <div class="set-row"><span class="set-l">POWERHOUR any time</span><div class="seg-pick" role="group" aria-label="POWERHOUR any time for everyone">
+      ${[["on", "On"], ["off", "Off"]].map(([v, l]) => `<button data-act="adm-phall" data-v="${v}" aria-pressed="${!!(u.adminFlags || {}).phAnyTime === (v === "on")}">${l}</button>`).join("")}
+    </div></div>
+    <p class="hint">Your boosts stay on until you switch them off. "Any time" lets every player use POWERHOUR at any time of the hour.${u.cloud ? "" : " Save this account online first."}</p>
+    </details>` : ""}
 
     <details class="set-group"${store.get("setOpen-screen", false) ? " open" : ""} data-key="setOpen-screen"><summary>📱 Screen layout</summary>
     ${layoutBar()}
@@ -5226,6 +5251,14 @@ document.addEventListener("click", async e => {
     ugSet("gems", n => n - SHOP_REFRESH, 0); const n = shopRoll() + 1; ugSet("shopRoll", () => ({ p: shopPeriod(), n }), null);
     go("shop", { shopMsg: "Here are 3 new avatars!" });
   }
+  else if (act === "adm-rover" || act === "adm-ph" || act === "adm-phall") {
+    if (!isOwner()) return;
+    const on = t.dataset.v === "on";
+    if (act === "adm-rover") store.set("roverBoostUntil", on ? BOOST_FOREVER : 0);
+    else if (act === "adm-ph") store.set("powerHourUntil", on ? BOOST_FOREVER : 0);
+    else updateUser(x => { x.adminFlags = Object.assign({}, x.adminFlags, { phAnyTime: on }); });
+    const y = window.scrollY; render(); window.scrollTo(0, y);
+  }
   else if (act === "gamekb") { store.set("gameKb", t.dataset.v); const y = window.scrollY; render(); window.scrollTo(0, y); }
   else if (act === "fr-chat") { FR.chat = t.dataset.id || null; if (FR.chat) frMarkSeen(FR.chat); frPaint(); frBadge(); const i = document.getElementById("fr-text"); if (i && FR.chat) i.focus(); }
   else if (act === "fr-accept" || act === "fr-remove") {
@@ -5331,7 +5364,13 @@ document.addEventListener("submit", async e => {
       return;
     }
     if (h === POWER_HOUR_CODE) {
-      const d = new Date();
+      const d = new Date(), anyTime = !!(await ownerFlags()).phAnyTime;
+      if (anyTime) {
+        const until = Date.now() + 15 * 60000;
+        store.set("powerHourUntil", until); SFX("win");
+        go("avatar", { codeMsg: `⚡ Power hour! For 15 minutes (until ${new Date(until).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}), 2 out of 3 answers against bots are a 1 in Attillion.` });
+        return;
+      }
       if (d.getMinutes() >= 15) { SFX("error"); go("avatar", { codeMsg: `⏰ Power hour only works in the first 15 minutes of an hour. Try again at ${new Date(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours() + 1).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.` }); return; }
       const until = new Date(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), 15).getTime();
       store.set("powerHourUntil", until);
@@ -5340,6 +5379,7 @@ document.addEventListener("submit", async e => {
       return;
     }
     if (h === ROVER_CODE) {
+      if (!isOwner()) { SFX("error"); go("avatar", { codeMsg: "That code doesn't unlock anything." }); return; }
       const until = Date.now() + ROVER_MINS * 60000;
       store.set("roverBoostUntil", until);
       SFX("win");
