@@ -2088,7 +2088,16 @@ function shopDay() { const d = new Date(); return Math.floor((Date.UTC(d.getFull
 function shopPeriod() { return Math.floor(shopDay() / SHOP_DAYS); }
 function shopNext() { const days = (shopPeriod() + 1) * SHOP_DAYS - shopDay(); const d = new Date(); d.setDate(d.getDate() + days); return { days, date: d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }) }; }
 function shopRoll() { const r = ugGet("shopRoll", null); return r && r.p === shopPeriod() ? r.n : 0; }
+// The set is saved once per shop period (and per refresh), so buying an avatar
+// doesn't swap it out: only a new week or the "New avatars now" button changes it.
 function shopOffers() {
+  const key = shopPeriod() + ":" + shopRoll(), cur = ugGet("shopCur", null);
+  if (cur && cur.k === key && Array.isArray(cur.ids)) { const list = cur.ids.map(avatarById).filter(Boolean); if (list.length === cur.ids.length) return list; }
+  const out = shopPick();
+  ugSet("shopCur", () => ({ k: key, ids: out.map(a => a.id) }), null);
+  return out;
+}
+function shopPick() {
   const r = rng(hashStr("shop:" + shopPeriod() + ":" + shopRoll()));
   const owned = shopOwned(me());
   const pick = all => { const fresh = all.filter(a => !owned.includes(a.id)); const pool = fresh.length ? fresh : all; return pool[Math.floor(r() * pool.length)]; };
