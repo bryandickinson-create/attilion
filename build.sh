@@ -29,6 +29,7 @@ FONTS='<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bri
   echo "<script>"; cat src/prompts_new.js; echo "</script>"
   echo "<script>"; cat src/prompts_new2.js; echo "</script>"
   echo "<script>"; cat src/prompts_new3.js; echo "</script>"
+  echo "<script>"; cat src/prompts_new4.js; echo "</script>"
   echo '<script>'; cat src/app.js; echo '</script>'
   echo '<script>'; cat src/fx.js; echo '</script>'
   echo '<script>'; cat src/sound.js; echo '</script>'
@@ -58,6 +59,7 @@ FONTS='<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bri
   echo "<script>"; cat src/prompts_new.js; echo "</script>"
   echo "<script>"; cat src/prompts_new2.js; echo "</script>"
   echo "<script>"; cat src/prompts_new3.js; echo "</script>"
+  echo "<script>"; cat src/prompts_new4.js; echo "</script>"
   echo '<script>'; cat src/app.js; echo '</script>'
   echo '<script>'; cat src/fx.js; echo '</script>'
   echo '<script>'; cat src/sound.js; echo '</script>'

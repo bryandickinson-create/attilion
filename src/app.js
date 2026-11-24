@@ -576,7 +576,9 @@ const BIG_FROM_REGULAR = ["fruit", "veg", "dog", "color", "sport", "bird", "vehi
   "pizza", "icecream", "superpower", "emotion", "room", "furniture", "subject", "candy", "drink", "camping", "classroom", "carnival", "hobby", "farm", "animated",
   "cake", "cereal", "wheels", "sportsgear", "hpchar", "disneychar", "cartoonshow", "halloween", "christmas", "summerthing", "state", "uscity", "fastfood", "landmark",
   "invention", "kidsbook", "fairytale", "bookseries", "costume", "babyanimal", "olympic", "proteam",
-  "vgchar", "famousdog", "famouscat", "tailthing", "sticky", "worlddish", "duo", "band"];
+  "vgchar", "famousdog", "famouscat", "tailthing", "sticky", "worlddish", "duo", "band",
+  "medform", "gameco", "webbed", "kickball", "shell", "hastail", "spotstripe", "nocturnal", "toyco", "soda", "brand", "stickball", "hibernate",
+  "carnivore", "layseggs", "streaming", "sitdown", "pie", "blowinst", "techco", "cardgame", "doctoruses", "flybug", "netsport", "crunchy"];
 function addBig(id, q, a, srcs) {
   const more = [window.KRILLION_MORE, window.KRILLION_MORE3].flatMap(m => srcs.map(x => (m || {})[x]))
     .concat(srcs.map(x => (window.KRILLION_PROMPTS || []).find(r => r.id === x)).filter(Boolean).map(r => r.a))
