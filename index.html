@@ -959,6 +959,35 @@ body.gkb-on{padding-bottom:250px !important}
 .shop-refresh{width:100%}
 .gem-note{color:#8fe3ff}
 @container app (max-width: 520px){.shop-e{font-size:44px}.shop-card{padding:10px 4px}.shop-card .btn{padding:6px 10px}}
+/* avatar variants: gold, diamond, rainbow and seasonal colors */
+.av-v-gold,.av-v-diamond,.av-v-rainbow,.av-v-valentine,.av-v-spring,.av-v-summer,.av-v-halloween,.av-v-thanks,.av-v-xmas{display:inline-block}
+.av-v-gold{filter:sepia(1) saturate(5) hue-rotate(-12deg) brightness(1.15) drop-shadow(0 0 6px rgba(255,201,60,.85))}
+.av-v-diamond{animation:diamondGlint 2.6s ease-in-out infinite}
+@keyframes diamondGlint{0%,100%{filter:grayscale(1) brightness(1.5) sepia(.4) hue-rotate(160deg) saturate(2.5) drop-shadow(0 0 5px rgba(140,230,255,.9))}50%{filter:grayscale(1) brightness(1.9) sepia(.3) hue-rotate(170deg) saturate(2) drop-shadow(0 0 12px rgba(220,250,255,1))}}
+.av-v-rainbow{animation:rainbow 2.4s linear infinite}
+.av-v-xmas{animation:sXmas 2s ease-in-out infinite}
+@keyframes sXmas{0%,100%{filter:sepia(1) saturate(7) hue-rotate(-45deg) drop-shadow(0 0 5px rgba(255,60,60,.8))}50%{filter:sepia(1) saturate(6) hue-rotate(70deg) drop-shadow(0 0 5px rgba(60,220,90,.8))}}
+.av-v-halloween{animation:sHallo 2.2s ease-in-out infinite}
+@keyframes sHallo{0%,100%{filter:sepia(1) saturate(6) hue-rotate(-15deg) drop-shadow(0 0 5px rgba(255,140,30,.8))}50%{filter:sepia(1) saturate(4) hue-rotate(225deg) drop-shadow(0 0 5px rgba(160,80,255,.8))}}
+.av-v-thanks{animation:sThanks 2.4s ease-in-out infinite}
+@keyframes sThanks{0%,100%{filter:sepia(1) saturate(5) hue-rotate(-20deg) drop-shadow(0 0 5px rgba(255,140,40,.8))}50%{filter:sepia(1) saturate(3) hue-rotate(-35deg) brightness(.75) drop-shadow(0 0 5px rgba(150,90,40,.8))}}
+.av-v-valentine{animation:sVal 2s ease-in-out infinite}
+@keyframes sVal{0%,100%{filter:sepia(1) saturate(6) hue-rotate(-50deg) drop-shadow(0 0 5px rgba(255,50,80,.8))}50%{filter:sepia(1) saturate(4) hue-rotate(-80deg) brightness(1.2) drop-shadow(0 0 5px rgba(255,140,200,.8))}}
+.av-v-spring{animation:sSpring 3s ease-in-out infinite}
+@keyframes sSpring{0%,100%{filter:saturate(.6) brightness(1.2) hue-rotate(0deg)}33%{filter:saturate(.6) brightness(1.2) hue-rotate(110deg)}66%{filter:saturate(.6) brightness(1.2) hue-rotate(250deg)}}
+.av-v-summer{animation:sSummer 2.4s ease-in-out infinite}
+@keyframes sSummer{0%,100%{filter:sepia(1) saturate(6) hue-rotate(-45deg) drop-shadow(0 0 5px rgba(255,60,60,.8))}50%{filter:sepia(1) saturate(4) hue-rotate(185deg) drop-shadow(0 0 5px rgba(80,140,255,.8))}}
+.shop-kind{font-style:normal;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--kelp)}
+.sv-gold .shop-kind{color:#ffc93c}.sv-diamond .shop-kind{color:#9fe8ff}.sv-rainbow .shop-kind{background:linear-gradient(90deg,#ff5f6d,#ffc93c,#3ee08f,#4cd6ff,#a58bff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.shop-card.seasonal{border-color:rgba(255,140,60,.7)}
+.shop-season{margin:0 0 10px;font-weight:700;color:#ffb86b}
+.shop-grid{grid-template-columns:repeat(auto-fit,minmax(100px,1fr))}
+/* main menu: 6 boxes */
+.hub-friends{--hc:#5fe08a}.hub-shop{--hc:#4cd6ff}
+.hub > .hub-grid:not(.two){grid-template-columns:repeat(3,1fr);grid-template-rows:1fr 1fr}
+@container app (max-width: 620px){.hub > .hub-grid:not(.two){grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr 1fr}.hub > .hub-grid:not(.two) .hub-ic{font-size:44px}.hub > .hub-grid:not(.two) .hub-name{font-size:21px}}
+.hub-box .pb-tag .fr-badge[hidden]{display:none}
+@container app (max-width: 520px){.shop-grid{grid-template-columns:repeat(4,1fr);gap:6px}.shop-e{font-size:36px}.shop-card b{font-size:12px}.shop-card .btn{padding:5px 8px;font-size:13px}.shop-kind{font-size:9px}}
 </style></head><body>
 <div id="app"></div>
 <script>
@@ -1826,30 +1855,56 @@ const AVATARS = [
   { id: "spacedog", e: "🐕", name: "Space dog",      code: 1213739381 },
   { id: "cheese",   e: "🧀", name: "Moon cheese",    code: 190172967 },
   { id: "saturn",   e: "🪐", name: "Saturn",         code: 812187123 },
-  // Shop avatars: bought with Attillion Gems 💠 (shop: price tier)
-  { id: "sh-volcano", e: "🌋", name: "Volcano Planet", shop: 10 },
-  { id: "sh-rainbow", e: "🌈", name: "Space Rainbow",  shop: 10 },
-  { id: "sh-squid",   e: "🦑", name: "Space Squid",    shop: 10 },
-  { id: "sh-octo",    e: "🐙", name: "Moon Octopus",   shop: 10 },
-  { id: "sh-newmoon", e: "🌑", name: "New Moon",       shop: 10 },
-  { id: "sh-ice",     e: "🧊", name: "Ice Comet",      shop: 10 },
-  { id: "sh-unicorn", e: "🦄", name: "Star Unicorn",   shop: 40 },
-  { id: "sh-dragon",  e: "🐉", name: "Cosmic Dragon",  shop: 40 },
-  { id: "sh-rex",     e: "🦖", name: "Astro-Rex",      shop: 40 },
-  { id: "sh-whale",   e: "🐋", name: "Space Whale",    shop: 40 },
-  { id: "sh-eagle",   e: "🦅", name: "Star Eagle",     shop: 40 },
-  { id: "sh-orb",     e: "🔮", name: "Crystal Orb",    shop: 40 },
-  { id: "sh-wizard",  e: "🧙", name: "Star Wizard",    shop: 70 },
-  { id: "sh-nebdragon", e: "🐲", name: "Nebula Dragon", shop: 70 },
-  { id: "sh-peacock", e: "🦚", name: "Galaxy Peacock", shop: 70 },
-  { id: "sh-castle",  e: "🏰", name: "Moon Castle",    shop: 70 },
-  { id: "sh-wormhole", e: "🌀", name: "Wormhole",      shop: 70 },
-  { id: "sh-bolt",    e: "⚡", name: "Lightning Bolt", shop: 70 },
+  // Shop bases: never sold plain; the shop sells them (and the classic avatars)
+  // as gold, diamond, rainbow and seasonal variants (built below)
+  { id: "sh-volcano", e: "🌋", name: "Volcano Planet", sb: true },
+  { id: "sh-rainbow", e: "🌈", name: "Space Rainbow",  sb: true },
+  { id: "sh-squid",   e: "🦑", name: "Space Squid",    sb: true },
+  { id: "sh-octo",    e: "🐙", name: "Moon Octopus",   sb: true },
+  { id: "sh-newmoon", e: "🌑", name: "New Moon",       sb: true },
+  { id: "sh-ice",     e: "🧊", name: "Ice Comet",      sb: true },
+  { id: "sh-unicorn", e: "🦄", name: "Star Unicorn",   sb: true },
+  { id: "sh-dragon",  e: "🐉", name: "Cosmic Dragon",  sb: true },
+  { id: "sh-rex",     e: "🦖", name: "Astro-Rex",      sb: true },
+  { id: "sh-whale",   e: "🐋", name: "Space Whale",    sb: true },
+  { id: "sh-eagle",   e: "🦅", name: "Star Eagle",     sb: true },
+  { id: "sh-orb",     e: "🔮", name: "Crystal Orb",    sb: true },
+  { id: "sh-wizard",  e: "🧙", name: "Star Wizard",    sb: true },
+  { id: "sh-nebdragon", e: "🐲", name: "Nebula Dragon", sb: true },
+  { id: "sh-peacock", e: "🦚", name: "Galaxy Peacock", sb: true },
+  { id: "sh-castle",  e: "🏰", name: "Moon Castle",    sb: true },
+  { id: "sh-wormhole", e: "🌀", name: "Wormhole",      sb: true },
+  { id: "sh-bolt",    e: "⚡", name: "Lightning Bolt", sb: true },
   // the Developer avatars always sit last, in this order
   { id: "dev",      e: "👾", name: "Developer",      code: 4277053133, dev: true },
   { id: "gdev",     e: "👾", name: "Gold Developer", code: 2110502093, dev: true },
   { id: "rdev",     e: "👾", name: "Rainbow Developer", code: 207743465, dev: true }
 ];
+
+// Seasonal shop avatars: only for sale during their season (month numbers, 1-12)
+const AV_SEASONS = {
+  valentine: { name: "Valentine", months: [2],  bases: [["heart", "💝", "Space Heart"], ["cupid", "💘", "Cupid Comet"]] },
+  spring:    { name: "Spring",    months: [3, 4], bases: [["bunny", "🐰", "Moon Bunny"], ["chick", "🐣", "Star Chick"], ["tulip", "🌷", "Space Tulip"]] },
+  summer:    { name: "Summer",    months: [6, 7, 8], bases: [["fireworks", "🎆", "Star Fireworks"], ["beach", "🏖️", "Moon Beach"], ["melon", "🍉", "Planet Melon"]] },
+  halloween: { name: "Halloween", months: [10], bases: [["pumpkin", "🎃", "Space Pumpkin"], ["ghost", "👻", "Galaxy Ghost"], ["bat", "🦇", "Moon Bat"]] },
+  thanks:    { name: "Thanksgiving", months: [11], bases: [["turkey", "🦃", "Space Turkey"], ["pie", "🥧", "Pumpkin Pie Planet"], ["leaf", "🍁", "Comet Leaf"]] },
+  xmas:      { name: "Christmas", months: [12], bases: [["snowman", "⛄", "Space Snowman"], ["santa", "🎅", "Santa Astronaut"], ["tree", "🎄", "Star Tree"], ["reindeer", "🦌", "Space Reindeer"], ["gift", "🎁", "Gift Comet"]] }
+};
+const AV_VARIANTS = { gold: { name: "Gold", price: 10 }, diamond: { name: "Diamond", price: 40 }, rainbow: { name: "Rainbow", price: 70 } };
+const SEASON_PRICE = 40;
+(function addShopVariants() {
+  const bases = AVATARS.filter(a => (a.elo === 0 || (a.elo && !a.krill && !a.ev)) || a.sb);
+  bases.forEach(b => Object.entries(AV_VARIANTS).forEach(([k, v]) => AVATARS.splice(AVATARS.findIndex(x => x.dev), 0,
+    { id: `v-${k}-${b.id}`, e: b.e, name: `${v.name} ${b.name.replace(/^(Gold|Golden|Rainbow) /, "")}`, shop: v.price, variant: k })));
+  Object.entries(AV_SEASONS).forEach(([sk, se]) => {
+    // the season's own avatars, plus a few classics in the season's colors
+    const own = se.bases.map(([id, e, name]) => ({ id: `s-${sk}-${id}`, e, name, shop: SEASON_PRICE, variant: sk, season: sk }));
+    const classic = ["earth", "rocket", "fullmoon", "planet"].map(id => AVATARS.find(a => a.id === id)).filter(Boolean)
+      .map(b => ({ id: `s-${sk}-${b.id}`, e: b.e, name: `${se.name} ${b.name}`, shop: SEASON_PRICE, variant: sk, season: sk }));
+    own.concat(classic).forEach(a => AVATARS.splice(AVATARS.findIndex(x => x.dev), 0, a));
+  });
+})();
+function seasonNow() { const m = new Date().getMonth() + 1; return Object.keys(AV_SEASONS).find(k => AV_SEASONS[k].months.includes(m)) || null; }
 
 // A short description for every avatar, shown on the avatar page
 const AV_DESC = {
@@ -1902,6 +1957,7 @@ function avHow(a, open) {
     : a.bestAv ? "Find a question's hidden BEST answer (or use its secret code)."
     : a.ev ? `Collect ${EVENT_GOAL} ${ev ? ev.tokenName + " " + ev.token : "tokens"} by playing the event bots while ${ev ? ev.name : "the event"} is on.`
     : a.code ? (a.dev ? "Typed in a secret developer code." : "Typed in a secret code.")
+    : a.season ? `Buy it in the Avatar Shop for ${a.shop} 💠 during ${AV_SEASONS[a.season].name} season.`
     : a.shop ? `Buy it in the Avatar Shop for ${a.shop} 💠 Attillion Gems when it's for sale.`
     : `Reach a best Elo of ${a.elo}.`;
   return open ? (a.elo === 0 ? how : "You unlocked it: " + how.charAt(0).toLowerCase() + how.slice(1)) : "How to get it: " + how;
@@ -2106,12 +2162,13 @@ function isOpen(a, u) {
   if (a.bestAv) return bestDone(u) || redeemed(u).includes("bestans");
   if (a.code) return redeemed(u).includes(a.id);
   if (a.shop) return shopOwned(u).includes(a.id);
+  if (a.sb) return false;
   if (a.krill) return krillCount(u) >= a.krill || redeemed(u).includes(a.id) || (a.krill < 1000 && redeemed(u).includes("krill-all"));
   return a.elo === 0 || (u && a.elo <= u.peak);
 }
 function avatarById(x) { return AVATARS.find(a => a.id === x || a.e === x) || null; }
 // Avatars are drawn through this so special ones (gold, rainbow) get their effect everywhere.
-function avMarkup(a) { return a ? `<span class="avg av-${a.id}">${a.e}</span>` : ""; }
+function avMarkup(a) { return a ? `<span class="avg av-${a.id}${a.variant ? " av-v-" + a.variant : ""}">${a.e}</span>` : ""; }
 // "Played like": maps a score to the Elo of a computer opponent that averages it.
 const PERF = [[0, 400], [134, 800], [294, 1100], [450, 1400], [547, 1700], [700, 2300]];
 function perfElo(points, rounds) {
@@ -3739,7 +3796,6 @@ function viewHome() {
       ${box("pb-solo", `data-act="solo"`, "🎯", "Free Launch", "7 new prompts, beat your high score", soloStats().best ? "Best " + soloStats().best : "")}
       ${kidMode() || bigMode() ? "" : box("pb-subjects", `data-go="subjects"`, "📚", "Subjects", "Sports, movies, history, weather and more", "")}
       ${box("pb-party", `data-go="party"`, "🎉", "Party", "Lots of players, one code", "New")}
-      ${box("pb-friends", `data-go="friends"`, "🤝", "Friends", "Add friends, chat and play them", `<span id="fr-badge" class="fr-badge"${frUnreadTotal() ? "" : " hidden"}>${frUnreadTotal() ? frUnreadTotal() + " new" : ""}</span>`)}
       ${box("pb-mystery", `data-go="mystery"`, "🔮", "Mystery topic", myMystery() ? `You scored ${myMystery().points}. See this week's board` : "One surprise question this week. One try.", "Weekly")}
     </div>
     <details class="how">
@@ -3776,33 +3832,34 @@ function viewSubjects() {
  * The shop shows 3 avatars (10, 40 and 70 gems) and changes every other
  * Saturday; you can also pay 100 gems for a new set right away. */
 const GEM_TABLE = [0, 1, 4, 6, 8, 12, 20, 50];   // 1 in Attillions in one game -> gems
-const SHOP_PRICES = [10, 40, 70], SHOP_REFRESH = 100;
-const SHOP_START = Date.UTC(2026, 10, 21);       // a Saturday; the shop changes every 14 days from here
+const SHOP_REFRESH = 100;
+const SHOP_START = Date.UTC(2026, 10, 21);       // a Saturday; the shop changes every Saturday (every 7 days) from here
+const SHOP_DAYS = 7;
 function gems() { return ugGet("gems", 0); }
 function gemsFor(scores) { const k = (scores || []).filter(x => x && x.points >= 100).length; return GEM_TABLE[Math.min(k, GEM_TABLE.length - 1)]; }
 function shopOwned(u) { return (u ? u.shopOwned : store.get("guest_shopOwned", null)) || []; }
 function shopDay() { const d = new Date(); return Math.floor((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - SHOP_START) / 864e5); }
-function shopPeriod() { return Math.floor(shopDay() / 14); }
-function shopNext() { const days = (shopPeriod() + 1) * 14 - shopDay(); const d = new Date(); d.setDate(d.getDate() + days); return { days, date: d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }) }; }
+function shopPeriod() { return Math.floor(shopDay() / SHOP_DAYS); }
+function shopNext() { const days = (shopPeriod() + 1) * SHOP_DAYS - shopDay(); const d = new Date(); d.setDate(d.getDate() + days); return { days, date: d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }) }; }
 function shopRoll() { const r = ugGet("shopRoll", null); return r && r.p === shopPeriod() ? r.n : 0; }
 function shopOffers() {
   const r = rng(hashStr("shop:" + shopPeriod() + ":" + shopRoll()));
   const owned = shopOwned(me());
-  return SHOP_PRICES.map(price => {
-    const all = AVATARS.filter(a => a.shop === price), fresh = all.filter(a => !owned.includes(a.id));
-    const pool = fresh.length ? fresh : all;
-    return pool[Math.floor(r() * pool.length)];
-  });
+  const pick = all => { const fresh = all.filter(a => !owned.includes(a.id)); const pool = fresh.length ? fresh : all; return pool[Math.floor(r() * pool.length)]; };
+  const out = ["gold", "diamond", "rainbow"].map(k => pick(AVATARS.filter(a => a.variant === k && !a.season)));
+  const sea = seasonNow(); if (sea) out.push(pick(AVATARS.filter(a => a.season === sea)));
+  return out;
 }
 function viewShop() {
   const owned = shopOwned(me()), g = gems(), nx = shopNext();
-  return `${header()}<button class="link back-link menu-back" data-go="avatar">← Back to Avatars</button>
+  return `${header()}${tabsBar("shop")}
   <main class="narrow shop">
     <div class="shop-top"><h1>Avatar Shop</h1><span class="gem-bal">💠 ${g}</span></div>
     <p class="hint shop-how">Earn 💠 Gems with 1 in Attillions: 1 in a game = 1, 2 = 4, 3 = 6, 4 = 8, 5 = 12, 6 = 20, 7 = 50.</p>
+    ${seasonNow() ? `<p class="shop-season">🎉 ${AV_SEASONS[seasonNow()].name} avatar for sale this month!</p>` : ""}
     <div class="shop-grid">${shopOffers().map(a => {
       const have = owned.includes(a.id), can = g >= a.shop;
-      return `<div class="shop-card ${have ? "owned" : ""}"><span class="shop-e">${avMarkup(a)}</span><b>${esc(a.name)}</b>
+      return `<div class="shop-card ${have ? "owned" : ""} ${a.season ? "seasonal" : "sv-" + a.variant}"><i class="shop-kind">${a.season ? AV_SEASONS[a.season].name : AV_VARIANTS[a.variant].name}</i><span class="shop-e">${avMarkup(a)}</span><b>${esc(a.name)}</b>
         ${have ? `<span class="shop-owned">✓ Yours</span>` : `<button class="btn ${can ? "primary" : "ghost"} small" data-act="shop-buy" data-id="${a.id}" ${can ? "" : "disabled"}>💠 ${a.shop}</button>`}</div>`;
     }).join("")}</div>
     <p class="shop-msg" role="status">${esc(S.shopMsg || "")}</p>
@@ -3925,17 +3982,18 @@ async function frSend(fid, body) {
   const c = await cloud(); if (!c || !FR.me) return false;
   try { const r = await c.from("messages").insert({ sender: FR.me, recipient: fid, body }); if (r.error) return false; await frLoad(); return true; } catch (e) { return false; }
 }
+function friendsView(inner) { return `${header()}${tabsBar("friends")}<main class="home"><section class="modes one">${inner}</section></main>`; }
 function viewFriends() {
   const u = me();
   const chall = `<details class="set-group fr-chall"><summary>📨 Send a challenge code instead</summary>
         <p class="hint">Play your ${roundsSetting("challenge-host")} rounds, then send the code. Your friend plays the same questions later.</p>
         <div class="row"><button class="btn primary small" data-act="challenge-new">Create a challenge</button><button class="btn ghost small" data-go="join">Enter a code</button></div></details>`;
-  if (!frCan()) return playSubView(`<article class="mode friends"><div class="mode-head"><h2>Friends</h2></div>
+  if (!frCan()) return friendsView(`<article class="mode friends"><div class="mode-head"><h2>Friends</h2></div>
       <p>Add friends by username, see when they're online, message them and play them.</p>
       ${u ? `<p class="hint">Friends needs your account saved online first.</p><button class="btn primary" data-act="save-online">Save ${esc(u.name)} online</button>` : `<button class="btn primary" data-go="login">Log in or sign up</button>`}
       ${chall}</article>`);
   setTimeout(() => { frPaint(); frLoad(); }, 0);
-  return playSubView(`<article class="mode friends">
+  return friendsView(`<article class="mode friends">
       <form id="fr-add" class="fr-add"><input id="fr-name" maxlength="20" placeholder="Friend's username" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Friend's username"><button class="btn primary small" type="submit">Add</button></form>
       <p class="fr-msg" id="fr-msg" role="status">${esc(S.frMsg || "")}</p>
       <div id="fr-live">${frLive()}</div>
@@ -4328,7 +4386,7 @@ function viewProfile() {
   </main>`;
 }
 
-const SECTIONS = [["modes", "🚀", "Play", "Quick match, daily, endless, free, subjects and friends"], ["bots", "🤖", "Play bots", "The computer and this event's bots"], ["avatar", "👩‍🚀", "Avatar", "Pick your avatar and enter codes"], ["settings", "⚙️", "Settings", "Timer, screen, sound and account"]];
+const SECTIONS = [["modes", "🚀", "Play", "Quick match, daily, endless, party and more"], ["bots", "🤖", "Play bots", "The computer and this event's bots"], ["friends", "🤝", "Friends", "Add friends, chat and play them"], ["shop", "🛒", "Shop", "Spend 💠 gems on avatars"], ["avatar", "👩‍🚀", "Avatar", "Pick your avatar and enter codes"], ["settings", "⚙️", "Settings", "Timer, screen, sound and account"]];
 // Inside a section: a way back to the main menu, plus quick hops to the other three.
 function tabsBar(active) {
   return `<button class="link back-link menu-back" data-go="home">← Menu</button>`;
@@ -4342,7 +4400,7 @@ function viewHub() {
   return `${header()}<main class="hub">
     ${saveOnlineBanner()}
     <div class="hub-grid">
-      ${SECTIONS.map(([v, ic, l, sub]) => `<button class="hub-box hub-${v}" data-go="${v}"><span class="hub-ic" aria-hidden="true">${v === "avatar" ? avMarkup(myAvatarObj()) : ic}</span><span class="hub-name">${l}</span><span class="hub-sub">${sub}</span></button>`).join("")}
+      ${SECTIONS.map(([v, ic, l, sub]) => `<button class="hub-box hub-${v}" data-go="${v}">${v === "friends" ? `<span class="pb-tag"><span id="fr-badge" class="fr-badge"${frUnreadTotal() ? "" : " hidden"}>${frUnreadTotal() ? frUnreadTotal() + " new" : ""}</span></span>` : v === "shop" ? `<span class="pb-tag">💠 ${gems()}</span>` : ""}<span class="hub-ic" aria-hidden="true">${v === "avatar" ? avMarkup(myAvatarObj()) : ic}</span><span class="hub-name">${l}</span><span class="hub-sub">${sub}</span></button>`).join("")}
     </div>
   </main>`;
 }
@@ -4355,12 +4413,11 @@ function viewAvatar() {
     <h1>Your avatar</h1>
     <p class="lede small">This is you on the launch tower. Rarer answers send it higher. New avatars unlock as your best Elo climbs.${u ? ` Your best so far is <b>${peak}</b>.` : ""}</p>
     ${u ? "" : `<p class="hint"><button class="link" data-go="login">Log in</button> to earn Elo and unlock more avatars.</p>`}
-    <button class="btn shop-btn" data-go="shop">🛒 Avatar Shop · 💠 ${gems()}</button>
     <div class="av-search"><input id="av-search" type="search" placeholder="🔍 Search avatars" autocomplete="off" aria-label="Search avatars"></div>
     <p class="av-swipe-hint">Swipe to see every avatar · tap one to learn how to get it</p>
     <p class="hint av-none" id="av-none" hidden>No avatars match that search.</p>
     <div class="avatars">
-      ${AVATARS.filter(a => a.ev ? (isOpen(a, u) || a.ev === EVENT.key) : ((!a.code && !a.perfect && !a.bestAv && !a.shop) || isOpen(a, u))).map(a => {
+      ${AVATARS.filter(a => a.ev ? (isOpen(a, u) || a.ev === EVENT.key) : ((!a.code && !a.perfect && !a.bestAv && !a.shop && !a.sb) || isOpen(a, u))).map(a => {
         const open = isOpen(a, u);
         const sel = a.e + a.id === current;
         const tip = (avDesc(a) ? avDesc(a) + " " : "") + avHow(a, open);
@@ -4926,10 +4983,11 @@ const TOUR_STEPS = [
   { view: "modes", sel: ".pb-solo", text: "<b>Free Launch</b>: 7 fresh questions just for you. Try to beat your high score. It doesn't change your Elo, so it's great for practice." },
   { view: "modes", sel: ".pb-subjects", text: "<b>Subjects</b>: pick a topic like Sports, Movies, History or Geography, and every question is about that." },
   { view: "modes", sel: ".pb-party", text: "<b>Party</b>: play with lots of people at once! One person hosts and shares a code. Pick a game mode like Lightning or Be unique, and a theme." },
-  { view: "modes", sel: ".pb-friends", text: "<b>Friends</b>: add friends by their username, see who's online, send messages, and tap Play to start a game with them right away." },
   { view: "modes", sel: ".pb-mystery", text: "<b>Mystery topic</b>: one surprise question every week, and you only get one try. Make it count!" },
   { view: "modes", sel: ".menu-back", click: true, text: "Now <b>tap Menu</b> to go back to the main screen." },
   { view: "home", sel: ".hub-bots", text: "<b>Play bots</b> to practice against the computer, from easy to really tough. Beat them to raise your Elo. During events, special bots give tokens toward a prize avatar." },
+  { view: "home", sel: ".hub-friends", text: "<b>Friends</b>: add friends by their username, see who's online, send messages, and tap Play to start a game with them right away." },
+  { view: "home", sel: ".hub-shop", text: "<b>Shop</b>: every 1 in Attillion earns 💠 gems (more in one game is worth way more!). Spend them on gold, diamond, rainbow and seasonal avatars. New ones every Saturday." },
   { view: "home", sel: ".hub-avatar", click: true, text: "Time to pick your look. <b>Tap Avatar</b>." },
   { view: "avatar", sel: () => phoneLayout() ? ".avatars" : ".av-search", swipe: true, text: () => phoneLayout()
       ? "Here are all the avatars. <b>Swipe left and right</b> to flip through them, one per screen. Tap one to learn how to unlock it, or search for one at the top."
