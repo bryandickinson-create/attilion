@@ -783,6 +783,10 @@ h2 small.sub { font-size: 13px; font-weight: 500; color: var(--kelp); margin-lef
 .set-sub{margin:10px 0 0;font-size:13px;color:var(--kelp)}
 .set-group .forgot{margin-top:10px}
 .set-tour{margin:14px 0 4px}
+.set-btns{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px}
+.upd-msg{margin:6px 0 0;min-height:0}
+.upd-msg:empty{display:none}
+.upd-msg .btn{margin-left:6px}
 .set-group .layout-bar span{display:none}
 @container app (max-width: 520px) {
   .top{padding-block:8px;gap:6px;flex-wrap:nowrap}
@@ -847,6 +851,7 @@ html[data-device="phone"] body { padding-bottom: 10px; }
   .set-group>summary{padding:8px 0}
   .set-group{margin-top:8px}
   .set-tour{margin:10px 0 0}
+  .set-btns{margin:10px 0 0}
   .bot-grid,.subj-grid{grid-auto-rows:minmax(80px,calc((100svh - 130px) / 4)) !important}
 }
 @container app (max-width: 520px) {
@@ -983,3 +988,12 @@ body.gkb-on{padding-bottom:250px !important}
 @container app (max-width: 620px){.hub > .hub-grid:not(.two){grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr 1fr}.hub > .hub-grid:not(.two) .hub-ic{font-size:44px}.hub > .hub-grid:not(.two) .hub-name{font-size:21px}}
 .hub-box .pb-tag .fr-badge[hidden]{display:none}
 @container app (max-width: 520px){.shop-grid{grid-template-columns:repeat(4,1fr);gap:6px}.shop-e{font-size:36px}.shop-card b{font-size:12px}.shop-card .btn{padding:5px 8px;font-size:13px}.shop-kind{font-size:9px}}
+/* mutation tags */
+.mut{font-style:normal;font-size:.62em;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;border-radius:6px;vertical-align:middle;background:rgba(255,255,255,.1);color:var(--kelp)}
+.mut-gold{background:rgba(255,201,60,.2);color:#ffc93c}
+.mut-diamond{background:rgba(140,230,255,.18);color:#9fe8ff}
+.mut-rainbow{background:linear-gradient(90deg,rgba(255,95,109,.35),rgba(255,201,60,.35),rgba(62,224,143,.35),rgba(76,214,255,.35),rgba(165,139,255,.35));color:#fff}
+.mut-perfect{background:linear-gradient(90deg,rgba(165,139,255,.4),rgba(62,224,143,.35),rgba(76,214,255,.4));color:#fff}
+.mut-xmas{background:linear-gradient(90deg,rgba(255,60,60,.35),rgba(60,220,90,.35));color:#fff}
+.mut-halloween{background:rgba(255,140,30,.25);color:#ffb86b}.mut-thanks{background:rgba(255,140,40,.22);color:#ffb86b}
+.mut-valentine{background:rgba(255,95,162,.25);color:#ffb3d1}.mut-spring{background:rgba(160,230,160,.2);color:#c9f5c9}.mut-summer{background:rgba(80,140,255,.25);color:#bcd3ff}

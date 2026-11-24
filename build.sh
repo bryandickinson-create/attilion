@@ -4,6 +4,7 @@
 set -e
 cd "$(dirname "$0")"
 mkdir -p dist
+BUILD=$(cat src/*.js src/style.css | md5sum | cut -c1-10)
 FONTS='<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap">'
 {
   echo '<title>Attillion</title>'
@@ -11,6 +12,7 @@ FONTS='<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bri
   echo "$FONTS"
   echo '<style>'; cat src/style.css; echo '</style>'
   echo '<div id="app"></div>'
+  echo "<script>window.ATT_BUILD='$BUILD'</script>"
   echo '<script>'; cat src/prompts.js; echo '</script>'
   echo '<script>'; cat src/prompts2.js; echo '</script>'
   echo '<script>'; cat src/prompts3.js; echo '</script>'
@@ -41,6 +43,7 @@ FONTS='<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bri
   echo "$FONTS"
   echo '<style>'; cat src/style.css; echo '</style></head><body>'
   echo '<div id="app"></div>'
+  echo "<script>window.ATT_BUILD='$BUILD'</script>"
   echo '<script>'; cat src/prompts.js; echo '</script>'
   echo '<script>'; cat src/prompts2.js; echo '</script>'
   echo '<script>'; cat src/prompts3.js; echo '</script>'
