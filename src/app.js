@@ -145,6 +145,7 @@ function showAvInfo(id) {
     <p class="avs-how ${open ? "got" : ""}">${esc(avHow(a, open))}</p>
     ${open ? `<p class="avs-stars">⭐ ${(avKrill(u)[a.id] || 0).toLocaleString()} 1 in Attillions found wearing it</p>` : ""}
     ${open ? (sel ? `<p class="avs-sel">This is your avatar right now</p>` : `<button class="btn primary" data-act="avatar" data-id="${a.id}">Use this avatar</button>`) : `<p class="avs-lock">${avLock(a)}</p>`}
+    <button class="btn ghost small avs-anim" data-act="avpreview" data-id="${a.id}">✨ Watch its 1 in Attillion animation</button>
   </div>`;
   el.addEventListener("click", e => { if (e.target === el) closeAvInfo(); });
   document.body.appendChild(el);
@@ -2720,8 +2721,8 @@ document.addEventListener("click", async e => {
     const id = t.dataset.id; closeAvInfo();
     if (me()) updateUser(x => { x.avatar = id; }); else store.set("guestAvatar", id);
     render();
-    celebrateAvatar(id);
   }
+  else if (act === "avpreview") { const id = t.dataset.id; closeAvInfo(); celebrateAvatar(id); }
   else if (act === "pw-eye") {
     const inp = document.getElementById(t.dataset.for); if (!inp) return;
     const show = inp.type === "password"; inp.type = show ? "text" : "password";

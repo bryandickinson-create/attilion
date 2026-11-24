@@ -698,3 +698,4 @@ h2 small.sub { font-size: 13px; font-weight: 500; color: var(--kelp); margin-lef
   .avatars .avatar .asub { font-size: 14px; }
   .avatars .avatar .av-stars { font-size: 14px; top: 12px; right: 12px; }
 }
+.avs-anim { margin-top: 12px; }
