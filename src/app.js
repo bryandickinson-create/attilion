@@ -2259,21 +2259,15 @@ function answerCard(label, r, me_) {
     <p class="said">${r.valid ? esc(r.display) : r.raw ? esc(r.raw) : "<i>no answer</i>"}</p>
     ${r.valid ? `
       ${norm(r.raw) !== norm(r.display) ? `<p class="matched">you typed “${esc(r.raw)}”</p>` : ""}
-      <div class="gauge" aria-hidden="true"><span style="--d:${depthPct.toFixed(1)}%"></span></div>
       <p class="pts"><b>0</b> pts</p>
       <p class="meta">${r.zone.name} · ${altText(r.depth)} up · ${oneIn(r.share)}</p>${r.saidBefore ? `<p class="hint repeat-note">Players have given this answer ${r.saidBefore === 1 ? "once" : r.saidBefore.toLocaleString() + " times"} before, so it's worth less now.</p>` : ""}
-      <p class="played">Played like <b>${perfElo(r.points, 1).toLocaleString()}</b></p>
       ${r.best ? `<p class="best-tag">👑 THE BEST ANSWER · +${BEST_POINTS}</p>${me_ && S.bestUnlock ? `<p class="unlock-note">You found a secret BEST answer and unlocked the secret ${avMarkup(avatarById("bestans"))} <b>Best Answer Diamond</b> avatar! <button class="link" data-go="avatar">Use it</button></p>` : ""}` : ""}
       ${r.points >= 100 ? `<p class="what" data-what="${esc(r.display)}" data-hint="${esc(curHint())}" hidden></p>` : ""}`
-    : `<p class="pts"><b>0</b> pts</p><p class="meta">${r.raw ? "Not on our list for this prompt" : "Time ran out"}</p><p class="played">Played like <b>${perfElo(0, 1).toLocaleString()}</b></p>`}
+    : `<p class="pts"><b>0</b> pts</p><p class="meta">${r.raw ? "Not on our list for this prompt" : "Time ran out"}</p>`}
   </div>`;
 }
 
 function revealBlock(prompt, oppName) {
-  const deep = prompt.answers.slice(prompt.krillFrom, prompt.krillFrom + 20).filter(a => norm(a.display) !== bestDisplay(prompt)).map((a, i) => ({ a, i }));   // never give away the BEST answer
-  const r = rng(hashStr(prompt.id + S.seed));
-  const samples = []; const pool = deep.slice();
-  while (samples.length < 4 && pool.length) samples.push(pool.splice(Math.floor(r() * pool.length), 1)[0].a.display);
   const same = S.lastTheirs && S.lastMine.valid && S.lastTheirs.valid && S.lastMine.idx === S.lastTheirs.idx;
   return `<div class="reveal">
     <p class="round-label">${roundLabel()}</p>

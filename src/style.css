@@ -923,3 +923,15 @@ body.gkb-on{padding-bottom:250px !important}
 .gkb-input{caret-color:transparent;cursor:default}
 .gkb-input:focus{outline:2px solid rgba(255,201,60,.5)}
 @container app (max-width: 520px) { body.gkb-on .prompt-card .say-btn{display:none} body.gkb-on #answer-form .btn{display:none} body.gkb-on .party .answer-row .btn{display:none} }
+/* simpler score screen on phones */
+@container app (max-width: 520px) {
+  .reveal .round-label{margin:0 0 4px}
+  .reveal .prompt.small{margin:0 auto 10px;font-size:22px}
+  .reveal-grid{gap:10px}
+  .dive{min-height:150px}
+  .reveal .ans{padding:12px 14px}
+  .reveal .ans .said{margin:2px 0 4px}
+  .reveal .ans .pts{margin:4px 0 2px}
+  .reveal .top-said{display:none}
+  .reveal #next{margin-top:12px}
+}

@@ -928,6 +928,18 @@ body.gkb-on{padding-bottom:250px !important}
 .gkb-input{caret-color:transparent;cursor:default}
 .gkb-input:focus{outline:2px solid rgba(255,201,60,.5)}
 @container app (max-width: 520px) { body.gkb-on .prompt-card .say-btn{display:none} body.gkb-on #answer-form .btn{display:none} body.gkb-on .party .answer-row .btn{display:none} }
+/* simpler score screen on phones */
+@container app (max-width: 520px) {
+  .reveal .round-label{margin:0 0 4px}
+  .reveal .prompt.small{margin:0 auto 10px;font-size:22px}
+  .reveal-grid{gap:10px}
+  .dive{min-height:150px}
+  .reveal .ans{padding:12px 14px}
+  .reveal .ans .said{margin:2px 0 4px}
+  .reveal .ans .pts{margin:4px 0 2px}
+  .reveal .top-said{display:none}
+  .reveal #next{margin-top:12px}
+}
 </style></head><body>
 <div id="app"></div>
 <script>
@@ -3983,21 +3995,15 @@ function answerCard(label, r, me_) {
     <p class="said">${r.valid ? esc(r.display) : r.raw ? esc(r.raw) : "<i>no answer</i>"}</p>
     ${r.valid ? `
       ${norm(r.raw) !== norm(r.display) ? `<p class="matched">you typed “${esc(r.raw)}”</p>` : ""}
-      <div class="gauge" aria-hidden="true"><span style="--d:${depthPct.toFixed(1)}%"></span></div>
       <p class="pts"><b>0</b> pts</p>
       <p class="meta">${r.zone.name} · ${altText(r.depth)} up · ${oneIn(r.share)}</p>${r.saidBefore ? `<p class="hint repeat-note">Players have given this answer ${r.saidBefore === 1 ? "once" : r.saidBefore.toLocaleString() + " times"} before, so it's worth less now.</p>` : ""}
-      <p class="played">Played like <b>${perfElo(r.points, 1).toLocaleString()}</b></p>
       ${r.best ? `<p class="best-tag">👑 THE BEST ANSWER · +${BEST_POINTS}</p>${me_ && S.bestUnlock ? `<p class="unlock-note">You found a secret BEST answer and unlocked the secret ${avMarkup(avatarById("bestans"))} <b>Best Answer Diamond</b> avatar! <button class="link" data-go="avatar">Use it</button></p>` : ""}` : ""}
       ${r.points >= 100 ? `<p class="what" data-what="${esc(r.display)}" data-hint="${esc(curHint())}" hidden></p>` : ""}`
-    : `<p class="pts"><b>0</b> pts</p><p class="meta">${r.raw ? "Not on our list for this prompt" : "Time ran out"}</p><p class="played">Played like <b>${perfElo(0, 1).toLocaleString()}</b></p>`}
+    : `<p class="pts"><b>0</b> pts</p><p class="meta">${r.raw ? "Not on our list for this prompt" : "Time ran out"}</p>`}
   </div>`;
 }
 
 function revealBlock(prompt, oppName) {
-  const deep = prompt.answers.slice(prompt.krillFrom, prompt.krillFrom + 20).filter(a => norm(a.display) !== bestDisplay(prompt)).map((a, i) => ({ a, i }));   // never give away the BEST answer
-  const r = rng(hashStr(prompt.id + S.seed));
-  const samples = []; const pool = deep.slice();
-  while (samples.length < 4 && pool.length) samples.push(pool.splice(Math.floor(r() * pool.length), 1)[0].a.display);
   const same = S.lastTheirs && S.lastMine.valid && S.lastTheirs.valid && S.lastMine.idx === S.lastTheirs.idx;
   return `<div class="reveal">
     <p class="round-label">${roundLabel()}</p>
