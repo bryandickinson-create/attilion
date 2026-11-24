@@ -745,9 +745,9 @@ function repeatsCount() { return S.mode === "solo" || S.mode === "subject" || S.
 /* ---------- Endless Launch ----------
    Prompts never run out, and each prompt hides exactly ONE secret answer that is
    the 1 in Attillion. Everything else tops out just below it. */
-// Never repeat a question within the last 15 you played: questions you haven't seen
+// Never repeat a question within the last 30 you played: questions you haven't seen
 // lately come first (shuffled), then the ones you saw longest ago.
-const NO_REPEAT = 15;
+const NO_REPEAT = 30;
 function freshOrder(ids, r, seenList) {
   ids = ids.slice();
   for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
@@ -790,12 +790,20 @@ function scoreAnswer(prompt, raw, fixed, useRepeats) {
   // common for everyone. Bots and players are scored the same way, so the same
   // answer is worth the same points whoever gives it.
   const used = useRepeats ? timesUsed(prompt, idx) : 0;
-  let sh = share(prompt, idx, fixed);
-  const said = useRepeats ? humanCount(prompt, idx) : 0;
-  if (said) sh = Math.min(prompt.zeroShare, sh * (1 + HUMAN_STEP * said));
+  const sh = share(prompt, idx, fixed);
   const depth = depthFor(sh, prompt);
   const points = sh <= prompt.krillShare ? 100 : Math.max(2, Math.min(97, Math.round(100 * depth / HADAL_DEPTH)));
-  return applyBest(prompt, { raw, idx, display: prompt.answers[idx].display, points, depth, share: sh, zone: zoneFor(depth), valid: true, used });
+  const res = applyBest(prompt, { raw, idx, display: prompt.answers[idx].display, points, depth, share: sh, zone: zoneFor(depth), valid: true, used });
+  // once ANY player has given an answer, it's worth less every time after that
+  const said = useRepeats ? humanCount(prompt, idx) : 0;
+  return said ? usedPenalty(res, said) : res;
+}
+const USED_KEEP = 0.85;   // each earlier time it was given keeps 85% of the points
+function usedPenalty(res, said) {
+  const pts = Math.max(2, Math.floor(res.points * Math.pow(USED_KEEP, said)));
+  if (pts >= res.points) return res;
+  const depth = Math.min(res.depth, Math.round(HADAL_DEPTH * Math.min(99, pts) / 100));
+  return Object.assign({}, res, { points: pts, depth, zone: zoneFor(depth), best: false, saidBefore: said });
 }
 /* The secret BEST answer: every question hides exactly one, picked from its
    1 in Attillion answers, worth 150 points. Never shown until someone finds it.
@@ -972,6 +980,7 @@ const $app = () => document.getElementById("app");
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 function go(view, extra) {
+  if (P && view !== "party") partyLeave();
   if (S.view === "queue" && view !== "queue") queueStop();
   if (S.live && view !== "play" && view !== "results") {
     // walking out of a live match counts as a loss
@@ -1015,7 +1024,7 @@ function hintFor(prompt) {
   let pick;
   if (S.mode === "endless") pick = prompt.answers[endlessSecret(prompt)];
   else {
-    const fixed = fixedRarity(), rep = repeatsCount(), best = bestDisplay(prompt);
+    const fixed = fixedRarity(), rep = true, best = bestDisplay(prompt);
     const good = prompt.answers.filter(a => norm(a.display) !== best && /^[a-z0-9 '\-&.]+$/i.test(a.display) && (() => { try { return scoreAnswer(prompt, a.display, fixed, rep).points >= 100; } catch (e) { return false; } })());
     // point at the secret BEST answer (150 pts) when it fits this question; otherwise a 1 in Attillion
     const bi = matchAnswer(prompt, best);
@@ -1382,10 +1391,10 @@ function reveal() {
   if (S.live) S.theirs[S.round] = liveOppAnswer(S.round);
   const fixed = fixedRarity();
   // score both sides before this answer is counted, so a shared answer is worth the same to both
-  S.lastMine = scoreAnswer(prompt, S.mine[S.round], fixed, repeatsCount());
+  S.lastMine = scoreAnswer(prompt, S.mine[S.round], fixed, true);
   if (S.mode === "endless") S.lastMine = endlessAdjust(prompt, S.lastMine);
   if (S.doubles && S.doubles[S.round] && S.lastMine.valid) S.lastMine = Object.assign({}, S.lastMine, { points: S.lastMine.points * 2, doubled: true });
-  S.lastTheirs = (S.mode === "daily" || S.mode === "mystery" || S.mode === "solo" || S.mode === "subject" || S.mode === "endless" || S.mode === "challenge-host") ? null : scoreAnswer(prompt, S.theirs[S.round], fixed, repeatsCount());
+  S.lastTheirs = (S.mode === "daily" || S.mode === "mystery" || S.mode === "solo" || S.mode === "subject" || S.mode === "endless" || S.mode === "challenge-host") ? null : scoreAnswer(prompt, S.theirs[S.round], fixed, true);
   bumpHuman(prompt, S.lastMine.idx);
   if (repeatsCount()) noteUsed(prompt, S.lastMine.idx);
   if (S.mode !== "daily") { recordAnswer(prompt.id, S.lastMine.idx); }
@@ -1718,13 +1727,16 @@ async function cloudBoard() {
 }
 
 function myElo(u) { u = u === undefined ? me() : u; if (!u) return START_ELO; const k = tierKey(); return k ? ((u[k] && u[k].elo) || START_ELO) : u.elo; }
-function myCard() { const u = me(); return { name: u ? u.name : "Guest pilot", elo: myElo(u), av: myAvatarObj().id, kid: kidMode(), tier: ageMode() }; }
+function myCard() { const u = me(); return { name: u ? u.name : "Guest pilot", elo: myElo(u), av: myAvatarObj().id, kid: kidMode(), tier: ageMode(), seen: recentSeen() }; }
+// the questions this device played most recently (oldest first), so shared games skip them too
+function recentSeen() { return store.get("seenPrompts", []).map(id => id.split("~")[0]).slice(-NO_REPEAT); }
+function cleanSeen(x) { return Array.isArray(x) ? x.filter(id => typeof id === "string" && PROMPT_BY_ID[id]).slice(-NO_REPEAT) : []; }
 function cleanCard(p, field) {   // everything in presence is untrusted
   const q = p && p.presence && p.presence[field];
   if (!q || typeof q !== "object") return null;
   const elo = Math.max(100, Math.min(3500, Math.round(+q.elo) || START_ELO));
   const name = String(q.name || "").replace(/[^\p{L}\p{N} _.-]/gu, "").trim().slice(0, 20) || "Pilot";
-  return { peer: p.peer, name, elo, av: avatarById(String(q.av)) ? String(q.av) : "rocket", t: +q.t || 0, want: typeof q.want === "string" ? q.want : null, kid: !!q.kid, tier: ["little", "big"].includes(q.tier) ? q.tier : q.kid ? "little" : "regular" };
+  return { peer: p.peer, name, elo, av: avatarById(String(q.av)) ? String(q.av) : "rocket", t: +q.t || 0, want: typeof q.want === "string" ? q.want : null, kid: !!q.kid, tier: ["little", "big"].includes(q.tier) ? q.tier : q.kid ? "little" : "regular", seen: cleanSeen(q.seen) };
 }
 function eloWindow(waitMs) { return Math.min(800, 150 + Math.floor(Math.max(0, waitMs) / 5000) * 75); }
 function pairUp(list, now) {
@@ -1852,7 +1864,9 @@ async function liveJoin(opp) {
   L.unsub = mr.onPeers(() => liveCheck(), () => { L.gone = true; liveCheck(); });
   L.poll = setInterval(liveCheck, 500);
   SFX("lock");
-  startMatch({ mode: "live", seed, prompts: pickPrompts(seed), live: L });
+  // skip questions either of you played lately (same list on both sides: a's, then b's)
+  const both = a === q.peer ? recentSeen().concat(opp.seen || []) : (opp.seen || []).concat(recentSeen());
+  startMatch({ mode: "live", seed, prompts: pickSet(seed, both), live: L });
 }
 function livePresence() {
   const L = S.live; if (!L || L.stopped) return;
@@ -1911,9 +1925,9 @@ function header() {
   return `<header class="top">
     <button class="brand" data-go="home" aria-label="Attillion home"><span class="mark" aria-hidden="true"></span>Attillion</button>
     <nav>
-      <button data-go="leaderboard">Leaderboard</button>
+      <button data-go="leaderboard" class="lb-btn" aria-label="Leaderboard"><span aria-hidden="true">🏆</span><span class="lb-t">Leaderboard</span></button>
       <button data-go="avatar" class="avbtn" aria-label="Change your avatar" title="Change your avatar">${myAvatar()}</button>
-      ${kidMode() ? `<span class="kid-chip">🧸 Kid mode</span>` : bigMode() ? `<span class="kid-chip">🎒 Big kid mode</span>` : ""}${u ? `<button data-go="profile" class="chip">${esc(u.name)} · <b>${myElo(u)}</b></button>` : `<button data-go="login" class="chip">Log in</button>`}
+      ${kidMode() ? `<span class="kid-chip" title="Little kid mode">🧸<span class="kc-t"> Kid mode</span></span>` : bigMode() ? `<span class="kid-chip" title="Big kid mode">🎒<span class="kc-t"> Big kid mode</span></span>` : ""}${u ? `<button data-go="profile" class="chip">${esc(u.name)} · <b>${myElo(u)}</b></button>` : `<button data-go="login" class="chip">Log in</button>`}
       ${flameBadge()}
     </nav>
   </header>`;
@@ -1928,7 +1942,6 @@ function viewHome() {
   const box = (cls, attrs, ic, name, sub, tag) => `<button class="hub-box play-box ${cls}" ${attrs}>${tag ? `<span class="pb-tag">${tag}</span>` : ""}<span class="hub-ic" aria-hidden="true">${ic}</span><span class="hub-name">${name}</span><span class="hub-sub">${sub}</span></button>`;
   return `${header()}${tabsBar("modes")}
   <main class="home">
-    ${saveOnlineBanner()}
     <div class="play-grid">
       ${box("pb-quick", `data-act="quick"`, "⚡", "Quick match", "Play a real person near your Elo, right now", `<span id="online">${onlineText()}</span>`)}
       ${done ? box("pb-daily", `data-act="daily-view"`, cal, "Daily Launch", `Done today: ${done.score}. New one at midnight`, (streakNow() ? "🔥 " + streakNow() + " · " : "") + "#" + dailyNumber(key))
@@ -1936,6 +1949,7 @@ function viewHome() {
       ${box("pb-endless", `data-act="endless"`, "♾️", "Endless", "Never-ending prompts, one secret 1 in Attillion each", endlessStats().best ? "Best " + endlessStats().best : "")}
       ${box("pb-solo", `data-act="solo"`, "🎯", "Free Launch", "7 new prompts, beat your high score", soloStats().best ? "Best " + soloStats().best : "")}
       ${kidMode() || bigMode() ? "" : box("pb-subjects", `data-go="subjects"`, "📚", "Subjects", "Sports, movies, history, weather and more", "")}
+      ${box("pb-party", `data-go="party"`, "🎉", "Party", "Lots of players, one code", "New")}
       ${box("pb-friends", `data-go="friends"`, "🤝", "Play a friend", "Send a challenge or enter a code", "")}
       ${box("pb-mystery", `data-go="mystery"`, "🔮", "Mystery topic", myMystery() ? `You scored ${myMystery().points}. See this week's board` : "One surprise question this week. One try.", "Weekly")}
     </div>
@@ -2116,7 +2130,7 @@ function answerCard(label, r, me_) {
       ${norm(r.raw) !== norm(r.display) ? `<p class="matched">you typed “${esc(r.raw)}”</p>` : ""}
       <div class="gauge" aria-hidden="true"><span style="--d:${depthPct.toFixed(1)}%"></span></div>
       <p class="pts"><b>0</b> pts</p>
-      <p class="meta">${r.zone.name} · ${altText(r.depth)} up · ${oneIn(r.share)}</p>${r.used ? `<p class="hint repeat-note">You've said this ${r.used === 1 ? "once" : r.used + " times"} before, so it is worth slightly less now.</p>` : ""}
+      <p class="meta">${r.zone.name} · ${altText(r.depth)} up · ${oneIn(r.share)}</p>${r.saidBefore ? `<p class="hint repeat-note">Players have given this answer ${r.saidBefore === 1 ? "once" : r.saidBefore.toLocaleString() + " times"} before, so it's worth less now.</p>` : ""}
       <p class="played">Played like <b>${perfElo(r.points, 1).toLocaleString()}</b></p>
       ${r.best ? `<p class="best-tag">👑 THE BEST ANSWER · +${BEST_POINTS}</p>${me_ && S.bestUnlock ? `<p class="unlock-note">You found a secret BEST answer and unlocked the secret ${avMarkup(avatarById("bestans"))} <b>Best Answer Diamond</b> avatar! <button class="link" data-go="avatar">Use it</button></p>` : ""}` : ""}
       ${r.points >= 100 ? `<p class="what" data-what="${esc(r.display)}" data-hint="${esc(curHint())}" hidden></p>` : ""}`
@@ -2379,7 +2393,7 @@ function tabsBar(active) {
 // The main menu: four big boxes that fill the screen.
 function saveOnlineBanner() {
   const u = me();
-  return u && !u.cloud ? `<div class="save-online"><span>☁️ <strong>${esc(u.name)}</strong> is only saved on this device. ${esc(CLOUD_MSG || "Save it online to use it on your phone, iPad and computer.")}</span><button class="btn primary small" data-act="save-online">Save online</button></div>` : "";
+  return u && !u.cloud ? `<div class="save-online"><span>☁️ ${CLOUD_MSG ? esc(CLOUD_MSG) : "Only saved on this device."}</span><button class="btn primary small" data-act="save-online">Save online</button></div>` : "";
 }
 function viewHub() {
   return `${header()}<main class="hub">
@@ -2393,7 +2407,7 @@ function viewAvatar() {
   const u = me();
   const peak = u ? u.peak : 0;
   const current = myAvatarObj().e + myAvatarObj().id;
-  return `${header()}${tabsBar("avatar")}<main class="narrow">
+  return `${header()}${tabsBar("avatar")}<main class="narrow av-page">
     <p class="eyebrow">Avatar</p>
     <h1>Your avatar</h1>
     <p class="lede small">This is you on the launch tower. Rarer answers send it higher. New avatars unlock as your best Elo climbs.${u ? ` Your best so far is <b>${peak}</b>.` : ""}</p>
@@ -2470,69 +2484,42 @@ async function fillMoveCode() {
 function moveSection(u) {
   if (!u) return "";
   setTimeout(fillMoveCode, 0);
-  return `<h2>Move my account</h2>
-    <p class="hint">Playing in more than one place, like the Claude app and your phone? Send yourself the move link and tap it on the other device. Or copy the code and paste it under Log in › “Have a move code?”. Your Elo, avatars and progress come with it. Don't share these with anyone else.</p>
-    <details class="move-box"><summary>Show my move link and code</summary>
+  return `<p class="hint">Send yourself the move link and tap it on your other device, or paste the code under Log in › “Have a move code?”. Don't share it with anyone.</p>
+    <div class="move-box">
       <label for="move-link">Move link (easiest: text it to yourself, then tap it on your phone)</label>
       <textarea id="move-link" rows="3" readonly></textarea>
       <button class="btn small" data-act="copy" data-target="move-link">Copy link</button>
       <label for="move-code">Move code</label>
       <textarea id="move-code" rows="3" readonly></textarea>
       <button class="btn small" data-act="copy" data-target="move-code">Copy code</button>
-    </details>`;
+    </div>`;
 }
 function viewSettings() {
   const u = me();
   return `${header()}${tabsBar("settings")}<main class="narrow">
-    <p class="eyebrow">Settings</p>
-    <h1>Settings</h1>
-    <h2>Screen</h2>
-    ${layoutBar()}
-    <p class="hint">Auto fits whatever screen you're on. Pick one to use that layout anywhere. Saved on this device.</p>
-
-    <h2>Question level</h2>
-    <div class="seg-pick" role="group" aria-label="Question level">
+    <h1 class="set-h">Settings</h1>
+    <div class="set-row"><span class="set-l">Level</span><div class="seg-pick" role="group" aria-label="Question level">
       <button data-act="agemode" data-v="little" aria-pressed="${kidMode()}"><span aria-hidden="true">🧸</span>Little kids</button>
       <button data-act="agemode" data-v="big" aria-pressed="${bigMode()}"><span aria-hidden="true">🎒</span>Big kids</button>
       <button data-act="agemode" data-v="regular" aria-pressed="${ageMode() === "regular"}"><span aria-hidden="true">🚀</span>Regular</button>
-    </div>
-    <p class="hint">${kidMode() ? "Easy questions for little kids, no twists, and 1 in Attillions are much easier to find." : bigMode() ? "In between: questions for older kids, no twists, and 1 in Attillions a little easier to find than Regular." : "The full game, with twist rounds."} Little kids and Big kids each get their own Elo, their own Daily Launch and their own leaderboard. Saved on this device.</p>
-
-    <h2>Tour</h2>
-    <p class="hint">Want Dev 👾 to show you around again?</p>
-    <button class="btn small" data-act="tour">Take the tour</button>
-
-    ${moveSection(u)}
-
-    <h2>Timer</h2>
-    <div class="seg-pick" role="group" aria-label="Timer">
-      ${[15, 25, 30, 60].map(n => `<button data-act="timer" data-v="${n}" aria-pressed="${!store.get("untimed", false) && store.get("timerSecs", 30) === n}"><span aria-hidden="true">⏱️</span>${n === 60 ? "1 minute" : n + " seconds"}</button>`).join("")}
-      <button data-act="untimed" data-v="1" aria-pressed="${!!store.get("untimed", false)}"><span aria-hidden="true">∞</span>No timer</button>
-    </div>
-    <p class="hint">Time for each question in every mode except Quick match, which always uses 30 seconds so both players get the same time. Saved on this device.</p>
-
-    <h2>Questions per game</h2>
-    <div class="seg-pick" role="group" aria-label="Questions per game">
-      ${[7, 10].map(n => `<button data-act="rounds" data-v="${n}" aria-pressed="${roundsSetting("solo") === n}">${n} questions</button>`).join("")}
-    </div>
-    <p class="hint">For bots, Free Launch, Subjects and friend challenges. Quick match and the Daily Launch always have 7 questions, so everyone plays the same game. Endless keeps going until you stop. Saved on this device.</p>
-
-    <h2>Endless skips</h2>
-    <div class="seg-pick" role="group" aria-label="Skips per Endless run">
-      ${[[0, "Off"], [3, "3"], [5, "5"], [10, "10"], [-1, "Unlimited"]].map(([v, l]) => `<button data-act="skips" data-v="${v}" aria-pressed="${store.get("endlessSkips", 3) === v}">${l}</button>`).join("")}
-    </div>
-    <p class="hint">How many prompts you can skip in one Endless run. Skipped prompts don't score and don't count as a round. Saved on this device.</p>
-
-    <h2>Sound</h2>
-    <div class="setting-row">
-      <label for="vol">Volume</label>
+    </div></div>
+    <div class="set-row"><span class="set-l">Timer</span><div class="seg-pick" role="group" aria-label="Timer">
+      ${[15, 25, 30, 60].map(n => `<button data-act="timer" data-v="${n}" aria-pressed="${!store.get("untimed", false) && store.get("timerSecs", 30) === n}">${n === 60 ? "1 min" : n + "s"}</button>`).join("")}
+      <button data-act="untimed" data-v="1" aria-pressed="${!!store.get("untimed", false)}">∞</button>
+    </div></div>
+    <div class="set-row"><span class="set-l">Questions</span><div class="seg-pick" role="group" aria-label="Questions per game">
+      ${[7, 10].map(n => `<button data-act="rounds" data-v="${n}" aria-pressed="${roundsSetting("solo") === n}">${n}</button>`).join("")}
+    </div></div>
+    <div class="set-row"><span class="set-l">Endless skips</span><div class="seg-pick" role="group" aria-label="Skips per Endless run">
+      ${[[0, "Off"], [3, "3"], [5, "5"], [10, "10"], [-1, "∞"]].map(([v, l]) => `<button data-act="skips" data-v="${v}" aria-pressed="${store.get("endlessSkips", 3) === v}">${l}</button>`).join("")}
+    </div></div>
+    <div class="set-row"><label class="set-l" for="vol">Volume</label><div class="set-slide">
       <input id="vol" type="range" min="0" max="100" step="5" value="${Math.round((window.KrillionSound ? window.KrillionSound.volume : 0.5) * 100)}">
       <output id="vol-out" for="vol">${Math.round((window.KrillionSound ? window.KrillionSound.volume : 0.5) * 100)}%</output>
       <button class="btn ghost small" data-act="sound-test">Test</button>
-    </div>
-    <p class="hint">Set it to 0% to turn sound off. Saved on this device.</p>
+    </div></div>
 
-    <h2>Question sound</h2>
+    <details class="set-group"${store.get("setOpen-sound", false) ? " open" : ""} data-key="setOpen-sound"><summary>🔊 Question sound</summary>
     <div class="seg-pick" role="group" aria-label="New question sound">
       ${[["off", "Off"], ["chime", "Chime"], ["voice", "Read it out loud"], ["both", "Both"]].map(([v, l]) => `<button data-act="pstyle" data-v="${v}" aria-pressed="${(window.KrillionSound ? window.KrillionSound.promptStyle : "chime") === v}">${l}</button>`).join("")}
     </div>
@@ -2542,15 +2529,23 @@ function viewSettings() {
       <output id="pvol-out" for="pvol">${Math.round((window.KrillionSound ? window.KrillionSound.promptVolume : 0.5) * 100)}%</output>
       <button class="btn ghost small" data-act="pvol-test">Test</button>
     </div>
-    <h3 class="sub-h">🔊 Hear the question button</h3>
+    <p class="set-sub">🔊 button size</p>
     <div class="seg-pick" role="group" aria-label="Button size">
-      ${[["off", "Hide"], ["s", "Small"], ["m", "Medium"], ["l", "Large"], ["xl", "Huge"]].map(([v, l]) => `<button data-act="saysize" data-v="${v}" aria-pressed="${sayBtnSize() === v}">${l}</button>`).join("")}
+      ${[["off", "Hide"], ["s", "S"], ["m", "M"], ["l", "L"], ["xl", "XL"]].map(([v, l]) => `<button data-act="saysize" data-v="${v}" aria-pressed="${sayBtnSize() === v}">${l}</button>`).join("")}
       ${sayBtnSize() !== "off" ? `<button type="button" class="say-btn say-${sayBtnSize()}" data-act="pvol-say" aria-label="Preview">🔊</button>` : ""}
     </div>
-    <p class="hint">The sound plays each time a new question appears, and the 🔊 button next to each question reads it out loud when you tap it. Both use this loudness, so you can make it louder or quieter than the other sounds. Set it to 0% to turn it off. Saved on this device.</p>
+    </details>
+
+    <details class="set-group"${store.get("setOpen-screen", false) ? " open" : ""} data-key="setOpen-screen"><summary>📱 Screen layout</summary>
+    ${layoutBar()}
+    </details>
+
+    ${u ? `<details class="set-group"${store.get("setOpen-move", false) ? " open" : ""} data-key="setOpen-move"><summary>📦 Move my account</summary>${moveSection(u)}</details>` : ""}
+
+    <button class="btn small set-tour" data-act="tour">👾 Take the tour again</button>
 
     ${u ? `
-    <h2>Account</h2>
+    <details class="set-group"${S.renameMsg || S.pwMsg || S.forgotMsg || store.get("setOpen-acct", false) ? " open" : ""} data-key="setOpen-acct"><summary>👤 Username and password</summary>
     <form id="rename-form" class="stack">
       <label for="new-name">New username</label>
       <input id="new-name" required minlength="2" maxlength="20" value="${esc(u.name)}" autocomplete="username">
@@ -2578,6 +2573,7 @@ function viewSettings() {
         <p class="error" role="alert">${esc(S.forgotMsg || "")}</p>
         <button class="btn primary" type="submit">Set new password</button>
       </form>
+    </details>
     </details>` : ""}
   </main>`;
 }
@@ -2753,7 +2749,7 @@ function fillDescriptions() {
 function render() {
   const v = S.view;
   const html = v === "play" ? viewPlay() : v === "results" ? viewResults() : v === "login" ? viewLogin()
-    : v === "mystery" ? viewMystery() : v === "settings" ? viewSettings() : v === "avatar" ? viewAvatar() : v === "bots" ? viewBots() : v === "modes" ? viewHome() : v === "computer" ? viewComputer() : v === "event" ? viewEventBots() : v === "subjects" ? viewSubjects() : v === "friends" ? viewFriends() : v === "profile" ? viewProfile() : v === "leaderboard" ? viewLeaderboard() : v === "join" ? viewJoin()
+    : v === "mystery" ? viewMystery() : v === "settings" ? viewSettings() : v === "avatar" ? viewAvatar() : v === "bots" ? viewBots() : v === "modes" ? viewHome() : v === "party" ? viewParty() : v === "computer" ? viewComputer() : v === "event" ? viewEventBots() : v === "subjects" ? viewSubjects() : v === "friends" ? viewFriends() : v === "profile" ? viewProfile() : v === "leaderboard" ? viewLeaderboard() : v === "join" ? viewJoin()
     : v === "queue" ? viewQueue() : v === "challenge" ? viewChallengeIntro() : v === "reply" ? viewReplyResult() : v === "daily-done" ? viewDailyDone() : viewHub();
   $app().innerHTML = html;
   document.body.dataset.view = v;
@@ -2762,22 +2758,240 @@ function render() {
   if (TOUR) requestAnimationFrame(tourPlace);
 }
 
+
+/* ---------- Party: lots of players, one code ----------
+   The host makes a code; anyone who types it joins the same room. The host's
+   presence carries the game (questions, round, timer, scores) and everyone else
+   follows it. Answers given by more than one player in the same round are split. */
+let P = null;
+const PARTY_ALPHA = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const PARTY_REVEAL_MS = 9000;
+const PARTY_MODES = {
+  classic:   { icon: "🚀", name: "Classic",   desc: "7 questions, 30 seconds each. Players who give the same answer split its points.", n: 7, secs: 30 },
+  lightning: { icon: "⚡", name: "Lightning", desc: "7 questions, only 15 seconds each. Think fast!", n: 7, secs: 15 },
+  marathon:  { icon: "🏃", name: "Marathon",  desc: "12 questions, 30 seconds each. A longer game.", n: 12, secs: 30 },
+  unique:    { icon: "🦄", name: "Be unique", desc: "If anyone else gives your answer, you both get 0. Only one-of-a-kind answers score.", n: 7, secs: 30, unique: true }
+};
+function partyMode(g) { return PARTY_MODES[g && g.mode] || PARTY_MODES.classic; }
+function partyTheme(g) { return g && g.theme ? SUBJECT_BY_KEY[g.theme] || null : null; }
+function newPartyCode() { let c = ""; for (let i = 0; i < 5; i++) c += PARTY_ALPHA[Math.floor(Math.random() * PARTY_ALPHA.length)]; return c; }
+function cleanPartyCode(x) { return String(x || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5); }
+function partyCard() { const c = myCard(); return { name: c.name, av: c.av, seen: c.seen }; }
+function partyPlayers() {
+  if (!P) return [];
+  const out = new Map();
+  (P.room.peers() || []).forEach(p => {
+    const pc = p.presence && p.presence.pc; if (!pc || typeof pc !== "object") return;
+    const name = String(pc.name || "").replace(/[^\p{L}\p{N} _.-]/gu, "").trim().slice(0, 20) || "Pilot";
+    const self = p.peer === P.room.peer || p.sameTab;
+    out.set(self ? P.room.peer : p.peer, { peer: self ? P.room.peer : p.peer, name, av: avatarById(String(pc.av)) ? String(pc.av) : "rocket", host: !!p.presence.host, ans: Array.isArray(p.presence.ans) ? p.presence.ans : [], an: +p.presence.an || 0, seen: cleanSeen(pc.seen), g: p.presence.g, self });
+  });
+  if (!out.has(P.room.peer)) out.set(P.room.peer, { peer: P.room.peer, name: partyCard().name, av: partyCard().av, host: P.host, ans: P.ans, an: P.an, seen: recentSeen(), g: P.host ? P.g : null, self: true });
+  return [...out.values()].sort((a, b) => (b.host - a.host) || a.name.localeCompare(b.name));
+}
+function partyGame() {
+  if (!P) return null;
+  if (P.host) return P.g;
+  const h = partyPlayers().find(p => p.host && !p.self);
+  return h && h.g && typeof h.g === "object" ? h.g : null;
+}
+function partyPush() { if (P) P.room.presence({ pc: partyCard(), host: P.host, g: P.host ? P.g : null, ans: P.ans, an: P.an }).catch(() => {}); }
+async function partyStart(code, host) {
+  partyLeave();
+  const lobby = await getRoom();
+  if (!lobby) throw new Error("offline");
+  const room = await withTimeout(lobby.join("party-" + code), 12000);
+  P = { code, host, room, ans: [], an: 0, g: host ? { st: "lobby", mode: "classic", theme: "", n: 0, prompts: [], r: 0, until: 0, secs: ROUND_SECONDS, sc: {}, ra: {}, names: {} } : null, seenKey: "", bumped: {}, draft: "", joinedAt: Date.now(), hostSeenAt: Date.now() };
+  partyPush();
+  P.timer = setInterval(partyTick, 400);
+  P.unsub = room.onPeers(() => partyTick(), () => {});
+}
+function partyLeave() {
+  if (!P) return;
+  clearInterval(P.timer); try { P.unsub && P.unsub(); } catch (e) {}
+  try { P.room.leave(); } catch (e) {}
+  P = null;
+}
+function partyKey(g) { return g ? g.st + ":" + g.n + ":" + g.r : "none"; }
+function partyTick() {
+  if (!P) return;
+  const now = Date.now(), players = partyPlayers();
+  if (P.host) partyHostStep(players, now);
+  const g = partyGame();
+  if (!P.host) {
+    if (g) P.hostSeenAt = now;
+    else if (now - P.joinedAt > 6000 && now - P.hostSeenAt > 8000) { P.lost = true; }
+  }
+  if (g && g.n !== P.an) { P.an = g.n; P.ans = []; P.draft = ""; P.bumped = {}; partyPush(); }
+  if (g && g.st !== "lobby" && P.seenKey !== g.n + "") { P.seenKey = g.n + ""; markSeen(g.prompts); loadHumanCounts(g.prompts); }
+  if (g && g.st === "q" && P.ans[g.r] == null && now > g.until) { P.ans[g.r] = ""; partyPush(); }
+  if (g && (g.st === "rev" || g.st === "end") && !P.bumped[g.n + ":" + g.r] && P.ans[g.r]) {
+    P.bumped[g.n + ":" + g.r] = true;
+    const pr = PROMPT_BY_ID[g.prompts[g.r]]; const idx = pr ? matchAnswer(pr, P.ans[g.r]) : -1; if (idx >= 0) bumpHuman(pr, idx);
+  }
+  if (g && g.st === "end" && !P.endMarked) { P.endMarked = g.n; markPlayed(); SFX("win"); }
+  if (S.view !== "party") return;
+  const key = (P.lost ? "lost" : partyKey(g)) + "|" + players.length;
+  if (key !== P.lastKey) { P.lastKey = key; const y = window.scrollY; render(); window.scrollTo(0, y); return; }
+  partyLive(g, players, now);
+}
+// the host runs the clock and the scoring
+function partyHostStep(players, now) {
+  const g = P.g; let changed = false;
+  players.forEach(p => { if (g.names[p.peer] !== p.name) { g.names[p.peer] = p.name; changed = true; } });
+  if (g.st === "q") {
+    const all = players.every(p => p.an === g.n && p.ans[g.r] != null);
+    if (all || now > g.until + 1500) {
+      const pr = PROMPT_BY_ID[g.prompts[g.r]];
+      const res = players.map(p => { const raw = p.an === g.n && typeof p.ans[g.r] === "string" ? p.ans[g.r].slice(0, 60) : ""; return { p, raw, r: scoreAnswer(pr, raw, true, true) }; });
+      res.forEach(x => {
+        const k = x.r.valid ? res.filter(y => y.r.valid && y.r.idx === x.r.idx).length : 0;
+        const pts = x.r.valid ? (k > 1 ? (partyMode(g).unique ? 0 : Math.max(1, Math.floor(x.r.points / k))) : x.r.points) : 0;
+        (g.sc[x.p.peer] = g.sc[x.p.peer] || [])[g.r] = pts;
+        (g.ra[x.p.peer] = g.ra[x.p.peer] || [])[g.r] = [x.r.valid ? x.r.display : x.raw ? x.raw : "", x.r.valid && k <= 1 && x.r.points >= 100 ? 1 : 0, k > 1 ? k : 0, x.r.best && k <= 1 ? 1 : 0];
+      });
+      g.st = "rev"; g.until = now + PARTY_REVEAL_MS; changed = true;
+    }
+  } else if (g.st === "rev" && now > g.until) {
+    if (g.r + 1 < g.prompts.length) { g.r++; g.st = "q"; g.until = now + g.secs * 1000; }
+    else g.st = "end";
+    changed = true;
+  }
+  if (changed) partyPush();
+}
+function partyBegin() {
+  if (!P || !P.host) return;
+  const players = partyPlayers();
+  const seed = Math.floor(Math.random() * 2 ** 31);
+  const seen = players.reduce((a, p) => a.concat(p.self ? recentSeen() : p.seen), []);
+  const g = P.g;
+  const m = partyMode(g); g.secs = m.secs;
+  g.n++; g.prompts = pickSet(seed, seen, g.theme && !kidMode() && !bigMode() ? g.theme : null, m.n); g.r = 0; g.st = "q"; g.until = Date.now() + g.secs * 1000; g.sc = {}; g.ra = {};
+  P.endMarked = null; partyPush(); partyTick();
+}
+// the host picks the game mode and theme in the lobby; everyone else sees the choice
+function partySetup(g) {
+  const themes = kidMode() || bigMode() ? [] : [{ key: "", name: "Anything", icon: "🎲" }].concat(SUBJECTS);
+  const m = partyMode(g), th = partyTheme(g);
+  if (!P.host) return `<div class="party-choice"><p><b>${m.icon} ${m.name}</b> · ${th ? `${th.icon} ${esc(th.name)}` : "🎲 Any topic"}</p><p class="hint">${esc(m.desc)}</p></div>`;
+  return `<h2>Game mode</h2>
+    <div class="ks-chips party-opts">${Object.entries(PARTY_MODES).map(([k, x]) => `<button class="ks-chip ${k === (g.mode || "classic") ? "on" : ""}" data-act="party-mode" data-v="${k}" aria-pressed="${k === (g.mode || "classic")}">${x.icon} ${x.name}</button>`).join("")}</div>
+    <p class="hint">${esc(m.desc)}</p>
+    ${themes.length ? `<h2>Theme</h2>
+    <div class="ks-chips party-opts">${themes.map(x => `<button class="ks-chip ${x.key === (g.theme || "") ? "on" : ""}" data-act="party-theme" data-v="${x.key}" aria-pressed="${x.key === (g.theme || "")}">${x.icon} ${esc(x.name)}</button>`).join("")}</div>` : ""}`;
+}
+function partyTotals(g, players) {
+  const ids = new Set(Object.keys(g.sc || {}).concat(players.map(p => p.peer)));
+  return [...ids].map(peer => { const p = players.find(x => x.peer === peer); return { peer, name: (p && p.name) || (g.names && g.names[peer]) || "Pilot", av: p ? p.av : "rocket", here: !!p, self: !!(p && p.self), total: (g.sc[peer] || []).reduce((a, b) => a + (+b || 0), 0) }; })
+    .sort((a, b) => b.total - a.total);
+}
+function partySubmit() {
+  const g = partyGame(); if (!g || g.st !== "q" || P.ans[g.r] != null) return;
+  const input = document.getElementById("party-ans"); const val = (input ? input.value : P.draft).trim();
+  const pr = PROMPT_BY_ID[g.prompts[g.r]];
+  const err = document.getElementById("party-err");
+  if (!val) { if (err) err.textContent = "Type an answer first."; return; }
+  if (matchAnswer(pr, val) < 0) { if (err) err.textContent = `“${val}” isn't on the list for this one. Try another.`; SFX("error"); if (input) input.select(); return; }
+  P.ans[g.r] = val; SFX("lock"); partyPush(); P.lastKey = null; partyTick();
+}
+// timer and who-has-answered, updated without re-rendering (so typing isn't interrupted)
+function partyLive(g, players, now) {
+  if (!g) return;
+  const left = Math.max(0, g.until - now);
+  const c = document.getElementById("party-clock"); if (c) c.textContent = Math.ceil(left / 1000);
+  const ring = document.getElementById("party-ring"); if (ring) ring.style.setProperty("--p", g.st === "q" ? (left / (g.secs * 1000)).toFixed(3) : 1);
+  const nx = document.getElementById("party-next"); if (nx) nx.textContent = Math.ceil(left / 1000);
+  players.forEach(p => { const el = document.querySelector(`[data-pchip="${CSS.escape(p.peer)}"]`); if (el) el.classList.toggle("done", p.an === g.n && p.ans[g.r] != null); });
+}
+function viewParty() {
+  const pg = P ? partyGame() : null, th = partyTheme(pg), md = pg && pg.st !== "lobby" ? partyMode(pg) : null;
+  const head = `${header()}${tabsBar("modes")}<main class="narrow party ${pg && pg.theme ? "pt-" + pg.theme : ""}">${md ? `<p class="party-tags"><span>${md.icon} ${md.name}</span>${th ? `<span>${th.icon} ${esc(th.name)}</span>` : ""}</p>` : ""}`;
+  if (!P) {
+    return `${head}
+      <p class="eyebrow">Party</p>
+      <h1>🎉 Party</h1>
+      <p class="lede small">Play with lots of people at once. One person hosts and gets a code. Everyone else types the code to join.</p>
+      <button class="btn primary big-btn" data-act="party-host">Host a party</button>
+      <form id="party-join" class="stack party-join">
+        <label for="party-code">Have a code?</label>
+        <div class="row"><input id="party-code" maxlength="5" autocomplete="off" autocapitalize="characters" placeholder="ABCDE" value="${esc(S.code || "")}"><button class="btn" type="submit">Join</button></div>
+        <p class="error" role="alert">${esc(S.error || "")}</p>
+      </form>
+    </main>`;
+  }
+  if (P.lost) return `${head}<h1>The party ended</h1><p class="lede small">We couldn't find the host for code <b>${esc(P.code)}</b>. Check the code, or the host may have left.</p><button class="btn primary" data-act="party-leave">Back</button></main>`;
+  const g = partyGame(), players = partyPlayers();
+  const chips = players.map(p => `<span class="pchip ${p.self ? "me" : ""}" data-pchip="${esc(p.peer)}">${avMarkup(avatarById(p.av))} ${esc(p.name)}${p.host ? ` <small>host</small>` : ""}</span>`).join("");
+  if (!g) return `${head}<h1>Joining ${esc(P.code)}…</h1><p class="lede small">Looking for the host.</p><button class="btn ghost" data-act="party-leave">Cancel</button></main>`;
+  if (g.st === "lobby") {
+    return `${head}
+      <p class="eyebrow">Party code</p>
+      <div class="party-code">${esc(P.code)}</div>
+      <p class="hint center">Everyone goes to Play › Party and types this code.</p>
+      <h2>${players.length} player${players.length === 1 ? "" : "s"} here</h2>
+      <div class="pchips">${chips}</div>
+      ${partySetup(g)}
+      ${P.host ? `<button class="btn primary big-btn" data-act="party-begin" ${players.length < 2 ? "disabled" : ""}>${players.length < 2 ? "Waiting for players…" : "Start the game"}</button>` : `<p class="hint">Waiting for the host to start…</p>`}
+      <button class="btn ghost small" data-act="party-leave">Leave party</button>
+    </main>`;
+  }
+  const pr = PROMPT_BY_ID[g.prompts[g.r]];
+  if (g.st === "q") {
+    const mine = P.ans[g.r];
+    return `${head}
+      <div class="party-top"><span>Question ${g.r + 1}/${g.prompts.length}</span><div class="ring small" id="party-ring" style="--p:1"><span id="party-clock">${Math.ceil(Math.max(0, g.until - Date.now()) / 1000)}</span></div></div>
+      <h2 class="prompt">${pr ? promptTitle(pr) : ""}</h2>
+      ${mine != null ? `<p class="party-locked">${mine ? `Locked in: <b>${esc(mine)}</b>` : "Time's up!"}<br><span class="hint">Waiting for everyone else…</span></p>`
+        : `<form id="party-form" class="answer-row"><input id="party-ans" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Your rarest answer" value="${esc(P.draft)}"><button class="btn primary" type="submit">Lock in</button></form><p class="error" id="party-err" role="alert"></p>`}
+      <div class="pchips">${chips}</div>
+    </main>`;
+  }
+  const totals = partyTotals(g, players);
+  if (g.st === "rev") {
+    const rows = totals.map(t => { const a = (g.ra[t.peer] || [])[g.r] || ["", 0, 0, 0]; const pts = (g.sc[t.peer] || [])[g.r] || 0;
+      return `<tr class="${t.self ? "you" : ""}"><td>${avMarkup(avatarById(t.av))} ${esc(t.name)}</td><td>${a[0] ? esc(a[0]) : `<span class="hint">no answer</span>`}${a[3] ? ` <span class="kc-best">👑 BEST</span>` : a[1] ? ` <span class="p-krill">1 in Attillion!</span>` : ""}${a[2] ? ` <span class="p-shared">shared by ${a[2]}</span>` : ""}</td><td class="n">+${pts}</td><td class="n"><b>${t.total}</b></td></tr>`; }).join("");
+    return `${head}
+      <div class="party-top"><span>Question ${g.r + 1}/${g.prompts.length}</span><span class="hint">Next in <b id="party-next">${Math.ceil(Math.max(0, g.until - Date.now()) / 1000)}</b>s</span></div>
+      <h2 class="prompt small">${pr ? promptTitle(pr) : ""}</h2>
+      <div class="table-wrap"><table class="board party-board"><thead><tr><th>Player</th><th>Answer</th><th>Pts</th><th>Total</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <p class="hint">${partyMode(g).unique ? "Be unique: any answer two or more players gave scores 0." : "If two or more players give the same answer, they split its points."}</p>
+    </main>`;
+  }
+  const medals = ["🥇", "🥈", "🥉"];
+  return `${head}
+    <p class="eyebrow">Final results</p>
+    <h1>${totals[0] ? `${esc(totals[0].name)} wins!` : "Game over"}</h1>
+    <ol class="party-final">${totals.map((t, i) => `<li class="${t.self ? "you" : ""}"><span class="pf-m">${medals[i] || i + 1}</span>${avMarkup(avatarById(t.av))} <span class="pf-n">${esc(t.name)}</span><b>${t.total}</b></li>`).join("")}</ol>
+    ${P.host ? `<button class="btn primary big-btn" data-act="party-begin">Play again</button>` : `<p class="hint">The host can start another game.</p>`}
+    <button class="btn ghost small" data-act="party-leave">Leave party</button>
+  </main>`;
+}
+
 /* ---------- welcome tour: Dev 👾 shows a new player around ---------- */
 let TOUR = null, TOUR_NEXT = false;
 const TOUR_STEPS = [
-  { view: "home", text: "Hi, I'm <b>Dev</b>! I help run Attillion. Want a quick tour? It only takes a minute.", first: true },
-  { view: "home", sel: ".hub-modes", text: "<b>Play</b> is where the action is: Quick match against real people, the Daily Launch, Endless, Free Launch, Subjects and challenges for friends." },
-  { view: "home", sel: ".hub-bots", text: "<b>Play bots</b> to practice against the computer. Beat them to raise your Elo. When an event is on, its bots give you event tokens toward a prize avatar." },
-  { view: "home", sel: ".hub-avatar", text: "Pick your <b>avatar</b> here. New ones unlock as your Elo climbs, and some come from badges, events and secret codes. Tap one to see how to get it." },
+  { view: "home", text: "Hi, I'm <b>Dev</b>! I help run Attillion. Want a quick tour? I'll show you where everything is. It takes about a minute.", first: true },
+  { view: "home", sel: ".hub-modes", click: true, text: "Let's start with the fun part. <b>Tap Play</b> to see all the ways to play." },
+  { view: "modes", sel: ".pb-quick", text: "<b>Quick match</b>: get matched with a real player near your Elo. You both answer the same 7 questions at the same time. Win to raise your Elo!" },
+  { view: "modes", sel: ".pb-daily", text: "<b>Daily Launch</b>: the same 7 questions for everyone today, and one try per day. Play every day to keep your streak going and compare scores on the leaderboard." },
+  { view: "modes", sel: ".pb-endless", text: "<b>Endless</b>: the questions never stop. Each one hides one secret 1 in Attillion answer. You can skip a few hard ones. How high can you score?" },
+  { view: "modes", sel: ".pb-solo", text: "<b>Free Launch</b>: 7 fresh questions just for you. Try to beat your high score. It doesn't change your Elo, so it's great for practice." },
+  { view: "modes", sel: ".pb-subjects", text: "<b>Subjects</b>: pick a topic like Sports, Movies, History or Geography, and every question is about that." },
+  { view: "modes", sel: ".pb-party", text: "<b>Party</b>: play with lots of people at once! One person hosts and shares a code. Pick a game mode like Lightning or Be unique, and a theme." },
+  { view: "modes", sel: ".pb-friends", text: "<b>Play a friend</b>: send a friend a challenge. They answer the same questions later, and you find out who won." },
+  { view: "modes", sel: ".pb-mystery", text: "<b>Mystery topic</b>: one surprise question every week, and you only get one try. Make it count!" },
+  { view: "modes", sel: ".menu-back", click: true, text: "Now <b>tap Menu</b> to go back to the main screen." },
+  { view: "home", sel: ".hub-bots", text: "<b>Play bots</b> to practice against the computer, from easy to really tough. Beat them to raise your Elo. During events, special bots give tokens toward a prize avatar." },
+  { view: "home", sel: ".hub-avatar", click: true, text: "Time to pick your look. <b>Tap Avatar</b>." },
   { view: "avatar", sel: () => phoneLayout() ? ".avatars" : ".av-search", swipe: true, text: () => phoneLayout()
       ? "Here are all the avatars. <b>Swipe left and right</b> to flip through them, one per screen. Tap one to learn how to unlock it, or search for one at the top."
       : "Here are all the avatars. <b>Scroll down</b> to see them all, or search for one here. Tap any avatar to learn how to unlock it. On a phone, you <b>swipe sideways</b> through them." },
+  { view: "avatar", sel: ".menu-back", click: true, text: "Great! <b>Tap Menu</b> to head back." },
   { view: "home", sel: ".hub-settings", text: "<b>Settings</b> has the timer, question level (Little kids, Big kids or Regular), sound, and Move my account." },
   { view: "home", sel: 'header [data-go="leaderboard"]', text: "The <b>Leaderboard</b> shows the top players everywhere. Climb it!" },
-  { view: "home", sel: "header .chip", text: "This is <b>you</b>. Tap it for your profile: your Elo, badges, and every 1 in Attillion you've found." },
+  { view: "home", sel: "header .chip", text: "This is <b>you</b>. Tap it any time for your profile: your Elo, badges, and every 1 in Attillion you've found." },
   { view: "home", sel: "header .streak-flame", text: "Finish one game a day to light your <b>flame</b>. The number is how many days in a row you've played." },
-  { view: "modes", sel: ".pb-daily", text: "The <b>Daily Launch</b> is the same 7 questions for everyone today. Come back tomorrow for new ones." },
-  { view: "modes", text: "Here's the secret: every question has hundreds of right answers. Common answers score a little. Rare ones score more. Find one almost nobody thinks of and it's <b>1 in Attillion</b>: 100 points! Good luck, pilot.", last: true }
+  { view: "home", text: "Here's the secret to winning: every question has hundreds of right answers. Common answers score a little. Rare ones score more. Find one almost nobody thinks of and it's <b>1 in Attillion</b>: 100 points! Good luck, pilot.", last: true }
 ];
 function tourStart() { TOUR = { i: 0 }; tourShow(); }
 function tourEnd() {
@@ -2803,7 +3017,7 @@ function tourPlace() {
   let o = document.getElementById("tour");
   if (!o) { o = document.createElement("div"); o.id = "tour"; document.body.appendChild(o); }
   const n = TOUR_STEPS.length;
-  o.innerHTML = `<div class="tour-hole" id="tour-hole"></div>
+  o.innerHTML = `<div class="tour-block" data-b="t"></div><div class="tour-block" data-b="b"></div><div class="tour-block" data-b="l"></div><div class="tour-block" data-b="r"></div><div class="tour-hole" id="tour-hole"></div>
     <div class="tour-bubble" id="tour-bubble" role="dialog" aria-label="Welcome tour">
       <div class="tour-dev" aria-hidden="true">👾</div>
       <div class="tour-body">
@@ -2812,17 +3026,24 @@ function tourPlace() {
         ${st.swipe && phoneLayout() ? `<div class="tour-swipe" aria-hidden="true"><span>👆</span></div>` : ""}
         <div class="tour-btns">
           ${st.first ? `<button class="btn ghost small" data-tour="skip">No thanks</button><button class="btn primary small" data-tour="next">Show me around</button>`
-            : `${st.last ? "" : `<button class="link tour-skip" data-tour="skip">Skip tour</button>`}<button class="btn ghost small" data-tour="back">Back</button><button class="btn primary small" data-tour="next">${st.last ? "Let's play!" : "Next"}</button>`}
+            : `${st.last ? "" : `<button class="link tour-skip" data-tour="skip">Skip tour</button>`}<button class="btn ghost small" data-tour="back">Back</button>${st.click ? `<span class="tour-tap">👆 Tap the glowing button</span>` : `<button class="btn primary small" data-tour="next">${st.last ? "Let's play!" : "Next"}</button>`}`}
         </div>
       </div>
     </div>`;
   const hole = document.getElementById("tour-hole"), bub = document.getElementById("tour-bubble");
   const el = st.sel && document.querySelector(typeof st.sel === "function" ? st.sel() : st.sel);
+  if (st.sel && !el && !st.last) { TOUR.i++; tourShow(); return; }   // e.g. Subjects is hidden in kid levels
+  o.classList.toggle("clickable", !!st.click);
   if (el) {
     el.scrollIntoView({ block: "center", behavior: "instant" });
     const r = el.getBoundingClientRect(), pad = 8;
     Object.assign(hole.style, { left: r.left - pad + "px", top: r.top - pad + "px", width: r.width + pad * 2 + "px", height: r.height + pad * 2 + "px" });
     hole.classList.remove("none");
+    const L = r.left - pad, T = r.top - pad, R = r.right + pad, B = r.bottom + pad, bl = k => o.querySelector(`[data-b="${k}"]`).style;
+    Object.assign(bl("t"), { left: 0, top: 0, width: "100vw", height: Math.max(0, T) + "px" });
+    Object.assign(bl("b"), { left: 0, top: B + "px", width: "100vw", height: Math.max(0, innerHeight - B) + "px" });
+    Object.assign(bl("l"), { left: 0, top: T + "px", width: Math.max(0, L) + "px", height: (B - T) + "px" });
+    Object.assign(bl("r"), { left: R + "px", top: T + "px", width: Math.max(0, innerWidth - R) + "px", height: (B - T) + "px" });
     const bw = Math.min(360, innerWidth - 24), bh = bub.offsetHeight;
     let top = r.bottom + 16; if (top + bh > innerHeight - 12) top = Math.max(12, r.top - bh - 16);
     if (top + bh > innerHeight - 12) top = Math.max(12, innerHeight - bh - 12);
@@ -2830,11 +3051,17 @@ function tourPlace() {
     Object.assign(bub.style, { width: bw + "px", left: left + "px", top: top + "px", transform: "none" });
   } else {
     hole.classList.add("none");
+    o.querySelectorAll(".tour-block").forEach(x => Object.assign(x.style, { left: 0, top: 0, width: "100vw", height: "100vh" }));
     Object.assign(hole.style, { left: "50%", top: "50%", width: "0px", height: "0px" });
     Object.assign(bub.style, { width: Math.min(380, innerWidth - 24) + "px", left: "50%", top: "50%", transform: "translate(-50%,-50%)" });
   }
 }
 document.addEventListener("click", e => {
+  if (TOUR && !e.target.closest("[data-tour]")) {
+    const st = TOUR_STEPS[TOUR.i], sel = st.click && st.sel && (typeof st.sel === "function" ? st.sel() : st.sel);
+    if (sel && e.target.closest(sel)) { const i = TOUR.i; setTimeout(() => { if (TOUR && TOUR.i === i) { TOUR.i++; tourShow(); } }, 60); }
+    return;
+  }
   const b = e.target.closest("[data-tour]"); if (!b || !TOUR) return;
   e.stopPropagation();
   const a = b.dataset.tour;
@@ -2920,6 +3147,13 @@ document.addEventListener("click", async e => {
   else if (act === "tab") { S.tab = t.dataset.tab; render(); }
   else if (act === "auth-mode") go("login", { mode: t.dataset.m });
   else if (act === "tour") { go("home"); setTimeout(tourStart, 200); }
+  else if (act === "party-host") {
+    const code = newPartyCode();
+    try { await partyStart(code, true); go("party"); } catch (err) { partyLeave(); go("party", { error: "Couldn't reach the party server. Check your internet and try again." }); }
+  }
+  else if (act === "party-begin") partyBegin();
+  else if ((act === "party-mode" || act === "party-theme") && P && P.host) { P.g[act === "party-mode" ? "mode" : "theme"] = t.dataset.v; partyPush(); render(); }
+  else if (act === "party-leave") { partyLeave(); go("party"); }
   else if (act === "save-online") { const u = me(); if (u) go("login", { mode: "login", prefill: u.name, error: "" }); }
   else if (act === "logout") { cloudSignOut(); store.set("session", null); go("home"); }
   else if (act === "copy") {
@@ -3080,6 +3314,12 @@ document.addEventListener("submit", async e => {
     rec.hash = await hashPw(rec.name, a); saveUsers(all); store.set("session", rec.name);
     SFX("lock"); go("profile");
   }
+  else if (e.target.id === "party-join") {
+    const code = cleanPartyCode(document.getElementById("party-code").value);
+    if (code.length < 5) { go("party", { code, error: "Party codes have 5 letters and numbers." }); return; }
+    try { await partyStart(code, false); go("party"); } catch (err) { partyLeave(); go("party", { code, error: "Couldn't reach the party server. Check your internet and try again." }); }
+  }
+  else if (e.target.id === "party-form") partySubmit();
   else if (e.target.id === "move-form") {
     await importMove(document.getElementById("move-in").value);
   }
@@ -3112,9 +3352,10 @@ document.addEventListener("input", e => {
     window.KrillionSound.volume = +e.target.value / 100;
     const o = document.getElementById("vol-out"); if (o) o.textContent = e.target.value + "%";
   }
+  if (e.target.id === "party-ans" && P) { P.draft = e.target.value; const err = document.getElementById("party-err"); if (err) err.textContent = ""; }
   if (e.target.id === "answer") { const err = document.getElementById("answer-error"); if (err) err.textContent = ""; e.target.classList.remove("nope"); }
 });
-document.addEventListener("toggle", e => { if (e.target && e.target.id === "krill-fold") store.set("krillFold", !e.target.open); }, true);
+document.addEventListener("toggle", e => { if (e.target && e.target.id === "krill-fold") store.set("krillFold", !e.target.open); if (e.target && e.target.dataset && e.target.dataset.key) store.set(e.target.dataset.key, e.target.open); }, true);
 document.addEventListener("keydown", e => {
   if (e.key === "Enter" && S.view === "play" && S.phase === "reveal" && document.activeElement && document.activeElement.tagName !== "BUTTON") { e.preventDefault(); nextRound(); }
 });
@@ -3129,7 +3370,7 @@ function fromHash() {
 }
 
 // test hook
-window.Krillion = { loadHumanCounts, humanCount, getRoom, awardTokens, EVENT, PROMPTS, BASES, pickSet, noteUsed, state: () => S, scoreAnswer, matchAnswer, pickPrompts, dailyPrompts, endlessQueue, depthFor, botAnswer, BOTS, todayKey };
+window.Krillion = { go: v => go(v), party: () => P, loadHumanCounts, humanCount, getRoom, awardTokens, EVENT, PROMPTS, BASES, pickSet, noteUsed, state: () => S, scoreAnswer, matchAnswer, pickPrompts, dailyPrompts, endlessQueue, depthFor, botAnswer, BOTS, todayKey };
 
 if (!fromHash()) render();
 setTimeout(cloudPull, 500);
