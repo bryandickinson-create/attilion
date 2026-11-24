@@ -1006,7 +1006,7 @@ body.gkb-on{padding-bottom:250px !important}
 .rover-boost{display:block;color:#ffc93c;font-weight:700}
 </style></head><body>
 <div id="app"></div>
-<script>window.ATT_BUILD='0d5c898c98'</script>
+<script>window.ATT_BUILD='463c0a11c3'</script>
 <script>
 /* Attillion prompt bank.
  * GUESS: rarity comes from the ORDER of each answer list. Answers are written
@@ -1922,6 +1922,18 @@ const SEASON_PRICE = 40;
     own.concat(classic).forEach(a => AVATARS.splice(AVATARS.findIndex(x => x.dev), 0, a));
   });
 })();
+/* Avatar page order: avatars that look the same (same emoji) sit together, in the
+ * order normal, gold, diamond, rainbow, perfect, then seasonal (most recent season first). */
+const MUT_ORDER = { gold: 1, diamond: 2, rainbow: 3, perfect: 4 };
+function seasonAgo(k) {   // months since this season was last on (0 = on now)
+  const m = new Date().getMonth() + 1;
+  return Math.min(...AV_SEASONS[k].months.map(x => (m - x + 12) % 12));
+}
+function mutRank(a) { return !a.mut ? 0 : MUT_ORDER[a.mut] || (AV_SEASONS[a.mut] ? 10 + seasonAgo(a.mut) : 0); }
+function avGrouped(list) {
+  const first = {}; AVATARS.forEach((a, i) => { if (first[a.e] === undefined) first[a.e] = i; });
+  return list.map((a, i) => ({ a, g: first[a.e], r: mutRank(a), i })).sort((x, y) => x.g - y.g || x.r - y.r || x.i - y.i).map(x => x.a);
+}
 function mutName(m) { return m === "perfect" ? "Perfect" : AV_VARIANTS[m] ? AV_VARIANTS[m].name : AV_SEASONS[m] ? AV_SEASONS[m].name : ""; }
 function mutTag(a) { return a && a.mut ? ` <i class="mut mut-${a.mut}">${mutName(a.mut)}</i>` : ""; }
 function seasonNow() { const m = new Date().getMonth() + 1; return Object.keys(AV_SEASONS).find(k => AV_SEASONS[k].months.includes(m)) || null; }
@@ -4482,7 +4494,7 @@ function viewAvatar() {
     <p class="av-swipe-hint">Swipe to see every avatar · tap one to learn how to get it</p>
     <p class="hint av-none" id="av-none" hidden>No avatars match that search.</p>
     <div class="avatars">
-      ${AVATARS.filter(a => a.ev ? (isOpen(a, u) || a.ev === EVENT.key) : ((!a.code && !a.perfect && !a.bestAv && !a.shop && !a.sb) || isOpen(a, u))).map(a => {
+      ${avGrouped(AVATARS.filter(a => a.ev ? (isOpen(a, u) || a.ev === EVENT.key) : ((!a.code && !a.perfect && !a.bestAv && !a.shop && !a.sb) || isOpen(a, u)))).map(a => {
         const open = isOpen(a, u);
         const sel = a.e + a.id === current;
         const tip = (avDesc(a) ? avDesc(a) + " " : "") + avHow(a, open);
