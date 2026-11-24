@@ -360,6 +360,11 @@ const ROVER_CODE = 1033073137;       // ROVERJACKPOT: for 20 minutes, half of al
 const ROVER_MINS = 20;
 function roverBoostLeft() { return Math.max(0, store.get("roverBoostUntil", 0) - Date.now()); }
 function roverBoostOn() { return !!S.roverBoost && S.mode === "bot" && S.level === "rover"; }   // set when the match starts, so it lasts the whole game
+const POWER_HOUR_CODE = 1478332066;  // POWERHOUR: only in the first 15 minutes of an hour, 2 in 3 answers vs any bot are a 1 in Attillion, until :15
+const STOP_CODE = 2464494451;        // STOP: turns off ROVERJACKPOT and POWERHOUR
+function powerHourLeft() { return Math.max(0, store.get("powerHourUntil", 0) - Date.now()); }
+// share of answers that are forced to be a 1 in Attillion right now (0 = normal)
+function krillBoost() { return S.mode === "bot" && powerHourLeft() > 0 ? 2 / 3 : roverBoostOn() ? 1 / 2 : 0; }
 const POWER_RESET_CODE = 2919067109; // lets BOLTCACHE58 be used again today
 const POWER_CODE = 3522492995; // +3 of each power-up, once a day
 const BUNDLES = [
@@ -860,7 +865,8 @@ function scoreAnswer(prompt, raw, fixed, useRepeats) {
   const depth = depthFor(sh, prompt);
   let points = sh <= prompt.krillShare ? 100 : Math.max(2, Math.min(97, Math.round(100 * depth / HADAL_DEPTH)));
   let dep = depth;
-  if (roverBoostOn() && hashStr("rover:" + (prompt.baseId || prompt.id) + ":" + norm(prompt.answers[idx].display)) % 2 === 0) { points = 100; dep = Math.max(depth, HADAL_DEPTH); }
+  const kb = krillBoost();
+  if (kb && (hashStr("boost:" + (prompt.baseId || prompt.id) + ":" + norm(prompt.answers[idx].display)) % 600) < kb * 600) { points = 100; dep = Math.max(depth, HADAL_DEPTH); }
   else if (points >= 100 && !isKrill(prompt, idx)) { points = 88 + (hashStr("near:" + norm(prompt.answers[idx].display)) % 10); dep = Math.round(HADAL_DEPTH * points / 100); }   // rare, but not one of the few 1 in Attillions
   const res = applyBest(prompt, { raw, idx, display: prompt.answers[idx].display, points, depth: dep, share: sh, zone: zoneFor(dep), valid: true, used });
   // once ANY player has given an answer, it's worth less every time after that
@@ -3515,6 +3521,21 @@ document.addEventListener("submit", async e => {
       });
       SFX("win");
       go("avatar", { codeMsg: `+Elo boost! Your ${k === "kid" ? "Kid " : k === "big" ? "Big kid " : ""}Elo is now ${myElo()} (it stops at ${ELO_BOOST_CAP}).` });
+      return;
+    }
+    if (h === STOP_CODE) {
+      const was = roverBoostLeft() || powerHourLeft();
+      store.set("roverBoostUntil", 0); store.set("powerHourUntil", 0);
+      go("avatar", { codeMsg: was ? "🛑 Stopped. Rover jackpot and Power hour are off, so 1 in Attillions are back to normal." : "Nothing to stop. No boost codes are on." });
+      return;
+    }
+    if (h === POWER_HOUR_CODE) {
+      const d = new Date();
+      if (d.getMinutes() >= 15) { SFX("error"); go("avatar", { codeMsg: `⏰ Power hour only works in the first 15 minutes of an hour. Try again at ${new Date(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours() + 1).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.` }); return; }
+      const until = new Date(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), 15).getTime();
+      store.set("powerHourUntil", until);
+      SFX("win");
+      go("avatar", { codeMsg: `⚡ Power hour! Until ${new Date(until).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}, 2 out of 3 answers against bots are a 1 in Attillion.` });
       return;
     }
     if (h === ROVER_CODE) {
