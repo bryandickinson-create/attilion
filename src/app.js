@@ -356,6 +356,10 @@ function viewEventCard() {
 // Bundle codes unlock a whole group at once.
 const ELO_BOOST_CAP = 2000;
 const ELO_BOOST_CODE = 3265732527;
+const ROVER_CODE = 1033073137;       // ROVERJACKPOT: for 20 minutes, half of all answers vs Rover are a 1 in Attillion
+const ROVER_MINS = 20;
+function roverBoostLeft() { return Math.max(0, store.get("roverBoostUntil", 0) - Date.now()); }
+function roverBoostOn() { return !!S.roverBoost && S.mode === "bot" && S.level === "rover"; }   // set when the match starts, so it lasts the whole game
 const POWER_RESET_CODE = 2919067109; // lets BOLTCACHE58 be used again today
 const POWER_CODE = 3522492995; // +3 of each power-up, once a day
 const BUNDLES = [
@@ -856,7 +860,8 @@ function scoreAnswer(prompt, raw, fixed, useRepeats) {
   const depth = depthFor(sh, prompt);
   let points = sh <= prompt.krillShare ? 100 : Math.max(2, Math.min(97, Math.round(100 * depth / HADAL_DEPTH)));
   let dep = depth;
-  if (points >= 100 && !isKrill(prompt, idx)) { points = 88 + (hashStr("near:" + norm(prompt.answers[idx].display)) % 10); dep = Math.round(HADAL_DEPTH * points / 100); }   // rare, but not one of the few 1 in Attillions
+  if (roverBoostOn() && hashStr("rover:" + (prompt.baseId || prompt.id) + ":" + norm(prompt.answers[idx].display)) % 2 === 0) { points = 100; dep = Math.max(depth, HADAL_DEPTH); }
+  else if (points >= 100 && !isKrill(prompt, idx)) { points = 88 + (hashStr("near:" + norm(prompt.answers[idx].display)) % 10); dep = Math.round(HADAL_DEPTH * points / 100); }   // rare, but not one of the few 1 in Attillions
   const res = applyBest(prompt, { raw, idx, display: prompt.answers[idx].display, points, depth: dep, share: sh, zone: zoneFor(dep), valid: true, used });
   // once ANY player has given an answer, it's worth less every time after that
   const said = useRepeats ? humanCount(prompt, idx) : 0;
@@ -1350,7 +1355,7 @@ function startMatch(opts) {
   if (opts.mode !== "endless") markSeen(prompts);
   loadHumanCounts(prompts);
   go("play", {
-    mode: opts.mode, level: opts.level, seed, prompts, round: 0,
+    mode: opts.mode, level: opts.level, seed, prompts, round: 0, roverBoost: opts.mode === "bot" && opts.level === "rover" && roverBoostLeft() > 0,
     mine: [], theirs: opts.theirsRaw ? opts.theirsRaw.slice() : [],
     opp: opts.opp || null, live: opts.live || null, challenge: opts.challenge || null, dailyKey: opts.dailyKey || null, cat: opts.cat || null,
     phase: "answer", rounds: opts.mode === "endless" ? ROUNDS : prompts.length
@@ -2235,7 +2240,7 @@ function viewBots() {
 }
 const BOT_COLORS = ["#8fd8ff", "#7aa2ff", "#5fe08a", "#ffc93c", "#ff8a4c", "#ff5fa2", "#a58bff", "#e86bff"];
 function botBox(k, b, i, extra) {
-  return `<button class="hub-box play-box bot-box bot-${k}" data-act="bot" data-level="${k}" style="--hc:${BOT_COLORS[i % BOT_COLORS.length]}"><span class="pb-tag">${b.elo} Elo</span><span class="hub-ic" aria-hidden="true">${b.av || "🤖"}</span><span class="hub-name">${esc(b.name)}</span><span class="hub-sub">${esc(b.blurb)}${extra || ""}</span></button>`;
+  return `<button class="hub-box play-box bot-box bot-${k}" data-act="bot" data-level="${k}" style="--hc:${BOT_COLORS[i % BOT_COLORS.length]}"><span class="pb-tag">${b.elo} Elo</span><span class="hub-ic" aria-hidden="true">${b.av || "🤖"}</span><span class="hub-name">${esc(b.name)}</span><span class="hub-sub">${esc(b.blurb)}${extra || ""}${k === "rover" && roverBoostLeft() ? `<b class="rover-boost"> 🛻 Jackpot: ${Math.ceil(roverBoostLeft() / 60000)} min left</b>` : ""}</span></button>`;
 }
 function viewComputer() {
   const u = me();
@@ -3512,6 +3517,13 @@ document.addEventListener("submit", async e => {
       go("avatar", { codeMsg: `+Elo boost! Your ${k === "kid" ? "Kid " : k === "big" ? "Big kid " : ""}Elo is now ${myElo()} (it stops at ${ELO_BOOST_CAP}).` });
       return;
     }
+    if (h === ROVER_CODE) {
+      const until = Date.now() + ROVER_MINS * 60000;
+      store.set("roverBoostUntil", until);
+      SFX("win");
+      go("avatar", { codeMsg: `🛻 Rover jackpot! For the next ${ROVER_MINS} minutes (until ${new Date(until).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}), half of all answers against Rover are a 1 in Attillion.` });
+      return;
+    }
     if (h === POWER_RESET_CODE) {
       if (ugGet("powerCodeDay", "") !== todayKey()) { go("avatar", { codeMsg: "Your power-up code is already ready. Go use it!" }); return; }
       ugSet("powerCodeDay", () => "", "");
@@ -3729,7 +3741,7 @@ function kbSync() {
 }
 new MutationObserver(() => kbSync()).observe(document.getElementById("app"), { childList: true, subtree: true });
 
-window.Krillion = { isKrill, kbSuggest, go: v => go(v), party: () => P, loadHumanCounts, humanCount, getRoom, awardTokens, EVENT, PROMPTS, BASES, pickSet, noteUsed, state: () => S, scoreAnswer, matchAnswer, pickPrompts, dailyPrompts, endlessQueue, depthFor, botAnswer, BOTS, todayKey };
+window.Krillion = { promptById: id => PROMPT_BY_ID[id], isKrill, kbSuggest, go: v => go(v), party: () => P, loadHumanCounts, humanCount, getRoom, awardTokens, EVENT, PROMPTS, BASES, pickSet, noteUsed, state: () => S, scoreAnswer, matchAnswer, pickPrompts, dailyPrompts, endlessQueue, depthFor, botAnswer, BOTS, todayKey };
 
 if (!fromHash()) render();
 setTimeout(cloudPull, 500);
