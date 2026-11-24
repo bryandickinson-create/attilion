@@ -91,31 +91,65 @@ const AV_DESC = {
   star: "You're officially a star. Keep shining.",
   sun: "So bright the other players need sunglasses.",
   galaxy: "Swirls of stardust for a player who's seen a lot of sky.",
-  hole: "Nothing escapes its pull, not even the rarest answer. The top Elo avatar.",
-  k10: "Earned by finding ten 1 in Attillions. Your first streak across the sky.",
-  k20: "Earned by finding twenty 1 in Attillions. You've blocked out the sun.",
-  gdragon: "Earned by finding fifty 1 in Attillions. Glows solid gold.",
-  rdragon: "Earned by finding a hundred 1 in Attillions. Shimmers through every color.",
-  k1000: "Earned by finding a thousand 1 in Attillions. Royalty of the rare answer, with its own crown animation.",
-  streak7: "Play the Daily Launch 7 days in a row. Flickers like a real flame, with a wall-of-fire animation.",
-  streak30: "Play the Daily Launch 30 days in a row. A whole month of sunshine, with the same fire animation.",
-  allbadges: "Collect all 16 badges. A spinning golden trophy for the ultimate Attillion player.",
-  perfect: "Secret. Make every answer in one game a 1 in Attillion. Shifts between purple, green and blue.",
-  bestans: "Secret. Find a question's hidden BEST answer. Sparkles with its own diamond animation.",
-  alien: "Secret. Visiting from a galaxy far, far away to play one round.",
-  ufo: "Secret. Spotted hovering over the leaderboard late at night.",
-  spacedog: "Secret. A very good dog who has been to space and back.",
-  cheese: "Secret. Proof that the moon really is made of cheese.",
-  saturn: "Secret. The planet with the fanciest rings in the solar system.",
-  dev: "Secret developer code. The original builder's badge, with a full-screen takeover animation.",
-  gdev: "Secret developer code. Dipped in gold, with a golden takeover animation.",
-  rdev: "Secret developer code. Cycles through the rainbow, with a rainbow takeover animation."
+  hole: "Nothing escapes its pull, not even the rarest answer.",
+  k10: "Your first streak across the sky.",
+  k20: "You've blocked out the sun.",
+  gdragon: "Glows solid gold.",
+  rdragon: "Shimmers through every color.",
+  k1000: "Royalty of the rare answer, with its own crown animation.",
+  streak7: "Flickers like a real flame, with a wall-of-fire animation.",
+  streak30: "A whole month of sunshine, with the same fire animation.",
+  allbadges: "A spinning golden trophy for the ultimate Attillion player.",
+  perfect: "Shifts between purple, green and blue.",
+  bestans: "Sparkles with its own diamond animation.",
+  alien: "Visiting from a galaxy far, far away to play one round.",
+  ufo: "Spotted hovering over the leaderboard late at night.",
+  spacedog: "A very good dog who has been to space and back.",
+  cheese: "Proof that the moon really is made of cheese.",
+  saturn: "The planet with the fanciest rings in the solar system.",
+  dev: "The original builder's badge, with a full-screen takeover animation.",
+  gdev: "Dipped in gold, with a golden takeover animation.",
+  rdev: "Cycles through the rainbow, with a rainbow takeover animation."
 };
 function avDesc(a) {
   if (AV_DESC[a.id]) return AV_DESC[a.id];
-  if (a.ev) { const ev = findEvent(a.ev); return ev ? `Event prize from ${ev.name}. Collect ${EVENT_GOAL} ${ev.tokenName} ${ev.token} while the event is on to keep it forever.` : "Event prize."; }
+  if (a.ev) { const ev = findEvent(a.ev); return ev ? `The prize from the ${ev.name} event.` : "An event prize."; }
   return "";
 }
+// how you got it (or how to get it)
+function avHow(a, open) {
+  const ev = a.ev ? findEvent(a.ev) : null;
+  const how = a.elo === 0 ? "Everyone starts with this one."
+    : a.krill ? `Find ${a.krill.toLocaleString()} answers that are a 1 in Attillion.`
+    : a.streak ? `Play the Daily Launch ${a.streak} days in a row.`
+    : a.allBadges ? `Earn all ${BADGES.length} badges.`
+    : a.perfect ? "Make every answer in one game a 1 in Attillion (or use its secret code)."
+    : a.bestAv ? "Find a question's hidden BEST answer (or use its secret code)."
+    : a.ev ? `Collect ${EVENT_GOAL} ${ev ? ev.tokenName + " " + ev.token : "tokens"} by playing the event bots while ${ev ? ev.name : "the event"} is on.`
+    : a.code ? (a.dev ? "Typed in a secret developer code." : "Typed in a secret code.")
+    : `Reach a best Elo of ${a.elo}.`;
+  return open ? (a.elo === 0 ? how : "You unlocked it: " + how.charAt(0).toLowerCase() + how.slice(1)) : "How to get it: " + how;
+}
+function avLock(a) { return a.krill ? `🔒 ${a.krill} Attillions` : a.ev ? `🔒 ${EVENT_GOAL} ${EVENT.token}` : a.streak ? `🔒 ${a.streak}-day streak` : a.allBadges ? `🔒 All ${BADGES.length} badges` : `🔒 ${a.elo} Elo`; }
+function showAvInfo(id) {
+  const a = AVATARS.find(x => x.id === id); if (!a) return;
+  const u = me(), open = isOpen(a, u), sel = a.id === myAvatarObj().id;
+  closeAvInfo();
+  const el = document.createElement("div");
+  el.className = "av-sheet"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", a.name);
+  el.innerHTML = `<div class="avs-card">
+    <button class="avs-x" data-act="avinfo-close" aria-label="Close">✕</button>
+    <div class="avs-e">${avMarkup(a)}</div>
+    <h2>${esc(a.name)}${a.dev ? ` <i class="devtag">DEV</i>` : a.code || a.perfect || a.bestAv ? ` <i class="secrettag">secret</i>` : a.ev ? ` <i class="secrettag">event</i>` : ""}</h2>
+    ${avDesc(a) ? `<p class="avs-desc">${esc(avDesc(a))}</p>` : ""}
+    <p class="avs-how ${open ? "got" : ""}">${esc(avHow(a, open))}</p>
+    ${open ? `<p class="avs-stars">⭐ ${(avKrill(u)[a.id] || 0).toLocaleString()} 1 in Attillions found wearing it</p>` : ""}
+    ${open ? (sel ? `<p class="avs-sel">This is your avatar right now</p>` : `<button class="btn primary" data-act="avatar" data-id="${a.id}">Use this avatar</button>`) : `<p class="avs-lock">${avLock(a)}</p>`}
+  </div>`;
+  el.addEventListener("click", e => { if (e.target === el) closeAvInfo(); });
+  document.body.appendChild(el);
+}
+function closeAvInfo() { document.querySelectorAll(".av-sheet").forEach(x => x.remove()); }
 
 /* ---------- seasonal events ----------
  * Every two weeks a new event starts, themed to the time of year. It brings three
@@ -2327,16 +2361,19 @@ function viewAvatar() {
     <h1>Your avatar</h1>
     <p class="lede small">This is you on the launch tower. Rarer answers send it higher. New avatars unlock as your best Elo climbs.${u ? ` Your best so far is <b>${peak}</b>.` : ""}</p>
     ${u ? "" : `<p class="hint"><button class="link" data-go="login">Log in</button> to earn Elo and unlock more avatars.</p>`}
+    <div class="av-search"><input id="av-search" type="search" placeholder="🔍 Search avatars" autocomplete="off" aria-label="Search avatars"></div>
+    <p class="av-swipe-hint">Swipe to see every avatar · tap one to learn how to get it</p>
+    <p class="hint av-none" id="av-none" hidden>No avatars match that search.</p>
     <div class="avatars">
       ${AVATARS.filter(a => a.ev ? (isOpen(a, u) || a.ev === EVENT.key) : ((!a.code && !a.perfect && !a.bestAv) || isOpen(a, u))).map(a => {
         const open = isOpen(a, u);
         const sel = a.e + a.id === current;
-        return `<button class="avatar ${sel ? "on" : ""}" ${open ? `data-act="avatar" data-id="${a.id}"` : "disabled"} aria-pressed="${sel}">
+        const tip = (avDesc(a) ? avDesc(a) + " " : "") + avHow(a, open);
+        return `<button class="avatar ${sel ? "on" : ""} ${open ? "" : "locked"}" data-act="avinfo" data-id="${a.id}" aria-pressed="${sel}" data-tip="${esc(tip)}" data-search="${esc((a.name + " " + tip + " " + avLock(a) + (a.ev ? " event" : "") + (a.code || a.perfect || a.bestAv ? " secret" : "")).toLowerCase())}">
           ${open ? `<span class="av-stars" title="1 in Attillions found wearing this avatar">⭐ ${(avKrill(u)[a.id] || 0).toLocaleString()}</span>` : ""}
           <span class="ae">${avMarkup(a)}</span><span class="an">${a.name}${a.dev ? ` <i class="devtag">DEV</i>` : a.code || a.perfect || a.bestAv ? ` <i class="secrettag">secret</i>` : ""}</span>
           ${a.ev ? `<span class="asub" title="${esc((findEvent(a.ev) || {}).name || "")}">Event avatar</span>` : ""}
-          ${avDesc(a) ? `<span class="adesc">${esc(avDesc(a))}</span>` : ""}
-          <span class="al">${open ? (sel ? "Selected" : "Pick") : a.krill ? `🔒 ${a.krill} Attillions` : a.ev ? `🔒 ${EVENT_GOAL} ${EVENT.token}` : a.streak ? `🔒 ${a.streak}-day streak` : a.allBadges ? `🔒 All ${BADGES.length} badges` : `🔒 ${a.elo} Elo`}</span>
+          <span class="al">${open ? (sel ? "Selected" : "Tap for info") : avLock(a)}</span>
         </button>`;
       }).join("")}
     </div>
@@ -2677,8 +2714,10 @@ document.addEventListener("click", async e => {
     av.classList.remove("spin"); void av.offsetWidth; av.classList.add("spin");
     SFX("sunlight");
   }
+  else if (act === "avinfo") { showAvInfo(t.dataset.id); }
+  else if (act === "avinfo-close") { closeAvInfo(); }
   else if (act === "avatar") {
-    const id = t.dataset.id;
+    const id = t.dataset.id; closeAvInfo();
     if (me()) updateUser(x => { x.avatar = id; }); else store.set("guestAvatar", id);
     render();
     celebrateAvatar(id);
@@ -2859,6 +2898,12 @@ document.addEventListener("change", e => {
   if (e.target.id === "krill-mode") { store.set("krillMode", e.target.value); const y = window.scrollY; render(); window.scrollTo(0, y); }
 });
 document.addEventListener("input", e => {
+  if (e.target.id === "av-search") {
+    const q = e.target.value.trim().toLowerCase(); let shown = 0;
+    document.querySelectorAll(".avatars .avatar").forEach(c => { const ok = !q || q.split(/\s+/).every(w => c.dataset.search.includes(w)); c.hidden = !ok; if (ok) shown++; });
+    const none = document.getElementById("av-none"); if (none) none.hidden = shown > 0;
+    return;
+  }
   if (e.target.id === "krill-search") {
     const q = e.target.value.trim().toLowerCase(); let n = 0;
     document.querySelectorAll(".krill-wall .krill-card").forEach(c => { const hit = !q || c.dataset.s.includes(q); c.hidden = !hit; if (hit) n++; });
