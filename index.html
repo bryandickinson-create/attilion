@@ -708,6 +708,9 @@ h2 small.sub { font-size: 13px; font-weight: 500; color: var(--kelp); margin-lef
 .av-streak30 { border-radius: 50%; padding: .04em; box-shadow: 0 0 0 .06em rgba(255,201,60,.95), 0 0 .35em .08em rgba(255,110,30,.75); background: radial-gradient(circle, rgba(255,140,40,.35), rgba(255,80,20,0) 70%); }
 .save-online{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 16px;padding:12px 16px;border-radius:14px;background:rgba(120,170,255,.12);border:1px solid rgba(120,170,255,.35)}
 .save-online span{flex:1 1 240px;line-height:1.4}
+.move-box{margin:8px 0 16px}
+.move-box summary{cursor:pointer;font-weight:600;padding:6px 0}
+.move-box textarea{width:100%;font-family:ui-monospace,monospace;font-size:12px;margin:8px 0;word-break:break-all}
 </style></head><body>
 <div id="app"></div>
 <script>
@@ -3698,7 +3701,7 @@ function viewLogin() {
   </main>`;
   return `${header()}<main class="narrow">
     <h1>${mode === "login" ? "Log in" : "Create an account"}</h1>
-    <p class="lede small">${S.prefill ? "Type your password once to save this account online. Then it works on every device." : "Your Elo, match history and Daily Launch scores are saved to your account, on every device."}</p>
+    <p class="lede small">${S.moved ? "Account moved! Now type its password to finish. That also saves it online so it works on every device." : S.prefill ? "Type your password once to save this account online. Then it works on every device." : "Your Elo, match history and Daily Launch scores are saved to your account, on every device."}</p>
     <form id="auth-form" class="stack" autocomplete="on">
       <label for="auth-name">Username</label>
       <input id="auth-name" name="username" required minlength="2" maxlength="20" pattern="[A-Za-z0-9_\\-]+" autocomplete="username" value="${esc(S.prefill || "")}">
@@ -3709,7 +3712,14 @@ function viewLogin() {
     </form>
     ${mode === "login" ? `<p class="hint"><button class="link" data-act="auth-mode" data-m="reset">Forgot your password?</button></p>` : ""}
     <p class="hint">${mode === "login" ? `New here? <button class="link" data-act="auth-mode" data-m="signup">Create an account</button>` : `Have an account? <button class="link" data-act="auth-mode" data-m="login">Log in</button>`}</p>
-    <p class="note">Preview build: accounts are saved in this browser only. Online accounts arrive when the game is connected to a server.</p>
+    ${mode === "login" ? `<details class="move-box"${S.moveErr ? " open" : ""}><summary>Have a move code?</summary>
+      <form id="move-form" class="stack">
+        <label for="move-in">Paste the code from Settings › Move my account</label>
+        <textarea id="move-in" rows="4" required></textarea>
+        <p class="error" role="alert">${esc(S.moveErr || "")}</p>
+        <button class="btn primary" type="submit">Move account here</button>
+      </form>
+    </details>` : ""}
   </main>`;
 }
 
@@ -3832,6 +3842,20 @@ function viewAvatar() {
     <p class="error" id="code-msg" role="alert">${esc(S.codeMsg || "")}</p>
   </main>`;
 }
+function moveCode(u) { return "ATTMOVE1:" + btoa(unescape(encodeURIComponent(JSON.stringify(Object.assign({}, u, { cloud: false }))))); }
+function readMoveCode(text) {
+  const m = String(text || "").replace(/\s+/g, "").match(/ATTMOVE1:([A-Za-z0-9+/=]+)/); if (!m) return null;
+  try { const u = JSON.parse(decodeURIComponent(escape(atob(m[1])))); return u && typeof u.name === "string" && typeof u.hash === "string" && /^[A-Za-z0-9_-]{2,20}$/.test(u.name) ? u : null; } catch (e) { return null; }
+}
+function moveSection(u) {
+  if (!u) return "";
+  return `<h2>Move my account</h2>
+    <p class="hint">Playing in more than one place, like the Claude app and a website? Copy this code, then on the other one go to Log in, open “Have a move code?”, and paste it. Your Elo, avatars and progress come with it.</p>
+    <details class="move-box"><summary>Show my move code</summary>
+      <textarea id="move-code" rows="4" readonly>${esc(moveCode(u))}</textarea>
+      <button class="btn small" data-act="copy" data-target="move-code">Copy code</button>
+    </details>`;
+}
 function viewSettings() {
   const u = me();
   return `${header()}${tabsBar("settings")}<main class="narrow">
@@ -3848,6 +3872,8 @@ function viewSettings() {
       <button data-act="agemode" data-v="regular" aria-pressed="${ageMode() === "regular"}"><span aria-hidden="true">🚀</span>Regular</button>
     </div>
     <p class="hint">${kidMode() ? "Easy questions for little kids, no twists, and 1 in Attillions are much easier to find." : bigMode() ? "In between: questions for older kids, no twists, and 1 in Attillions a little easier to find than Regular." : "The full game, with twist rounds."} Little kids and Big kids each get their own Elo, their own Daily Launch and their own leaderboard. Saved on this device.</p>
+
+    ${moveSection(u)}
 
     <h2>Timer</h2>
     <div class="seg-pick" role="group" aria-label="Timer">
@@ -4227,7 +4253,7 @@ document.addEventListener("submit", async e => {
           else CLOUD_MSG = err ? "Another account online already uses this name, so it can't be saved under it. Rename it in Settings, then press Save online." : "The online save couldn't be reached just now. Try Save online again in a minute."; }
       } else {
         authBusy(false);
-        go("login", { mode: "login", error: res && res.wrong ? "That password doesn't match this account."
+        go("login", { mode: "login", prefill: name, error: res && res.wrong ? "That password doesn't match this account."
           : all[key] ? "Username or password doesn't match."
           : "There's no account called “" + name + "” online or on this device. If you made it on another device, log in there once (or press Save online on its home screen) and it will work here too." });
         return;
@@ -4338,6 +4364,14 @@ document.addEventListener("submit", async e => {
     if (a !== b2) { go("login", { mode: "reset", resetName: name, error: "Those two passwords don't match." }); return; }
     rec.hash = await hashPw(rec.name, a); saveUsers(all); store.set("session", rec.name);
     SFX("lock"); go("profile");
+  }
+  else if (e.target.id === "move-form") {
+    const u = readMoveCode(document.getElementById("move-in").value);
+    if (!u) { go("login", { mode: "login", moveErr: "That code didn't work. Copy the whole code and try again." }); return; }
+    const all = users(); const key = u.name.toLowerCase();
+    all[key] = Object.assign({}, u, { cloud: false, updated: Date.now() }); saveUsers(all);
+    store.set("session", null);
+    go("login", { mode: "login", prefill: u.name, error: "", moved: true });
   }
   else if (e.target.id === "join-form") {
     const err = openCode(document.getElementById("join-code").value);
