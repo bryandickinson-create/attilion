@@ -2807,13 +2807,16 @@ function viewSettings() {
     <div class="set-row"><span class="set-l">Rover jackpot</span><div class="seg-pick" role="group" aria-label="Rover jackpot">
       ${[["on", "On"], ["off", "Off"]].map(([v, l]) => `<button data-act="adm-rover" data-v="${v}" aria-pressed="${(roverBoostLeft() > 0) === (v === "on")}">${l}</button>`).join("")}
     </div></div>
+    <div class="set-row"><span class="set-l">ROVERJACKPOT for everyone</span><div class="seg-pick" role="group" aria-label="ROVERJACKPOT for everyone">
+      ${[["on", "On"], ["off", "Off"]].map(([v, l]) => `<button data-act="adm-rjall" data-v="${v}" aria-pressed="${!!(u.adminFlags || {}).rjAll === (v === "on")}">${l}</button>`).join("")}
+    </div></div>
     <div class="set-row"><span class="set-l">Power hour</span><div class="seg-pick" role="group" aria-label="Power hour">
       ${[["on", "On"], ["off", "Off"]].map(([v, l]) => `<button data-act="adm-ph" data-v="${v}" aria-pressed="${(powerHourLeft() > 0) === (v === "on")}">${l}</button>`).join("")}
     </div></div>
-    <div class="set-row"><span class="set-l">POWERHOUR any time</span><div class="seg-pick" role="group" aria-label="POWERHOUR any time for everyone">
+    <div class="set-row"><span class="set-l">POWERHOUR any time for everyone</span><div class="seg-pick" role="group" aria-label="POWERHOUR any time for everyone">
       ${[["on", "On"], ["off", "Off"]].map(([v, l]) => `<button data-act="adm-phall" data-v="${v}" aria-pressed="${!!(u.adminFlags || {}).phAnyTime === (v === "on")}">${l}</button>`).join("")}
     </div></div>
-    <p class="hint">Your boosts stay on until you switch them off. "Any time" lets every player use POWERHOUR at any time of the hour.${u.cloud ? "" : " Save this account online first."}</p>
+    <p class="hint">Your boosts stay on until you switch them off. The "for everyone" switches let every player use ROVERJACKPOT (20 minutes) and POWERHOUR at any time (15 minutes).${u.cloud ? "" : " Save this account online first."}</p>
     </details>` : ""}
 
     <details class="set-group"${store.get("setOpen-screen", false) ? " open" : ""} data-key="setOpen-screen"><summary>📱 Screen layout</summary>
@@ -3450,12 +3453,12 @@ document.addEventListener("click", async e => {
     ugSet("gems", n => n - SHOP_REFRESH, 0); const n = shopRoll() + 1; ugSet("shopRoll", () => ({ p: shopPeriod(), n }), null);
     go("shop", { shopMsg: "Here are 3 new avatars!" });
   }
-  else if (act === "adm-rover" || act === "adm-ph" || act === "adm-phall") {
+  else if (act === "adm-rover" || act === "adm-ph" || act === "adm-phall" || act === "adm-rjall") {
     if (!isOwner()) return;
     const on = t.dataset.v === "on";
     if (act === "adm-rover") store.set("roverBoostUntil", on ? BOOST_FOREVER : 0);
     else if (act === "adm-ph") store.set("powerHourUntil", on ? BOOST_FOREVER : 0);
-    else updateUser(x => { x.adminFlags = Object.assign({}, x.adminFlags, { phAnyTime: on }); });
+    else updateUser(x => { x.adminFlags = Object.assign({}, x.adminFlags, act === "adm-rjall" ? { rjAll: on } : { phAnyTime: on }); });
     const y = window.scrollY; render(); window.scrollTo(0, y);
   }
   else if (act === "gamekb") { store.set("gameKb", t.dataset.v); const y = window.scrollY; render(); window.scrollTo(0, y); }
@@ -3578,7 +3581,7 @@ document.addEventListener("submit", async e => {
       return;
     }
     if (h === ROVER_CODE) {
-      if (!isOwner()) { SFX("error"); go("avatar", { codeMsg: "That code doesn't unlock anything." }); return; }
+      if (!isOwner() && !(await ownerFlags()).rjAll) { SFX("error"); go("avatar", { codeMsg: "That code doesn't unlock anything." }); return; }
       const until = Date.now() + ROVER_MINS * 60000;
       store.set("roverBoostUntil", until);
       SFX("win");
