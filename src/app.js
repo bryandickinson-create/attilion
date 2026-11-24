@@ -1952,7 +1952,7 @@ function viewHome() {
       ${box("pb-solo", `data-act="solo"`, "🎯", "Free Launch", "7 new prompts, beat your high score", soloStats().best ? "Best " + soloStats().best : "")}
       ${kidMode() || bigMode() ? "" : box("pb-subjects", `data-go="subjects"`, "📚", "Subjects", "Sports, movies, history, weather and more", "")}
       ${box("pb-party", `data-go="party"`, "🎉", "Party", "Lots of players, one code", "New")}
-      ${box("pb-friends", `data-go="friends"`, "🤝", "Play a friend", "Send a challenge or enter a code", "")}
+      ${box("pb-friends", `data-go="friends"`, "🤝", "Friends", "Add friends, chat and play them", `<span id="fr-badge" class="fr-badge"${frUnreadTotal() ? "" : " hidden"}>${frUnreadTotal() ? frUnreadTotal() + " new" : ""}</span>`)}
       ${box("pb-mystery", `data-go="mystery"`, "🔮", "Mystery topic", myMystery() ? `You scored ${myMystery().points}. See this week's board` : "One surprise question this week. One try.", "Weekly")}
     </div>
     <details class="how">
@@ -1984,17 +1984,136 @@ function viewSubjects() {
     </div>
   </main>`;
 }
+/* ---------- friends: requests, who's online, messages, invites ----------
+ * Needs an online (cloud) account. Data lives in the Supabase "friendships" and
+ * "messages" tables (supabase-friends.sql); only the two friends can read them.
+ * Who's online comes from a Realtime presence channel, so it needs no table. */
+const FR = { me: null, list: [], inc: [], out: [], msgs: [], unread: {}, err: "", ready: false, missing: false, online: new Set(), chat: null };
+let frOnlineRoom = null, frPoll = null, frBusy = false;
+function frCan() { const u = me(); return !!(u && u.cloud); }
+function frSeen() { return store.get("frSeen", {}); }
+async function frOnlineJoin() {
+  if (frOnlineRoom || !frCan()) return;
+  try {
+    const c = await cloud(); if (!c) return;
+    frOnlineRoom = await supaRoom(c, "online");
+    frOnlineRoom.presence({ name: me().name.toLowerCase() });
+    frOnlineRoom.onPeers(({ peers }) => {
+      const s = new Set(); peers.forEach(p => { if (p.presence && p.presence.name && !p.sameTab) s.add(String(p.presence.name)); });
+      FR.online = s; frPaint();
+    });
+  } catch (e) { frOnlineRoom = null; }
+}
+function frOnlineLeave() { if (frOnlineRoom) { frOnlineRoom.leave(); frOnlineRoom = null; FR.online = new Set(); } }
+async function frLoad() {
+  if (!frCan() || frBusy) return; frBusy = true;
+  try {
+    const c = await cloud(); if (!c) { FR.err = "Can't reach the server right now."; return; }
+    const id = await cloudUserId(c); if (!id) { FR.err = "Log out and back in to use Friends here."; return; }
+    FR.me = id;
+    const f = await withTimeout(c.from("friendships").select("id,requester,addressee,status").or(`requester.eq.${id},addressee.eq.${id}`), 8000);
+    if (f.error) { FR.missing = /relation|does not exist|schema cache/i.test(f.error.message); FR.err = FR.missing ? "" : "Can't load friends right now."; return; }
+    const ids = [...new Set(f.data.flatMap(r => [r.requester, r.addressee]).filter(x => x !== id))];
+    const prof = ids.length ? await withTimeout(c.from("profiles").select("id,name,elo,avatar").in("id", ids), 8000) : { data: [] };
+    const P2 = {}; (prof.data || []).forEach(p => P2[p.id] = p);
+    const card = r => { const oid = r.requester === id ? r.addressee : r.requester; const p = P2[oid] || { name: "?", elo: 1000 }; return { rid: r.id, id: oid, name: p.name, elo: p.elo, av: p.avatar }; };
+    FR.list = f.data.filter(r => r.status === "accepted").map(card).sort((a, b) => a.name.localeCompare(b.name));
+    FR.inc = f.data.filter(r => r.status === "pending" && r.addressee === id).map(card);
+    FR.out = f.data.filter(r => r.status === "pending" && r.requester === id).map(card);
+    const since = new Date(Date.now() - 14 * 864e5).toISOString();
+    const m = await withTimeout(c.from("messages").select("id,sender,recipient,body,created_at").or(`sender.eq.${id},recipient.eq.${id}`).gte("created_at", since).order("created_at", { ascending: false }).limit(200), 8000);
+    FR.msgs = (m.data || []).reverse();
+    const seen = frSeen(); FR.unread = {};
+    FR.msgs.forEach(x => { if (x.recipient === id && x.id > (seen[x.sender] || 0)) FR.unread[x.sender] = (FR.unread[x.sender] || 0) + 1; });
+    if (FR.chat) frMarkSeen(FR.chat);
+    FR.err = ""; FR.ready = true;
+  } catch (e) { FR.err = "Can't reach the server right now."; }
+  finally { frBusy = false; frPaint(); frBadge(); }
+}
+function frMarkSeen(fid) {
+  const last = FR.msgs.filter(x => x.sender === fid).reduce((a, x) => Math.max(a, x.id), 0);
+  const s = frSeen(); if (last > (s[fid] || 0)) { s[fid] = last; store.set("frSeen", s); }
+  delete FR.unread[fid];
+}
+function frUnreadTotal() { return Object.values(FR.unread).reduce((a, b) => a + b, 0) + FR.inc.length; }
+function frBadge() { const el = document.getElementById("fr-badge"); if (el) { const n = frUnreadTotal(); el.textContent = n ? n + " new" : ""; el.hidden = !n; } }
+function frStartPolling() {
+  clearInterval(frPoll);
+  if (!frCan()) { frOnlineLeave(); return; }
+  frOnlineJoin(); frLoad();
+  frPoll = setInterval(() => { if (document.hidden) return; if (S.view === "friends" || Date.now() % 4 === 0) frLoad(); }, 8000);
+}
+const INVITE_RE = /^\[\[party:([A-Z0-9]{5})\]\]$/;
+function frMsgHtml(x, f) {
+  const mine = x.sender === FR.me, inv = INVITE_RE.exec(x.body);
+  const t = new Date(x.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  if (inv) return `<div class="fm ${mine ? "me" : ""} inv">${mine ? `🎮 You invited ${esc(f.name)} to play` : `🎮 <b>${esc(f.name)}</b> wants to play!`} <span class="fm-t">${t}</span>${mine ? "" : ` <button class="btn primary small" data-act="fr-join" data-code="${inv[1]}">Join</button>`}</div>`;
+  return `<div class="fm ${mine ? "me" : ""}">${esc(x.body)} <span class="fm-t">${t}</span></div>`;
+}
+function frRow(f) {
+  const on = FR.online.has(f.name.toLowerCase()), n = FR.unread[f.id] || 0;
+  return `<li class="fr-row ${FR.chat === f.id ? "open" : ""}">
+    <span class="fr-dot ${on ? "on" : ""}" title="${on ? "Online now" : "Offline"}"></span>
+    <span class="fr-av">${avMarkup(avatarById(f.av) || avatarById("rocket"))}</span>
+    <span class="fr-n"><b>${esc(f.name)}</b><small>${on ? "Online" : "Offline"} · ${f.elo}</small></span>
+    <button class="btn ghost small" data-act="fr-chat" data-id="${f.id}">💬${n ? `<i class="fr-n-badge">${n}</i>` : ""}</button>
+    <button class="btn primary small" data-act="fr-play" data-id="${f.id}">🎮 Play</button>
+  </li>`;
+}
+function frLive() {
+  if (FR.missing) return `<p class="hint">Friends isn't switched on yet. It needs a quick setup on the game's server.</p>`;
+  if (!FR.ready) return `<p class="hint">${FR.err ? esc(FR.err) : "Loading friends…"}</p>`;
+  const chatF = FR.list.find(f => f.id === FR.chat);
+  return `${FR.err ? `<p class="error">${esc(FR.err)}</p>` : ""}
+    ${FR.inc.length ? `<h3 class="fr-h">Friend requests</h3><ul class="fr-list">${FR.inc.map(f => `<li class="fr-row"><span class="fr-av">${avMarkup(avatarById(f.av) || avatarById("rocket"))}</span><span class="fr-n"><b>${esc(f.name)}</b><small>wants to be friends</small></span><button class="btn primary small" data-act="fr-accept" data-rid="${f.rid}">Accept</button><button class="btn ghost small" data-act="fr-remove" data-rid="${f.rid}">No</button></li>`).join("")}</ul>` : ""}
+    ${FR.list.length ? `<ul class="fr-list">${FR.list.slice().sort((a, b) => FR.online.has(b.name.toLowerCase()) - FR.online.has(a.name.toLowerCase())).map(frRow).join("")}</ul>` : `<p class="hint">No friends yet. Type a friend's username above to send a request.</p>`}
+    ${FR.out.length ? `<p class="hint fr-out">Waiting for: ${FR.out.map(f => `${esc(f.name)} <button class="link" data-act="fr-remove" data-rid="${f.rid}">cancel</button>`).join(", ")}</p>` : ""}
+    ${chatF ? `<div class="fr-chat"><div class="fr-chat-h"><b>💬 ${esc(chatF.name)}</b><button class="link" data-act="fr-chat" data-id="">Close</button></div>
+      <div class="fr-msgs" id="fr-msgs">${FR.msgs.filter(x => x.sender === chatF.id || x.recipient === chatF.id).slice(-40).map(x => frMsgHtml(x, chatF)).join("") || `<p class="hint">Say hi to ${esc(chatF.name)}!</p>`}</div></div>` : ""}`;
+}
+function frPaint() {
+  const el = document.getElementById("fr-live"); if (!el) return;
+  el.innerHTML = frLive();
+  const box = document.getElementById("fr-msgs"); if (box) box.scrollTop = box.scrollHeight;
+  const cf = document.getElementById("fr-send-form"); if (cf) cf.hidden = !FR.list.some(f => f.id === FR.chat);
+}
+async function frRequest(name) {
+  name = String(name || "").trim();
+  const c = await cloud(); if (!c || !FR.me) return "Can't reach the server right now.";
+  if (!name) return "Type a username.";
+  if (name.toLowerCase() === me().name.toLowerCase()) return "That's you!";
+  try {
+    const p = await withTimeout(cloudFindName(c, name), 8000);
+    if (!p) return `No online player is named ${name}. They need to "Save online" first.`;
+    if (FR.list.some(f => f.id === p.id)) return `You're already friends with ${p.name}.`;
+    const back = FR.inc.find(f => f.id === p.id);
+    if (back) { await c.from("friendships").update({ status: "accepted" }).eq("id", back.rid); frLoad(); return `You and ${p.name} are now friends!`; }
+    const r = await c.from("friendships").insert({ requester: FR.me, addressee: p.id });
+    if (r.error) return /duplicate|unique/i.test(r.error.message) ? `You already sent ${p.name} a request.` : "Couldn't send that request.";
+    frLoad(); return `Request sent to ${p.name}!`;
+  } catch (e) { return "Can't reach the server right now."; }
+}
+async function frSend(fid, body) {
+  body = String(body || "").trim().slice(0, 300); if (!body || !fid) return false;
+  const c = await cloud(); if (!c || !FR.me) return false;
+  try { const r = await c.from("messages").insert({ sender: FR.me, recipient: fid, body }); if (r.error) return false; await frLoad(); return true; } catch (e) { return false; }
+}
 function viewFriends() {
-  return playSubView(`
-      <article class="mode friends">
-        <div class="mode-head"><h2>Play a friend</h2></div>
-        <p>Play your ${roundsSetting("challenge-host")} rounds, send the challenge, and your friend plays the same prompts. After each round they see what you said. Same answers are allowed.</p>
-        <div class="row">
-          <button class="btn primary" data-act="challenge-new">Create a challenge</button>
-          <button class="btn ghost" data-go="join">Enter a code</button>
-        </div>
-      </article>
-`);
+  const u = me();
+  const chall = `<details class="set-group fr-chall"><summary>📨 Send a challenge code instead</summary>
+        <p class="hint">Play your ${roundsSetting("challenge-host")} rounds, then send the code. Your friend plays the same questions later.</p>
+        <div class="row"><button class="btn primary small" data-act="challenge-new">Create a challenge</button><button class="btn ghost small" data-go="join">Enter a code</button></div></details>`;
+  if (!frCan()) return playSubView(`<article class="mode friends"><div class="mode-head"><h2>Friends</h2></div>
+      <p>Add friends by username, see when they're online, message them and play them.</p>
+      ${u ? `<p class="hint">Friends needs your account saved online first.</p><button class="btn primary" data-act="save-online">Save ${esc(u.name)} online</button>` : `<button class="btn primary" data-go="login">Log in or sign up</button>`}
+      ${chall}</article>`);
+  setTimeout(() => { frPaint(); frLoad(); }, 0);
+  return playSubView(`<article class="mode friends">
+      <form id="fr-add" class="fr-add"><input id="fr-name" maxlength="20" placeholder="Friend's username" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Friend's username"><button class="btn primary small" type="submit">Add</button></form>
+      <p class="fr-msg" id="fr-msg" role="status">${esc(S.frMsg || "")}</p>
+      <div id="fr-live">${frLive()}</div>
+      <form id="fr-send-form" class="fr-send" ${FR.list.some(f => f.id === FR.chat) ? "" : "hidden"}><input id="fr-text" maxlength="300" placeholder="Type a message" autocomplete="off" aria-label="Message"><button class="btn primary small" type="submit">Send</button></form>
+      ${chall}</article>`);
 }
 function viewBots() {
   const u = me(), have = eventTokens(u);
@@ -2756,6 +2875,7 @@ function render() {
   $app().innerHTML = html;
   document.body.dataset.view = v;
   fillDescriptions();
+  if (frCan() !== !!frPoll) { if (frCan()) frStartPolling(); else { clearInterval(frPoll); frPoll = null; frOnlineLeave(); } }
   if (window.KrillionFX) window.KrillionFX.setDepth(v === "play" ? 0.15 + 0.85 * Math.min(1, S.round / Math.max(1, nRounds() - 1)) : 0);
   if (TOUR) requestAnimationFrame(tourPlace);
 }
@@ -2980,7 +3100,7 @@ const TOUR_STEPS = [
   { view: "modes", sel: ".pb-solo", text: "<b>Free Launch</b>: 7 fresh questions just for you. Try to beat your high score. It doesn't change your Elo, so it's great for practice." },
   { view: "modes", sel: ".pb-subjects", text: "<b>Subjects</b>: pick a topic like Sports, Movies, History or Geography, and every question is about that." },
   { view: "modes", sel: ".pb-party", text: "<b>Party</b>: play with lots of people at once! One person hosts and shares a code. Pick a game mode like Lightning or Be unique, and a theme." },
-  { view: "modes", sel: ".pb-friends", text: "<b>Play a friend</b>: send a friend a challenge. They answer the same questions later, and you find out who won." },
+  { view: "modes", sel: ".pb-friends", text: "<b>Friends</b>: add friends by their username, see who's online, send messages, and tap Play to start a game with them right away." },
   { view: "modes", sel: ".pb-mystery", text: "<b>Mystery topic</b>: one surprise question every week, and you only get one try. Make it count!" },
   { view: "modes", sel: ".menu-back", click: true, text: "Now <b>tap Menu</b> to go back to the main screen." },
   { view: "home", sel: ".hub-bots", text: "<b>Play bots</b> to practice against the computer, from easy to really tough. Beat them to raise your Elo. During events, special bots give tokens toward a prize avatar." },
@@ -3149,6 +3269,20 @@ document.addEventListener("click", async e => {
   else if (act === "tab") { S.tab = t.dataset.tab; render(); }
   else if (act === "auth-mode") go("login", { mode: t.dataset.m });
   else if (act === "tour") { go("home"); setTimeout(tourStart, 200); }
+  else if (act === "fr-chat") { FR.chat = t.dataset.id || null; if (FR.chat) frMarkSeen(FR.chat); frPaint(); frBadge(); const i = document.getElementById("fr-text"); if (i && FR.chat) i.focus(); }
+  else if (act === "fr-accept" || act === "fr-remove") {
+    const c = await cloud(); if (!c) return;
+    try { if (act === "fr-accept") await c.from("friendships").update({ status: "accepted" }).eq("id", +t.dataset.rid); else await c.from("friendships").delete().eq("id", +t.dataset.rid); } catch (err) {}
+    frLoad();
+  }
+  else if (act === "fr-play") {
+    const fid = t.dataset.id, code = newPartyCode(); t.disabled = true;
+    try { await partyStart(code, true); await frSend(fid, "[[party:" + code + "]]"); go("party"); }
+    catch (err) { partyLeave(); t.disabled = false; const m = document.getElementById("fr-msg"); if (m) m.textContent = "Couldn't start a game. Check your internet and try again."; }
+  }
+  else if (act === "fr-join") {
+    try { await partyStart(t.dataset.code, false); go("party"); } catch (err) { partyLeave(); go("party", { code: t.dataset.code, error: "Couldn't reach the party server. Check your internet and try again." }); }
+  }
   else if (act === "party-host") {
     const code = newPartyCode();
     try { await partyStart(code, true); go("party"); } catch (err) { partyLeave(); go("party", { error: "Couldn't reach the party server. Check your internet and try again." }); }
@@ -3322,6 +3456,15 @@ document.addEventListener("submit", async e => {
     try { await partyStart(code, false); go("party"); } catch (err) { partyLeave(); go("party", { code, error: "Couldn't reach the party server. Check your internet and try again." }); }
   }
   else if (e.target.id === "party-form") partySubmit();
+  else if (e.target.id === "fr-add") {
+    const i = document.getElementById("fr-name"), m = document.getElementById("fr-msg");
+    if (m) m.textContent = "Sending…";
+    const msg = await frRequest(i.value); if (m) m.textContent = msg; if (/sent|now friends/.test(msg)) i.value = "";
+  }
+  else if (e.target.id === "fr-send-form") {
+    const i = document.getElementById("fr-text"); const v = i.value; if (!v.trim()) return;
+    i.value = ""; if (!(await frSend(FR.chat, v))) { i.value = v; const m = document.getElementById("fr-msg"); if (m) m.textContent = "Couldn't send that message."; }
+  }
   else if (e.target.id === "move-form") {
     await importMove(document.getElementById("move-in").value);
   }

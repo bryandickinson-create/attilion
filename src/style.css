@@ -877,3 +877,32 @@ body { padding-bottom: 16px; }
 @media (max-width: 600px) { body { padding-bottom: 6px; } }
 html[data-device="phone"] body { padding-bottom: 6px; }
 @container app (min-width: 621px) { .play-box .hub-name { font-size: clamp(18px, 2.8cqi, 26px); } .play-box .hub-ic { font-size: clamp(36px, 6.5cqi, 64px); } }
+/* friends */
+.fr-add{display:flex;gap:8px}
+.fr-add input,.fr-send input{flex:1;min-width:0;background:var(--sea);color:var(--foam);border:1px solid var(--sea-3);border-radius:999px;padding:10px 14px;font:inherit;font-size:16px}
+.fr-msg{min-height:1.2em;margin:6px 0;font-size:14px;color:var(--kelp)}
+.fr-msg:empty{min-height:0;margin:0}
+.fr-h{margin:10px 0 4px;font-size:15px}
+.fr-list{list-style:none;padding:0;margin:6px 0}
+.fr-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:14px;background:rgba(255,255,255,.04);margin-bottom:6px;border:1px solid transparent}
+.fr-row.open{border-color:rgba(255,201,60,.5)}
+.fr-dot{width:10px;height:10px;border-radius:50%;background:#555b7a;flex:0 0 10px}
+.fr-dot.on{background:#3ee08f;box-shadow:0 0 8px #3ee08f}
+.fr-av{font-size:24px;line-height:1}
+.fr-n{flex:1;min-width:0;display:flex;flex-direction:column}
+.fr-n b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fr-n small{color:var(--kelp);font-size:12px}
+.fr-row .btn{padding:6px 10px;position:relative}
+.fr-n-badge{position:absolute;top:-6px;right:-6px;background:#ff5f6d;color:#fff;font:700 11px/1 var(--font-data);font-style:normal;border-radius:999px;padding:3px 6px}
+.fr-badge{background:#ff5f6d;color:#fff;border-radius:999px;padding:2px 7px;font-weight:700}
+.fr-out{font-size:13px}
+.fr-chat{margin:8px 0 6px;border:1px solid var(--sea-3);border-radius:14px;background:rgba(7,10,31,.6)}
+.fr-chat-h{display:flex;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--sea-3)}
+.fr-msgs{max-height:min(38vh,300px);overflow-y:auto;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+.fm{align-self:flex-start;max-width:85%;background:rgba(255,255,255,.08);padding:7px 11px;border-radius:14px 14px 14px 4px;font-size:15px;line-height:1.35;word-wrap:break-word}
+.fm.me{align-self:flex-end;background:rgba(255,138,76,.25);border-radius:14px 14px 4px 14px}
+.fm.inv{background:rgba(95,224,138,.16);display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.fm-t{font-size:10px;opacity:.55;margin-left:4px}
+.fr-send{display:flex;gap:8px;margin:0 0 8px}
+.fr-chall{margin-top:12px}
+.fr-chall .row{display:flex;gap:8px;flex-wrap:wrap}
