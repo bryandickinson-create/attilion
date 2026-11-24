@@ -1733,7 +1733,7 @@ R.push(
 const ROUNDS = 7;
 const ROUND_SECONDS = 30;
 const VALID_SHARE = 92;          // GUESS: % of players who give a valid answer
-const FAMILIAR = 65;             // the first 65 answers of a list are the ones a fair player could think of
+const FAMILIAR = 115;            // how deep the "fair" part of a list goes (was 65; raised 2026-11-24 so 1 in Attillions are rarer)
 const KRILLION_FROM = 0.85;      // 1 in Attillion starts 85% of the way down that familiar part
 const HADAL_DEPTH = 6000;        // metres where the Attillion zone starts
 const MAX_DEPTH = 10935;         // Challenger Deep
@@ -1747,14 +1747,14 @@ const SFX = (name, gain) => { if (window.KrillionSound) window.KrillionSound.pla
 const BOTS = {
   // pick() returns a position in the familiar answers: 0 = most common, 1 = rarest.
   // lucky = chance of launching straight into the Attillion zone on a round.
-  dust:      { name: "Space Dust", av: "✨", elo: 500,  miss: 0.30, lucky: 0.02, pick: () => Math.pow(Math.random(), 3) * 0.08, blurb: "Floats around. Sometimes says nothing at all." },
-  minnow:    { name: "Asteroid",  av: "🪨", elo: 800,  miss: 0.15, lucky: 0.04, pick: () => Math.pow(Math.random(), 2.2) * 0.15, blurb: "Says the first thing that drifts by." },
-  fish:      { name: "Comet",     av: "☄️", elo: 1100, miss: 0.10, lucky: 0.07, pick: () => Math.pow(Math.random(), 1.5) * 0.35, blurb: "Goes around the block, rarely leaves orbit." },
-  rover:     { name: "Rover",     av: "🛻", elo: 1250, miss: 0.08, lucky: 0.04, pick: () => Math.pow(Math.random(), 1.2) * 0.45, blurb: "Explores a little further every round." },
-  barracuda: { name: "Star",      av: "🌟", elo: 1400, miss: 0.07, lucky: 0.05, pick: () => 0.03 + Math.random() * 0.5,         blurb: "Bright, fast, sometimes too clever." },
-  shark:     { name: "Black Hole", av: "🕳️", elo: 1700, miss: 0.04, lucky: 0.09, pick: () => 0.06 + Math.random() * 0.69,        blurb: "Pulls in answers nobody else can reach." },
-  nova:      { name: "Supernova", av: "💥", elo: 2000, miss: 0.03, lucky: 0.13, pick: () => 0.12 + Math.random() * 0.7,        blurb: "Explodes with rare answers. Hard to outshine." },
-  quasar:    { name: "Quasar",    av: "🌠", elo: 2300, miss: 0.02, lucky: 0.17, pick: () => 0.2 + Math.random() * 0.68,         blurb: "The brightest thing in the universe. Good luck." }
+  dust:      { name: "Space Dust", av: "✨", elo: 500,  miss: 0.30, lucky: 0.012, pick: () => Math.pow(Math.random(), 3) * 0.08, blurb: "Floats around. Sometimes says nothing at all." },
+  minnow:    { name: "Asteroid",  av: "🪨", elo: 800,  miss: 0.15, lucky: 0.024, pick: () => Math.pow(Math.random(), 2.2) * 0.15, blurb: "Says the first thing that drifts by." },
+  fish:      { name: "Comet",     av: "☄️", elo: 1100, miss: 0.10, lucky: 0.042, pick: () => Math.pow(Math.random(), 1.5) * 0.35, blurb: "Goes around the block, rarely leaves orbit." },
+  rover:     { name: "Rover",     av: "🛻", elo: 1250, miss: 0.08, lucky: 0.024, pick: () => Math.pow(Math.random(), 1.2) * 0.45, blurb: "Explores a little further every round." },
+  barracuda: { name: "Star",      av: "🌟", elo: 1400, miss: 0.07, lucky: 0.03, pick: () => 0.03 + Math.random() * 0.5,         blurb: "Bright, fast, sometimes too clever." },
+  shark:     { name: "Black Hole", av: "🕳️", elo: 1700, miss: 0.04, lucky: 0.054, pick: () => 0.06 + Math.random() * 0.69,        blurb: "Pulls in answers nobody else can reach." },
+  nova:      { name: "Supernova", av: "💥", elo: 2000, miss: 0.03, lucky: 0.078, pick: () => 0.12 + Math.random() * 0.7,        blurb: "Explodes with rare answers. Hard to outshine." },
+  quasar:    { name: "Quasar",    av: "🌠", elo: 2300, miss: 0.02, lucky: 0.102, pick: () => 0.2 + Math.random() * 0.68,         blurb: "The brightest thing in the universe. Good luck." }
 };
 
 // Avatars unlock by your best (peak) Elo, so a losing streak never takes one away.
@@ -2258,7 +2258,7 @@ const CAT_OF = {
 /* ---------- Little Kid Mode ----------
    Its own prompts (no twists), 1 in Attillion much easier to reach, and its own
    Elo, daily launch and leaderboard. Switched in Settings, saved on this device. */
-const KID_FAMILIAR = 40, KID_KRILL_FROM = 0.72;
+const KID_FAMILIAR = 80, KID_KRILL_FROM = 0.72;
 const KID_EXTRA = {   // kid topics also accept answers from matching grown-up lists
   "k-fruit": "fruit", "k-color": "color", "k-ocean": "ocean fish", "k-body": "body bone", "k-dino": "dino", "k-pet": "pet dog breed_cat", "k-bug": "insect",
   "k-vehicle": "vehicle wheels boat", "k-clothes": "clothing hat shoe wintercloth", "k-sport": "sport", "k-dessert": "dessert candy cake cookie icecream", "k-animal": "mammal bird reptile pet",
@@ -2287,7 +2287,7 @@ Object.values(KID_LETTER).forEach(l => { const set = new Set(); BASES.forEach(b 
 /* ---------- Big Kid Mode ----------
    Between Little kids and Regular: its own topics plus easier regular topics, no
    twists, 1 in Attillion a bit easier than regular, and its own Elo, daily and board. */
-const BIG_FAMILIAR = 52, BIG_KRILL_FROM = 0.82;
+const BIG_FAMILIAR = 95, BIG_KRILL_FROM = 0.82;
 const BIG_EXTRA = {   // big kid topics also accept answers from matching regular lists
   "b-videogame": "", "b-country": "country africa europe asia samerica", "b-hero": "superhero", "b-pokemonlike": "myth", "b-lunch": "sandwich soup pizza fastfood",
   "b-board": "game", "b-gadget": "", "b-ocean2": "ocean fish", "b-snackfood": "candy", "b-outside": "playground", "b-mythbeast": "myth",
@@ -4001,7 +4001,7 @@ function revealBlock(prompt, oppName) {
     </div>
     ${same ? `<p class="same">Same answer. You both score it.</p>` : ""}
     ${S.unlockNote ? `<p class="unlock-note">That's Attillion #${S.unlockNote.krill}! You unlocked the ${avMarkup(S.unlockNote)} <b>${S.unlockNote.name}</b>. <button class="link" data-go="avatar">Use it</button></p>` : ""}
-    ${S.mode === "endless" ? (S.lastMine.secretHit ? `<p class="best-note">You found the one secret 1 in Attillion!</p>` : `<p class="trench">The one secret 1 in Attillion was: <b>${esc(prompt.answers[S.secret].display)}</b></p>`) : `<p class="trench">Up among the stars: ${samples.map(esc).join(", ")}</p>`}
+    ${S.mode === "endless" ? (S.lastMine.secretHit ? `<p class="best-note">You found the one secret 1 in Attillion!</p>` : `<p class="trench">The one secret 1 in Attillion was: <b>${esc(prompt.answers[S.secret].display)}</b></p>`) : ""}
     ${topSaidBlock(prompt)}
     ${S.mode === "bot" && S.lastTheirs && S.lastTheirs.points >= 100 ? botBubble(S.level, "krill") : ""}
     ${S.mode === "endless" ? `<div class="row"><button class="btn primary" id="next" data-act="next">Next prompt</button><button class="btn ghost" data-act="endless-stop">Stop here</button></div>`
