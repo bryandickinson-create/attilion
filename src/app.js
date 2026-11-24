@@ -499,7 +499,8 @@ const BIG_EXTRA = {   // big kid topics also accept answers from matching regula
 const BIG_FROM_REGULAR = ["fruit", "veg", "dog", "color", "sport", "bird", "vehicle", "flower", "dino", "shape", "dessert", "beach", "mammal", "reptile", "clothing",
   "pizza", "icecream", "superpower", "emotion", "room", "furniture", "subject", "candy", "drink", "camping", "classroom", "carnival", "hobby", "farm", "animated",
   "cake", "cereal", "wheels", "sportsgear", "hpchar", "disneychar", "cartoonshow", "halloween", "christmas", "summerthing", "state", "uscity", "fastfood", "landmark",
-  "invention", "kidsbook", "fairytale", "bookseries", "costume", "babyanimal", "olympic", "proteam"];
+  "invention", "kidsbook", "fairytale", "bookseries", "costume", "babyanimal", "olympic", "proteam",
+  "vgchar", "famousdog", "famouscat", "tailthing", "sticky", "worlddish", "duo", "band"];
 function addBig(id, q, a, srcs) {
   const more = [window.KRILLION_MORE, window.KRILLION_MORE3].flatMap(m => srcs.map(x => (m || {})[x]))
     .concat(srcs.map(x => (window.KRILLION_PROMPTS || []).find(r => r.id === x)).filter(Boolean).map(r => r.a))
