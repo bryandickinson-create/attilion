@@ -1880,7 +1880,14 @@ applyDeviceMode();
 function celebrateAvatar(id) {
   const a = avatarById(id); if (!a) return;
   SFX("hadal");
-  const el = document.querySelector(`[data-act="avatar"][data-id="${id}"]`) || document.querySelector(".avbtn");
+  // launch from the avatar's card if it's on screen, otherwise from the middle of the screen
+  const inView = x => { if (!x) return false; const r = x.getBoundingClientRect(); return r.width > 0 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth; };
+  let el = [document.querySelector(`.avatars .avatar[data-id="${id}"]`), document.querySelector(".avbtn")].find(inView);
+  if (!el) {
+    el = document.createElement("div");
+    el.style.cssText = "position:fixed;left:50%;top:50%;width:1px;height:1px;pointer-events:none";
+    document.body.appendChild(el); setTimeout(() => el.remove(), 5000);
+  }
   if (window.KrillionFX && window.KrillionFX.celebrate) window.KrillionFX.celebrate(el, a.id, avMarkup(a), a.name, AVATAR_THEMES[a.id] || (a.ev ? eventTheme(findEvent(a.ev)) : null));
 }
 
