@@ -2693,12 +2693,18 @@ function viewAvatar() {
     <p class="av-swipe-hint">Swipe to see every avatar · tap one to learn how to get it</p>
     <p class="hint av-none" id="av-none" hidden>No avatars match that search.</p>
     <div class="avatars">
-      ${avGrouped(AVATARS.filter(a => a.ev ? (isOpen(a, u) || a.ev === EVENT.key) : ((!a.code && !a.perfect && !a.bestAv && !a.shop && !a.sb) || isOpen(a, u)))).map(a => {
+      ${(() => { const list = avGrouped(AVATARS.filter(a => a.ev ? (isOpen(a, u) || a.ev === EVENT.key) : ((!a.code && !a.perfect && !a.bestAv && !a.shop && !a.sb) || isOpen(a, u))));
+        // look-alike avatars fold into the first one; its +N button opens the group
+        const size = {}, selG = {}; list.forEach(a => { size[a.e] = (size[a.e] || 0) + 1; if (a.e + a.id === current) selG[a.e] = true; });
+        const opened = new Set(store.get("avOpenGroups", [])), seen = {};
+        return list.map(a => ({ a, lead: !seen[a.e] && (seen[a.e] = true), n: size[a.e] - 1, gOpen: opened.has(a.e) || !!selG[a.e] })); })().map(({ a, lead, n, gOpen }) => {
         const open = isOpen(a, u);
         const sel = a.e + a.id === current;
+        const grp = n > 0 ? ` data-g="${esc(a.e)}"` : "", cls = n > 0 ? (lead ? " av-lead" : " av-fold") + (gOpen ? " g-open" : "") : "";
+        const more = lead && n > 0 ? `<span class="av-more" role="button" tabindex="0" data-act="avgroup" data-g="${esc(a.e)}" aria-expanded="${gOpen}" aria-label="${gOpen ? "Hide" : "Show"} ${n} more like this">${gOpen ? "−" : "+" + n}</span>` : "";
         const tip = (avDesc(a) ? avDesc(a) + " " : "") + avHow(a, open);
-        return `<button class="avatar ${sel ? "on" : ""} ${open ? "" : "locked"}" data-act="avinfo" data-id="${a.id}" aria-pressed="${sel}" data-tip="${esc(tip)}" data-search="${esc((a.name + " " + tip + " " + avLock(a) + (a.ev ? " event" : "") + (a.code || a.perfect || a.bestAv ? " secret" : "")).toLowerCase())}">
-          ${open ? `<span class="av-stars" title="1 in Attillions found wearing this avatar">⭐ ${(avKrill(u)[a.id] || 0).toLocaleString()}</span>` : ""}
+        return `<button class="avatar${cls} ${sel ? "on" : ""} ${open ? "" : "locked"}"${grp} data-act="avinfo" data-id="${a.id}" aria-pressed="${sel}" data-tip="${esc(tip)}" data-search="${esc((a.name + " " + tip + " " + avLock(a) + (a.ev ? " event" : "") + (a.code || a.perfect || a.bestAv ? " secret" : "")).toLowerCase())}">
+          ${more}${open ? `<span class="av-stars" title="1 in Attillions found wearing this avatar">⭐ ${(avKrill(u)[a.id] || 0).toLocaleString()}</span>` : ""}
           <span class="ae">${avMarkup(a)}</span><span class="an">${a.name}${mutTag(a)}${a.dev ? ` <i class="devtag">DEV</i>` : a.code || a.perfect || a.bestAv ? ` <i class="secrettag">secret</i>` : ""}</span>
           ${a.ev ? `<span class="asub" title="${esc((findEvent(a.ev) || {}).name || "")}">Event avatar</span>` : ""}
           <span class="al">${open ? (sel ? "Selected" : "Tap for info") : avLock(a)}</span>
@@ -3469,6 +3475,13 @@ document.addEventListener("click", async e => {
   else if (act === "device") { setDeviceMode(t.dataset.v); render(); }
   else if (act === "tab") { S.tab = t.dataset.tab; render(); }
   else if (act === "auth-mode") go("login", { mode: t.dataset.m });
+  else if (act === "avgroup") {
+    const g = t.dataset.g, cards = [...document.querySelectorAll(".avatars .avatar[data-g]")].filter(c => c.dataset.g === g);
+    const on = !t.closest(".avatar").classList.contains("g-open");
+    cards.forEach(c => c.classList.toggle("g-open", on));
+    const n = cards.length - 1; t.textContent = on ? "−" : "+" + n; t.setAttribute("aria-expanded", on); t.setAttribute("aria-label", `${on ? "Hide" : "Show"} ${n} more like this`);
+    const l = new Set(store.get("avOpenGroups", [])); on ? l.add(g) : l.delete(g); store.set("avOpenGroups", [...l]);
+  }
   else if (act === "check-update") checkUpdate();
   else if (act === "update-now") location.replace(location.pathname + "?v=" + encodeURIComponent(t.dataset.v || Date.now()) + location.hash);
   else if (act === "tour") { go("home"); setTimeout(tourStart, 200); }
@@ -3735,6 +3748,7 @@ document.addEventListener("change", e => {
 document.addEventListener("input", e => {
   if (e.target.id === "av-search") {
     const q = e.target.value.trim().toLowerCase(); let shown = 0;
+    const box = document.querySelector(".avatars"); if (box) box.classList.toggle("searching", !!q);
     document.querySelectorAll(".avatars .avatar").forEach(c => { const ok = !q || q.split(/\s+/).every(w => c.dataset.search.includes(w)); c.hidden = !ok; if (ok) shown++; });
     const none = document.getElementById("av-none"); if (none) none.hidden = shown > 0;
     return;
@@ -3757,6 +3771,7 @@ document.addEventListener("input", e => {
 });
 document.addEventListener("toggle", e => { if (e.target && e.target.id === "krill-fold") store.set("krillFold", !e.target.open); if (e.target && e.target.dataset && e.target.dataset.key) store.set(e.target.dataset.key, e.target.open); }, true);
 document.addEventListener("keydown", e => {
+  if ((e.key === "Enter" || e.key === " ") && e.target.classList && e.target.classList.contains("av-more")) { e.preventDefault(); e.target.click(); return; }
   if (e.key === "Enter" && S.view === "play" && S.phase === "reveal" && document.activeElement && document.activeElement.tagName !== "BUTTON") { e.preventDefault(); nextRound(); }
 });
 
