@@ -713,3 +713,21 @@ h2 small.sub { font-size: 13px; font-weight: 500; color: var(--kelp); margin-lef
 .kf-n{font-size:.6em;padding:2px 10px;border-radius:999px;background:rgba(255,201,60,.18);color:#ffc93c}
 .kf-tog::after{content:"Hide ▲";font-size:14px;opacity:.75;white-space:nowrap}
 .krill-fold:not([open]) .kf-tog::after{content:"Show ▼"}
+/* welcome tour */
+#tour{position:fixed;inset:0;z-index:9000}
+.tour-hole{position:fixed;border-radius:18px;box-shadow:0 0 0 9999px rgba(3,6,20,.72);border:2px solid #ffc93c;transition:all .35s ease;pointer-events:none;animation:tourPulse 1.6s ease-in-out infinite}
+.tour-hole.none{border:0;animation:none}
+@keyframes tourPulse{50%{border-color:#fff1b0;box-shadow:0 0 0 9999px rgba(3,6,20,.72),0 0 24px 4px rgba(255,201,60,.55)}}
+.tour-bubble{position:fixed;display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:18px;background:#141a3a;border:1px solid rgba(255,201,60,.45);box-shadow:0 12px 40px rgba(0,0,0,.5);color:#fff;transition:top .35s ease,left .35s ease}
+.tour-dev{font-size:42px;line-height:1;animation:devBob 1.4s ease-in-out infinite;filter:drop-shadow(0 0 10px rgba(170,110,255,.8))}
+@keyframes devBob{50%{transform:translateY(-6px) rotate(-6deg)}}
+.tour-body{flex:1;min-width:0}
+.tour-name{margin:0 0 4px;font-weight:700;color:#c9a6ff;display:flex;justify-content:space-between}
+.tour-name span{color:rgba(255,255,255,.55);font-weight:500;font-size:13px}
+.tour-text{margin:0 0 12px;line-height:1.45;font-size:15px}
+.tour-btns{display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap}
+.tour-skip{margin-right:auto;font-size:13px;opacity:.75}
+.tour-swipe{height:34px;position:relative;margin:-4px 0 8px}
+.tour-swipe span{position:absolute;left:40%;font-size:28px;animation:swipeHand 1.6s ease-in-out infinite}
+@keyframes swipeHand{0%{transform:translateX(40px);opacity:0}20%{opacity:1}80%{opacity:1}100%{transform:translateX(-60px);opacity:0}}
+@media (prefers-reduced-motion: reduce){.tour-dev,.tour-hole,.tour-swipe span{animation:none}}

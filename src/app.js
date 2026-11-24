@@ -2498,6 +2498,10 @@ function viewSettings() {
     </div>
     <p class="hint">${kidMode() ? "Easy questions for little kids, no twists, and 1 in Attillions are much easier to find." : bigMode() ? "In between: questions for older kids, no twists, and 1 in Attillions a little easier to find than Regular." : "The full game, with twist rounds."} Little kids and Big kids each get their own Elo, their own Daily Launch and their own leaderboard. Saved on this device.</p>
 
+    <h2>Tour</h2>
+    <p class="hint">Want Dev 👾 to show you around again?</p>
+    <button class="btn small" data-act="tour">Take the tour</button>
+
     ${moveSection(u)}
 
     <h2>Timer</h2>
@@ -2755,7 +2759,91 @@ function render() {
   document.body.dataset.view = v;
   fillDescriptions();
   if (window.KrillionFX) window.KrillionFX.setDepth(v === "play" ? 0.15 + 0.85 * Math.min(1, S.round / Math.max(1, nRounds() - 1)) : 0);
+  if (TOUR) requestAnimationFrame(tourPlace);
 }
+
+/* ---------- welcome tour: Dev 👾 shows a new player around ---------- */
+let TOUR = null, TOUR_NEXT = false;
+const TOUR_STEPS = [
+  { view: "home", text: "Hi, I'm <b>Dev</b>! I help run Attillion. Want a quick tour? It only takes a minute.", first: true },
+  { view: "home", sel: ".hub-modes", text: "<b>Play</b> is where the action is: Quick match against real people, the Daily Launch, Endless, Free Launch, Subjects and challenges for friends." },
+  { view: "home", sel: ".hub-bots", text: "<b>Play bots</b> to practice against the computer. Beat them to raise your Elo. When an event is on, its bots give you event tokens toward a prize avatar." },
+  { view: "home", sel: ".hub-avatar", text: "Pick your <b>avatar</b> here. New ones unlock as your Elo climbs, and some come from badges, events and secret codes. Tap one to see how to get it." },
+  { view: "avatar", sel: () => phoneLayout() ? ".avatars" : ".av-search", swipe: true, text: () => phoneLayout()
+      ? "Here are all the avatars. <b>Swipe left and right</b> to flip through them, one per screen. Tap one to learn how to unlock it, or search for one at the top."
+      : "Here are all the avatars. <b>Scroll down</b> to see them all, or search for one here. Tap any avatar to learn how to unlock it. On a phone, you <b>swipe sideways</b> through them." },
+  { view: "home", sel: ".hub-settings", text: "<b>Settings</b> has the timer, question level (Little kids, Big kids or Regular), sound, and Move my account." },
+  { view: "home", sel: 'header [data-go="leaderboard"]', text: "The <b>Leaderboard</b> shows the top players everywhere. Climb it!" },
+  { view: "home", sel: "header .chip", text: "This is <b>you</b>. Tap it for your profile: your Elo, badges, and every 1 in Attillion you've found." },
+  { view: "home", sel: "header .streak-flame", text: "Finish one game a day to light your <b>flame</b>. The number is how many days in a row you've played." },
+  { view: "modes", sel: ".pb-daily", text: "The <b>Daily Launch</b> is the same 7 questions for everyone today. Come back tomorrow for new ones." },
+  { view: "modes", text: "Here's the secret: every question has hundreds of right answers. Common answers score a little. Rare ones score more. Find one almost nobody thinks of and it's <b>1 in Attillion</b>: 100 points! Good luck, pilot.", last: true }
+];
+function tourStart() { TOUR = { i: 0 }; tourShow(); }
+function tourEnd() {
+  TOUR = null; const o = document.getElementById("tour"); if (o) o.remove();
+  if (me()) updateUser(x => { x.tourDone = true; }); else store.set("guestTourDone", true);
+}
+function phoneLayout() { return matchMedia("(max-width: 600px)").matches; }
+function tourShow() {
+  const st = TOUR_STEPS[TOUR.i];
+  if (S.view !== st.view) go(st.view); else tourPlace();
+  if (st.swipe && phoneLayout()) setTimeout(tourSwipeDemo, 700);
+}
+// slide the avatar row a little to the side and back, so it's obvious it moves
+function tourSwipeDemo() {
+  const row = document.querySelector(".avatars"); if (!row || !TOUR) return;
+  const x0 = row.scrollLeft, w = row.clientWidth;
+  row.scrollTo({ left: x0 + w, behavior: "smooth" });
+  setTimeout(() => { if (TOUR) row.scrollTo({ left: x0, behavior: "smooth" }); }, 1100);
+}
+function tourPlace() {
+  if (!TOUR) return;
+  const st = TOUR_STEPS[TOUR.i];
+  let o = document.getElementById("tour");
+  if (!o) { o = document.createElement("div"); o.id = "tour"; document.body.appendChild(o); }
+  const n = TOUR_STEPS.length;
+  o.innerHTML = `<div class="tour-hole" id="tour-hole"></div>
+    <div class="tour-bubble" id="tour-bubble" role="dialog" aria-label="Welcome tour">
+      <div class="tour-dev" aria-hidden="true">👾</div>
+      <div class="tour-body">
+        <p class="tour-name">Dev <span>${TOUR.i + 1}/${n}</span></p>
+        <p class="tour-text">${typeof st.text === "function" ? st.text() : st.text}</p>
+        ${st.swipe && phoneLayout() ? `<div class="tour-swipe" aria-hidden="true"><span>👆</span></div>` : ""}
+        <div class="tour-btns">
+          ${st.first ? `<button class="btn ghost small" data-tour="skip">No thanks</button><button class="btn primary small" data-tour="next">Show me around</button>`
+            : `${st.last ? "" : `<button class="link tour-skip" data-tour="skip">Skip tour</button>`}<button class="btn ghost small" data-tour="back">Back</button><button class="btn primary small" data-tour="next">${st.last ? "Let's play!" : "Next"}</button>`}
+        </div>
+      </div>
+    </div>`;
+  const hole = document.getElementById("tour-hole"), bub = document.getElementById("tour-bubble");
+  const el = st.sel && document.querySelector(typeof st.sel === "function" ? st.sel() : st.sel);
+  if (el) {
+    el.scrollIntoView({ block: "center", behavior: "instant" });
+    const r = el.getBoundingClientRect(), pad = 8;
+    Object.assign(hole.style, { left: r.left - pad + "px", top: r.top - pad + "px", width: r.width + pad * 2 + "px", height: r.height + pad * 2 + "px" });
+    hole.classList.remove("none");
+    const bw = Math.min(360, innerWidth - 24), bh = bub.offsetHeight;
+    let top = r.bottom + 16; if (top + bh > innerHeight - 12) top = Math.max(12, r.top - bh - 16);
+    if (top + bh > innerHeight - 12) top = Math.max(12, innerHeight - bh - 12);
+    const left = Math.max(12, Math.min(innerWidth - bw - 12, r.left + r.width / 2 - bw / 2));
+    Object.assign(bub.style, { width: bw + "px", left: left + "px", top: top + "px", transform: "none" });
+  } else {
+    hole.classList.add("none");
+    Object.assign(hole.style, { left: "50%", top: "50%", width: "0px", height: "0px" });
+    Object.assign(bub.style, { width: Math.min(380, innerWidth - 24) + "px", left: "50%", top: "50%", transform: "translate(-50%,-50%)" });
+  }
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-tour]"); if (!b || !TOUR) return;
+  e.stopPropagation();
+  const a = b.dataset.tour;
+  if (a === "skip") { tourEnd(); return; }
+  if (a === "back") { TOUR.i = Math.max(0, TOUR.i - 1); tourShow(); return; }
+  if (TOUR.i >= TOUR_STEPS.length - 1) { tourEnd(); go("modes"); return; }
+  TOUR.i++; tourShow();
+}, true);
+addEventListener("resize", () => { if (TOUR) tourPlace(); });
 
 /* ---------- events ---------- */
 function openCode(raw) {
@@ -2831,6 +2919,7 @@ document.addEventListener("click", async e => {
   else if (act === "device") { setDeviceMode(t.dataset.v); render(); }
   else if (act === "tab") { S.tab = t.dataset.tab; render(); }
   else if (act === "auth-mode") go("login", { mode: t.dataset.m });
+  else if (act === "tour") { go("home"); setTimeout(tourStart, 200); }
   else if (act === "save-online") { const u = me(); if (u) go("login", { mode: "login", prefill: u.name, error: "" }); }
   else if (act === "logout") { cloudSignOut(); store.set("session", null); go("home"); }
   else if (act === "copy") {
@@ -2857,7 +2946,7 @@ document.addEventListener("submit", async e => {
       const cloudErr = await cloudSignUp(fresh, pw);
       authBusy(false);
       if (cloudErr) { go("login", { mode: "signup", error: cloudErr }); return; }
-      fresh.cloud = cloudErr === "";
+      fresh.cloud = cloudErr === ""; TOUR_NEXT = true;
       all[key] = fresh; saveUsers(all);
       // carry over today's guest dive
       const g = store.get("guestDaily", {});
@@ -2887,6 +2976,7 @@ document.addEventListener("submit", async e => {
     }
     store.set("session", all[key].name);
     go("home");
+    if (TOUR_NEXT) { TOUR_NEXT = false; setTimeout(() => tourStart(), 500); }
   }
   else if (e.target.id === "code-form") {
     const input = document.getElementById("unlock-code");
