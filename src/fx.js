@@ -297,6 +297,20 @@ function emoji(c, ch, x, y, size, alpha, rot) {
 function themedBurst(x, y, th) {
   const pick = () => th.emojis[Math.floor(Math.random() * th.emojis.length)];
   const col = `rgb(${th.rgb})`;
+  // confetti in the event's colour, shot out from the marker and raining from the top
+  const [cr, cg, cb] = th.rgb.split(",").map(Number);
+  const cols = [col, `rgb(${Math.min(255, cr + 60)},${Math.min(255, cg + 60)},${Math.min(255, cb + 60)})`, `rgb(${cr * 0.7 | 0},${cg * 0.7 | 0},${cb * 0.7 | 0})`, "#ffffff", "#ffc93c"];
+  const paper = (p) => { if (p.delay > 0) return; return true; };
+  for (let i = 0; i < 160; i++) {
+    const fromTop = i % 2 === 0, a = rand(0, TAU), sp = rand(200, 650);
+    parts.push({
+      x: fromTop ? rand(0, W) : x, y: fromTop ? rand(-H * 0.5, -10) : y,
+      vx: fromTop ? rand(-60, 60) : Math.cos(a) * sp, vy: fromTop ? rand(160, 340) : Math.sin(a) * sp - 200,
+      rot: rand(0, TAU), spin: rand(-9, 9), w: rand(5, 10), h: rand(8, 15), life: rand(2.4, 3.6), delay: fromTop ? rand(0.2, 1) : 0, col: cols[i % cols.length],
+      update(p, dt) { if (p.delay > 0) { p.delay -= dt; p.life += dt; return; } p.vx *= 0.985; p.vy = p.vy * 0.985 + 260 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.spin * dt; },
+      draw(c, p) { if (!paper(p)) return; c.save(); c.translate(p.x, p.y); c.rotate(p.rot); c.globalAlpha = Math.max(0, Math.min(1, p.life)); c.fillStyle = p.col; c.fillRect(-p.w / 2, -p.h / 2, p.w, p.h * Math.max(0.15, Math.abs(Math.cos(p.rot)))); c.restore(); }
+    });
+  }
   for (let i = 0; i < 70; i++) {
     const a = rand(0, TAU), sp = rand(150, 560);
     parts.push({

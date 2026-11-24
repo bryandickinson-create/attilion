@@ -707,3 +707,9 @@ h2 small.sub { font-size: 13px; font-weight: 500; color: var(--kelp); margin-lef
 .move-box summary{cursor:pointer;font-weight:600;padding:6px 0}
 .move-box label{display:block;margin-top:10px;font-size:14px}
 .move-box textarea{width:100%;font-family:ui-monospace,monospace;font-size:12px;margin:8px 0;word-break:break-all}
+.krill-fold > summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 0;-webkit-user-select:none;user-select:none}
+.krill-fold > summary::-webkit-details-marker{display:none}
+.krill-fold > summary h2{margin:16px 0 8px;display:flex;align-items:center;gap:10px}
+.kf-n{font-size:.6em;padding:2px 10px;border-radius:999px;background:rgba(255,201,60,.18);color:#ffc93c}
+.kf-tog::after{content:"Hide ▲";font-size:14px;opacity:.75;white-space:nowrap}
+.krill-fold:not([open]) .kf-tog::after{content:"Show ▼"}

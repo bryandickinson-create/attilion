@@ -1517,7 +1517,9 @@ function finishMatch() {
     if (a && el && window.KrillionFX && window.KrillionFX.celebrate) { SFX("hadal"); window.KrillionFX.celebrate(el, a.id, avMarkup(a), a.name, AVATAR_THEMES.perfect); }
   }, 400);
   if (res.evUnlocked) setTimeout(() => {   // the event prize arrives with the event's own animation
-    const a = avatarById("ev-" + EVENT.key), el = document.querySelector(".unlock-note");
+    const a = avatarById("ev-" + EVENT.key);
+    let el = document.querySelector(".unlock-note");
+    if (!el) { el = document.createElement("div"); el.style.cssText = "position:fixed;left:50%;top:50%;width:1px;height:1px;pointer-events:none"; document.body.appendChild(el); setTimeout(() => el.remove(), 5000); }
     if (a && el && window.KrillionFX && window.KrillionFX.celebrate) { SFX("hadal"); window.KrillionFX.celebrate(el, a.id, avMarkup(a), a.name, eventTheme(EVENT)); }
   }, 400);
   const hasOpp = S.mode === "bot" || S.mode === "challenge-guest" || S.mode === "live";
@@ -2339,8 +2341,10 @@ function viewProfile() {
       <div><span>Best streak</span><b>${streakBest(u)}</b></div>
       <div><span>Power-ups</span><b class="pw-count">${Object.entries(POWERS).map(([k, p]) => p.ic + powers()[k]).join(" ")}</b></div>
     </div>
-    <h2>Your 1 in Attillions</h2>
-    ${(u.krillions || []).length ? krillWall(u.krillions) : `<p class="hint">None yet. Find an answer almost nobody would say and it will be saved here.</p>`}
+    <details class="krill-fold" id="krill-fold" ${store.get("krillFold", false) ? "" : "open"}>
+      <summary><h2>Your 1 in Attillions <span class="kf-n">${(u.krillions || []).length}</span></h2><span class="kf-tog" aria-hidden="true"></span></summary>
+      ${(u.krillions || []).length ? krillWall(u.krillions) : `<p class="hint">None yet. Find an answer almost nobody would say and it will be saved here.</p>`}
+    </details>
     <h2>Badges <small class="sub">${badgesEarned(u).length} of ${BADGES.length}</small></h2>
     ${badgeWall(u)}
     <h2>Rivals</h2>
@@ -3008,6 +3012,7 @@ document.addEventListener("input", e => {
   }
   if (e.target.id === "answer") { const err = document.getElementById("answer-error"); if (err) err.textContent = ""; e.target.classList.remove("nope"); }
 });
+document.addEventListener("toggle", e => { if (e.target && e.target.id === "krill-fold") store.set("krillFold", !e.target.open); }, true);
 document.addEventListener("keydown", e => {
   if (e.key === "Enter" && S.view === "play" && S.phase === "reveal" && document.activeElement && document.activeElement.tagName !== "BUTTON") { e.preventDefault(); nextRound(); }
 });

@@ -712,6 +712,12 @@ h2 small.sub { font-size: 13px; font-weight: 500; color: var(--kelp); margin-lef
 .move-box summary{cursor:pointer;font-weight:600;padding:6px 0}
 .move-box label{display:block;margin-top:10px;font-size:14px}
 .move-box textarea{width:100%;font-family:ui-monospace,monospace;font-size:12px;margin:8px 0;word-break:break-all}
+.krill-fold > summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 0;-webkit-user-select:none;user-select:none}
+.krill-fold > summary::-webkit-details-marker{display:none}
+.krill-fold > summary h2{margin:16px 0 8px;display:flex;align-items:center;gap:10px}
+.kf-n{font-size:.6em;padding:2px 10px;border-radius:999px;background:rgba(255,201,60,.18);color:#ffc93c}
+.kf-tog::after{content:"Hide ▲";font-size:14px;opacity:.75;white-space:nowrap}
+.krill-fold:not([open]) .kf-tog::after{content:"Show ▼"}
 </style></head><body>
 <div id="app"></div>
 <script>
@@ -2954,7 +2960,9 @@ function finishMatch() {
     if (a && el && window.KrillionFX && window.KrillionFX.celebrate) { SFX("hadal"); window.KrillionFX.celebrate(el, a.id, avMarkup(a), a.name, AVATAR_THEMES.perfect); }
   }, 400);
   if (res.evUnlocked) setTimeout(() => {   // the event prize arrives with the event's own animation
-    const a = avatarById("ev-" + EVENT.key), el = document.querySelector(".unlock-note");
+    const a = avatarById("ev-" + EVENT.key);
+    let el = document.querySelector(".unlock-note");
+    if (!el) { el = document.createElement("div"); el.style.cssText = "position:fixed;left:50%;top:50%;width:1px;height:1px;pointer-events:none"; document.body.appendChild(el); setTimeout(() => el.remove(), 5000); }
     if (a && el && window.KrillionFX && window.KrillionFX.celebrate) { SFX("hadal"); window.KrillionFX.celebrate(el, a.id, avMarkup(a), a.name, eventTheme(EVENT)); }
   }, 400);
   const hasOpp = S.mode === "bot" || S.mode === "challenge-guest" || S.mode === "live";
@@ -3776,8 +3784,10 @@ function viewProfile() {
       <div><span>Best streak</span><b>${streakBest(u)}</b></div>
       <div><span>Power-ups</span><b class="pw-count">${Object.entries(POWERS).map(([k, p]) => p.ic + powers()[k]).join(" ")}</b></div>
     </div>
-    <h2>Your 1 in Attillions</h2>
-    ${(u.krillions || []).length ? krillWall(u.krillions) : `<p class="hint">None yet. Find an answer almost nobody would say and it will be saved here.</p>`}
+    <details class="krill-fold" id="krill-fold" ${store.get("krillFold", false) ? "" : "open"}>
+      <summary><h2>Your 1 in Attillions <span class="kf-n">${(u.krillions || []).length}</span></h2><span class="kf-tog" aria-hidden="true"></span></summary>
+      ${(u.krillions || []).length ? krillWall(u.krillions) : `<p class="hint">None yet. Find an answer almost nobody would say and it will be saved here.</p>`}
+    </details>
     <h2>Badges <small class="sub">${badgesEarned(u).length} of ${BADGES.length}</small></h2>
     ${badgeWall(u)}
     <h2>Rivals</h2>
@@ -4445,6 +4455,7 @@ document.addEventListener("input", e => {
   }
   if (e.target.id === "answer") { const err = document.getElementById("answer-error"); if (err) err.textContent = ""; e.target.classList.remove("nope"); }
 });
+document.addEventListener("toggle", e => { if (e.target && e.target.id === "krill-fold") store.set("krillFold", !e.target.open); }, true);
 document.addEventListener("keydown", e => {
   if (e.key === "Enter" && S.view === "play" && S.phase === "reveal" && document.activeElement && document.activeElement.tagName !== "BUTTON") { e.preventDefault(); nextRound(); }
 });
@@ -4768,6 +4779,20 @@ function emoji(c, ch, x, y, size, alpha, rot) {
 function themedBurst(x, y, th) {
   const pick = () => th.emojis[Math.floor(Math.random() * th.emojis.length)];
   const col = `rgb(${th.rgb})`;
+  // confetti in the event's colour, shot out from the marker and raining from the top
+  const [cr, cg, cb] = th.rgb.split(",").map(Number);
+  const cols = [col, `rgb(${Math.min(255, cr + 60)},${Math.min(255, cg + 60)},${Math.min(255, cb + 60)})`, `rgb(${cr * 0.7 | 0},${cg * 0.7 | 0},${cb * 0.7 | 0})`, "#ffffff", "#ffc93c"];
+  const paper = (p) => { if (p.delay > 0) return; return true; };
+  for (let i = 0; i < 160; i++) {
+    const fromTop = i % 2 === 0, a = rand(0, TAU), sp = rand(200, 650);
+    parts.push({
+      x: fromTop ? rand(0, W) : x, y: fromTop ? rand(-H * 0.5, -10) : y,
+      vx: fromTop ? rand(-60, 60) : Math.cos(a) * sp, vy: fromTop ? rand(160, 340) : Math.sin(a) * sp - 200,
+      rot: rand(0, TAU), spin: rand(-9, 9), w: rand(5, 10), h: rand(8, 15), life: rand(2.4, 3.6), delay: fromTop ? rand(0.2, 1) : 0, col: cols[i % cols.length],
+      update(p, dt) { if (p.delay > 0) { p.delay -= dt; p.life += dt; return; } p.vx *= 0.985; p.vy = p.vy * 0.985 + 260 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.spin * dt; },
+      draw(c, p) { if (!paper(p)) return; c.save(); c.translate(p.x, p.y); c.rotate(p.rot); c.globalAlpha = Math.max(0, Math.min(1, p.life)); c.fillStyle = p.col; c.fillRect(-p.w / 2, -p.h / 2, p.w, p.h * Math.max(0.15, Math.abs(Math.cos(p.rot)))); c.restore(); }
+    });
+  }
   for (let i = 0; i < 70; i++) {
     const a = rand(0, TAU), sp = rand(150, 560);
     parts.push({
