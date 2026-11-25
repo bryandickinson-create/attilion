@@ -385,8 +385,8 @@ const BOOST_FOREVER = 8.64e15;       // a switch in Settings keeps a boost on un
 let OWNER_FLAGS = {};                // last known owner switches, so scoring can read them without waiting
 function ownerFlagsNow() { return isOwner() ? (me().adminFlags || {}) : OWNER_FLAGS; }
 async function ownerFlags() { OWNER_FLAGS = await ownerFlagsFetch(); return OWNER_FLAGS; }
-async function ownerFlagsFetch() {
-  if (isOwner()) return me().adminFlags || {};
+async function ownerFlagsFetch(online) {
+  if (isOwner() && !online) return me().adminFlags || {};
   try {
     const c = await withTimeout(cloud(), 6000); if (!c) return {};
     const { data } = await withTimeout(c.from("profiles").select("f:data->adminFlags").ilike("name", OWNER_NAME).limit(1), 6000);
@@ -2808,8 +2808,20 @@ async function checkUpdate() {
   } catch (e) { say("Couldn't check. Are you online?"); }
   if (btn) btn.disabled = false;
 }
+// Admin boosts: compare the switches on this device with what's saved online (what other players read)
+async function admOnlineCheck() {
+  const el = document.getElementById("adm-online"); if (!el) return;
+  const u = me(); if (!isOwner(u)) return;
+  if (!u.cloud) { el.innerHTML = "⚠️ This account isn't saved online here, so other players can't see these switches. Log in to AdminAtticus on the website to change them."; return; }
+  const on = await ownerFlagsFetch(true), here = u.adminFlags || {};
+  const keys = ["gemDrop", "rjAll", "phAnyTime", "stack", "devOff"], same = keys.every(k => !!on[k] === !!here[k]);
+  if (!document.getElementById("adm-online")) return;
+  document.getElementById("adm-online").innerHTML = same ? "✅ Other players see these switches." : "⏳ Saving your switches online… (if this stays, tap a switch again)";
+  if (!same) { cloudPush(); setTimeout(admOnlineCheck, 4000); }
+}
 function viewSettings() {
   const u = me();
+  if (isOwner(u)) setTimeout(admOnlineCheck, 50);
   return `${header()}${tabsBar("settings")}<main class="narrow">
     <h1 class="set-h">Settings</h1>
     <div class="set-row"><span class="set-l">Level</span><div class="seg-pick" role="group" aria-label="Question level">
@@ -2875,6 +2887,7 @@ function viewSettings() {
     <div class="set-row"><span class="set-l">POWERHOUR any time for everyone</span><div class="seg-pick" role="group" aria-label="POWERHOUR any time for everyone">
       ${[["on", "On"], ["off", "Off"]].map(([v, l]) => `<button data-act="adm-phall" data-v="${v}" aria-pressed="${!!(u.adminFlags || {}).phAnyTime === (v === "on")}">${l}</button>`).join("")}
     </div></div>
+    <p class="adm-online" id="adm-online">Checking what other players see…</p>
     <p class="hint">Your boosts stay on until you switch them off. Developer codes off: nobody else can unlock the Developer avatars with a code (anyone who has one keeps it). GEMDROP gives every player +10 💠 once each time you switch it on. Stack: with both on against Rover, 5 in 6 answers are a 1 in Attillion (off: 2 in 3). The "for everyone" switches let every player use ROVERJACKPOT (20 minutes) and POWERHOUR at any time (15 minutes).${u.cloud ? "" : " Save this account online first."}</p>
     </details>` : ""}
 
