@@ -1060,7 +1060,7 @@ body.gkb-on{padding-bottom:250px !important}
 @keyframes frtIn{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}
 </style></head><body>
 <div id="app"></div>
-<script>window.ATT_BUILD='f72489eb04'</script>
+<script>window.ATT_BUILD='844dbbf429'</script>
 <script>
 /* Attillion prompt bank.
  * GUESS: rarity comes from the ORDER of each answer list. Answers are written
@@ -1950,7 +1950,7 @@ const AVATARS = [
   { id: "dev",      e: "👾", name: "Developer",      code: 4277053133, dev: true },
   { id: "gdev",     e: "👾", name: "Gold Developer", code: 2110502093, dev: true, mut: "gold" },
   { id: "rdev",     e: "👾", name: "Rainbow Developer", code: 207743465, dev: true, mut: "rainbow" },
-  { id: "pdev",     e: "👾", name: "Perfect Developer", shop5: 5, dev: true, mut: "perfect" }
+  { id: "pdev",     e: "👾", name: "Perfect Developer", shop5: 5, code: 3104168595, dev: true, mut: "perfect" }
 ];
 
 // Seasonal shop avatars: only for sale during their season (month numbers, 1-12)
@@ -2044,7 +2044,7 @@ function avHow(a, open) {
     : a.perfect ? "Make every answer in one game a 1 in Attillion (or use its secret code)."
     : a.bestAv ? "Find a question's hidden BEST answer (or use its secret code)."
     : a.ev ? `Collect ${EVENT_GOAL} ${ev ? ev.tokenName + " " + ev.token : "tokens"} by playing the event bots while ${ev ? ev.name : "the event"} is on.`
-    : a.shop5 ? `Buy ${a.shop5} avatars from the Avatar Shop.`
+    : a.shop5 ? `Buy ${a.shop5} avatars from the Avatar Shop, then enter its secret code.`
     : a.code ? (a.dev ? "Typed in a secret developer code." : "Typed in a secret code.")
     : a.season ? `Buy it in the Avatar Shop for ${a.shop} 💠 during ${AV_SEASONS[a.season].name} season.`
     : a.shop ? `Buy it in the Avatar Shop for ${a.shop} 💠 Attillion Gems when it's for sale.`
@@ -2243,6 +2243,7 @@ const ADMIN_CODES = [
   { h: 812187123, c: "VEVOQUxQSFRYSVM=", what: "Unlocks the 🪐 Saturn avatar." },
   { h: 4277053133, c: "MjRQUkFXTEVYSVA=", what: "Unlocks the 👾 Developer avatar." },
   { h: 2110502093, c: "OTFIQ1RJTEdERURMSUc=", what: "Unlocks the 👾 Gold Developer avatar." },
+  { h: 3104168595, c: "NUxFWElQQUxVQkVO", what: "Unlocks the 👾 Perfect Developer, but only after buying 5 shop avatars." },
   { h: 207743465, c: "ODhSRURPQ01TSVJQ", what: "Unlocks the 👾 Rainbow Developer avatar." },
   { h: 1175683394, c: "Uk9UQ0VMTE9DUkFUUw==", what: "Unlocks every 1 in Attillion trophy avatar." },
   { h: 2284514118, c: "RFJBT0hOT0dBUkQ=", what: "Old code: also unlocks every 1 in Attillion trophy avatar." },
@@ -2258,7 +2259,7 @@ const ADMIN_CODES = [
   { h: 135985295, c: "UE9SRE1FRw==", what: "+10 💠 once per player each time you turn it on." }
 ];
 function codeText(x) { return [...atob(x.c)].reverse().join(""); }
-const DEV_CODE_HASHES = [4277053133, 2110502093, 207743465];
+const DEV_CODE_HASHES = [4277053133, 2110502093, 207743465, 3104168595];
 // is this code switched off for everyone except the owner?
 function codeOff(h, f) {
   f = f || {};
@@ -2314,7 +2315,7 @@ function isOpen(a, u) {
   if (a.perfect) return perfectDone(u) || redeemed(u).includes("perfect");
   if (a.bestAv) return bestDone(u) || redeemed(u).includes("bestans");
   if (a.code) return redeemed(u).includes(a.id);
-  if (a.shop5) return shopOwned(u).length >= a.shop5;
+  if (a.shop5) return shopOwned(u).length >= a.shop5 && redeemed(u).includes(a.id);   // buy 5 shop avatars, then enter its code
   if (a.shop) return shopOwned(u).includes(a.id);
   if (a.sb) return false;
   if (a.krill) return krillCount(u) >= a.krill || redeemed(u).includes(a.id) || (a.krill < 1000 && redeemed(u).includes("krill-all"));
@@ -5453,12 +5454,12 @@ document.addEventListener("click", async e => {
     const a = avatarById(t.dataset.id);
     if (!a || !a.shop || !shopOffers().some(x => x.id === a.id) || shopOwned(me()).includes(a.id)) return;
     if (gems() < a.shop) { go("shop", { shopMsg: `You need ${a.shop - gems()} more 💠.` }); return; }
-    const pdev = avatarById("pdev"), hadP = isOpen(pdev, me());
+    const pdev = avatarById("pdev"), hadP = shopOwned(me()).length >= pdev.shop5;
     ugSet("gems", n => n - a.shop, 0); ugSet("shopOwned", l => (l || []).concat(a.id), []);
     if (me()) updateUser(x => { x.avatar = a.id; }); else store.set("guestAvatar", a.id);
-    const gotP = !hadP && isOpen(pdev, me());
-    go("shop", { shopMsg: `You bought the ${a.name}! It's your avatar now.` + (gotP ? ` 👾 You also unlocked a SECRET avatar: the ${pdev.name}! Find it on the Avatar page.` : "") });
-    const cel = gotP ? pdev : a;   // the secret unlock gets the big moment instead
+    const gotP = !hadP && shopOwned(me()).length >= pdev.shop5;
+    go("shop", { shopMsg: `You bought the ${a.name}! It's your avatar now.` + (gotP ? ` 🔓 That's ${pdev.shop5} shop avatars! A secret Developer code will now work for you.` : "") });
+    const cel = a;
     setTimeout(() => { const el = document.querySelector(".shop-card.owned .shop-e"); if (el && window.KrillionFX && window.KrillionFX.celebrate) { SFX("hadal"); window.KrillionFX.celebrate(el, cel.id, avMarkup(cel), cel.name); } }, 60);
   }
   else if (act === "shop-refresh") {
@@ -5655,6 +5656,7 @@ document.addEventListener("submit", async e => {
     }
     const a = AVATARS.find(x => x.code === h);
     if (!a) { SFX("error"); go("avatar", { codeMsg: "That code doesn't unlock anything." }); return; }
+    if (a.shop5 && shopOwned(me()).length < a.shop5) { SFX("error"); go("avatar", { codeMsg: `🔒 That code only works after you buy ${a.shop5} avatars from the Shop. You've bought ${shopOwned(me()).length}.` }); return; }
     const u = me();
     if (redeemed(u).includes(a.id)) { go("avatar", { codeMsg: `You already have the ${a.name}.` }); return; }
     if (u) updateUser(x => { x.codes = (x.codes || []).concat(a.id); x.avatar = a.id; });
