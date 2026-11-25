@@ -1014,3 +1014,8 @@ body.gkb-on{padding-bottom:250px !important}
 .dev-takeover.perfect { background: radial-gradient(circle at var(--ox) var(--oy), rgba(150,120,255,.18), rgba(3,4,14,.55) 70%); }
 .dev-takeover.perfect .dev-giant { animation: devgrow 2.9s cubic-bezier(.5,0,.3,1) forwards, nebulaShift 3s ease-in-out infinite; }
 .dev-takeover.perfect .dev-label { color: #c9b6ff; text-shadow: 0 0 22px rgba(120,220,200,.7), 0 4px 0 rgba(0,0,0,.4); }
+
+/* computer only: fold the whole avatar grid down to the equipped one */
+.av-collapse-all{margin-top:14px}
+@media (min-width:601px){.avatars.all-collapsed:not(.searching) .avatar:not(.on){display:none}.avatars.all-collapsed:not(.searching) .avatar.on .av-more{display:none}}
+@media (max-width:600px){.av-collapse-all{display:none}}
