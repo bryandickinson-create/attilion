@@ -94,7 +94,8 @@ const AVATARS = [
   // the Developer avatars always sit last, in this order
   { id: "dev",      e: "👾", name: "Developer",      code: 4277053133, dev: true },
   { id: "gdev",     e: "👾", name: "Gold Developer", code: 2110502093, dev: true, mut: "gold" },
-  { id: "rdev",     e: "👾", name: "Rainbow Developer", code: 207743465, dev: true, mut: "rainbow" }
+  { id: "rdev",     e: "👾", name: "Rainbow Developer", code: 207743465, dev: true, mut: "rainbow" },
+  { id: "pdev",     e: "👾", name: "Perfect Developer", shop5: 5, dev: true, mut: "perfect" }
 ];
 
 // Seasonal shop avatars: only for sale during their season (month numbers, 1-12)
@@ -170,7 +171,8 @@ const AV_DESC = {
   saturn: "The planet with the fanciest rings in the solar system.",
   dev: "The original builder's badge, with a full-screen takeover animation.",
   gdev: "Dipped in gold, with a golden takeover animation.",
-  rdev: "Cycles through the rainbow, with a rainbow takeover animation."
+  rdev: "Cycles through the rainbow, with a rainbow takeover animation.",
+  pdev: "Shifts through nebula colours, with a nebula takeover animation."
 };
 function avDesc(a) {
   if (AV_DESC[a.id]) return AV_DESC[a.id];
@@ -187,13 +189,14 @@ function avHow(a, open) {
     : a.perfect ? "Make every answer in one game a 1 in Attillion (or use its secret code)."
     : a.bestAv ? "Find a question's hidden BEST answer (or use its secret code)."
     : a.ev ? `Collect ${EVENT_GOAL} ${ev ? ev.tokenName + " " + ev.token : "tokens"} by playing the event bots while ${ev ? ev.name : "the event"} is on.`
+    : a.shop5 ? `Buy ${a.shop5} avatars from the Avatar Shop.`
     : a.code ? (a.dev ? "Typed in a secret developer code." : "Typed in a secret code.")
     : a.season ? `Buy it in the Avatar Shop for ${a.shop} 💠 during ${AV_SEASONS[a.season].name} season.`
     : a.shop ? `Buy it in the Avatar Shop for ${a.shop} 💠 Attillion Gems when it's for sale.`
     : `Reach a best Elo of ${a.elo}.`;
   return open ? (a.elo === 0 ? how : "You unlocked it: " + how.charAt(0).toLowerCase() + how.slice(1)) : "How to get it: " + how;
 }
-function avLock(a) { return a.shop ? `🔒 Shop · ${a.shop} 💠` : a.krill ? `🔒 ${a.krill} Attillions` : a.ev ? `🔒 ${EVENT_GOAL} ${EVENT.token}` : a.streak ? `🔒 ${a.streak}-day streak` : a.allBadges ? `🔒 All ${BADGES.length} badges` : `🔒 ${a.elo} Elo`; }
+function avLock(a) { return a.shop5 ? "🔒 Secret" : a.shop ? `🔒 Shop · ${a.shop} 💠` : a.krill ? `🔒 ${a.krill} Attillions` : a.ev ? `🔒 ${EVENT_GOAL} ${EVENT.token}` : a.streak ? `🔒 ${a.streak}-day streak` : a.allBadges ? `🔒 All ${BADGES.length} badges` : `🔒 ${a.elo} Elo`; }
 function showAvInfo(id) {
   const a = AVATARS.find(x => x.id === id); if (!a) return;
   const u = me(), open = isOpen(a, u), sel = a.id === myAvatarObj().id;
@@ -203,7 +206,7 @@ function showAvInfo(id) {
   el.innerHTML = `<div class="avs-card">
     <button class="avs-x" data-act="avinfo-close" aria-label="Close">✕</button>
     <div class="avs-e">${avMarkup(a)}</div>
-    <h2>${esc(a.name)}${mutTag(a)}${a.dev ? ` <i class="devtag">DEV</i>` : a.code || a.perfect || a.bestAv ? ` <i class="secrettag">secret</i>` : a.ev ? ` <i class="secrettag">event</i>` : ""}</h2>
+    <h2>${esc(a.name)}${mutTag(a)}${a.dev ? ` <i class="devtag">DEV</i>` : a.code || a.perfect || a.bestAv || a.shop5 ? ` <i class="secrettag">secret</i>` : a.ev ? ` <i class="secrettag">event</i>` : ""}</h2>
     ${avDesc(a) ? `<p class="avs-desc">${esc(avDesc(a))}</p>` : ""}
     <p class="avs-how ${open ? "got" : ""}">${esc(avHow(a, open))}</p>
     ${open ? `<p class="avs-stars">⭐ ${(avKrill(u)[a.id] || 0).toLocaleString()} 1 in Attillions found wearing it</p>` : ""}
@@ -421,6 +424,7 @@ function isOpen(a, u) {
   if (a.perfect) return perfectDone(u) || redeemed(u).includes("perfect");
   if (a.bestAv) return bestDone(u) || redeemed(u).includes("bestans");
   if (a.code) return redeemed(u).includes(a.id);
+  if (a.shop5) return shopOwned(u).length >= a.shop5;
   if (a.shop) return shopOwned(u).includes(a.id);
   if (a.sb) return false;
   if (a.krill) return krillCount(u) >= a.krill || redeemed(u).includes(a.id) || (a.krill < 1000 && redeemed(u).includes("krill-all"));
@@ -1538,7 +1542,7 @@ function playReveal() {
   requestAnimationFrame(() => requestAnimationFrame(() => { if (dMe) dMe.classList.add("go"); }));
   if (mineCard) {
     FX.countUp(mineCard.querySelector(".pts b"), S.lastMine.points, 900);
-    FX.reveal(mineCard, S.lastMine.valid ? S.lastMine.zone.key : null, "you", { devTakeover: ["dev", "rdev", "gdev"].includes(myAvatarObj().id) && !eventMatch() && !S.lastMine.best ? myAvatarObj().id : null, theme: myTheme(), best: !!S.lastMine.best, odds: S.lastMine.share > 0 && !S.lastMine.best ? oneIn(S.lastMine.share).replace("about ", "") : "" });
+    FX.reveal(mineCard, S.lastMine.valid ? S.lastMine.zone.key : null, "you", { devTakeover: ["dev", "rdev", "gdev", "pdev"].includes(myAvatarObj().id) && !eventMatch() && !S.lastMine.best ? myAvatarObj().id : null, theme: myTheme(), best: !!S.lastMine.best, odds: S.lastMine.share > 0 && !S.lastMine.best ? oneIn(S.lastMine.share).replace("about ", "") : "" });
     SFX(S.lastMine.valid ? S.lastMine.zone.key : "miss");
     FX.countUp(document.getElementById("pod-me"), total(S.scores), 900);
   }
@@ -2693,7 +2697,7 @@ function viewAvatar() {
     <p class="av-swipe-hint">Swipe to see every avatar · tap one to learn how to get it</p>
     <p class="hint av-none" id="av-none" hidden>No avatars match that search.</p>
     <div class="avatars">
-      ${(() => { const list = avGrouped(AVATARS.filter(a => a.ev ? (isOpen(a, u) || a.ev === EVENT.key) : ((!a.code && !a.perfect && !a.bestAv && !a.shop && !a.sb) || isOpen(a, u))));
+      ${(() => { const list = avGrouped(AVATARS.filter(a => a.ev ? (isOpen(a, u) || a.ev === EVENT.key) : ((!a.code && !a.perfect && !a.bestAv && !a.shop && !a.sb && !a.shop5) || isOpen(a, u))));
         // look-alike avatars fold into the first one; its +N button opens the group
         const size = {}, selG = {}; list.forEach(a => { size[a.e] = (size[a.e] || 0) + 1; if (a.e + a.id === current) selG[a.e] = true; });
         const opened = new Set(store.get("avOpenGroups", [])), seen = {};
@@ -2705,7 +2709,7 @@ function viewAvatar() {
         const tip = (avDesc(a) ? avDesc(a) + " " : "") + avHow(a, open);
         return `<button class="avatar${cls} ${sel ? "on" : ""} ${open ? "" : "locked"}"${grp} data-act="avinfo" data-id="${a.id}" aria-pressed="${sel}" data-tip="${esc(tip)}" data-search="${esc((a.name + " " + tip + " " + avLock(a) + (a.ev ? " event" : "") + (a.code || a.perfect || a.bestAv ? " secret" : "")).toLowerCase())}">
           ${more}${open ? `<span class="av-stars" title="1 in Attillions found wearing this avatar">⭐ ${(avKrill(u)[a.id] || 0).toLocaleString()}</span>` : ""}
-          <span class="ae">${avMarkup(a)}</span><span class="an">${a.name}${mutTag(a)}${a.dev ? ` <i class="devtag">DEV</i>` : a.code || a.perfect || a.bestAv ? ` <i class="secrettag">secret</i>` : ""}</span>
+          <span class="ae">${avMarkup(a)}</span><span class="an">${a.name}${mutTag(a)}${a.dev ? ` <i class="devtag">DEV</i>` : a.code || a.perfect || a.bestAv || a.shop5 ? ` <i class="secrettag">secret</i>` : ""}</span>
           ${a.ev ? `<span class="asub" title="${esc((findEvent(a.ev) || {}).name || "")}">Event avatar</span>` : ""}
           <span class="al">${open ? (sel ? "Selected" : "Tap for info") : avLock(a)}</span>
         </button>`;
@@ -3489,10 +3493,13 @@ document.addEventListener("click", async e => {
     const a = avatarById(t.dataset.id);
     if (!a || !a.shop || !shopOffers().some(x => x.id === a.id) || shopOwned(me()).includes(a.id)) return;
     if (gems() < a.shop) { go("shop", { shopMsg: `You need ${a.shop - gems()} more 💠.` }); return; }
+    const pdev = avatarById("pdev"), hadP = isOpen(pdev, me());
     ugSet("gems", n => n - a.shop, 0); ugSet("shopOwned", l => (l || []).concat(a.id), []);
     if (me()) updateUser(x => { x.avatar = a.id; }); else store.set("guestAvatar", a.id);
-    go("shop", { shopMsg: `You bought the ${a.name}! It's your avatar now.` });
-    setTimeout(() => { const el = document.querySelector(".shop-card.owned .shop-e"); if (el && window.KrillionFX && window.KrillionFX.celebrate) { SFX("hadal"); window.KrillionFX.celebrate(el, a.id, avMarkup(a), a.name); } }, 60);
+    const gotP = !hadP && isOpen(pdev, me());
+    go("shop", { shopMsg: `You bought the ${a.name}! It's your avatar now.` + (gotP ? ` 👾 You also unlocked a SECRET avatar: the ${pdev.name}! Find it on the Avatar page.` : "") });
+    const cel = gotP ? pdev : a;   // the secret unlock gets the big moment instead
+    setTimeout(() => { const el = document.querySelector(".shop-card.owned .shop-e"); if (el && window.KrillionFX && window.KrillionFX.celebrate) { SFX("hadal"); window.KrillionFX.celebrate(el, cel.id, avMarkup(cel), cel.name); } }, 60);
   }
   else if (act === "shop-refresh") {
     if (gems() < SHOP_REFRESH) return;

@@ -228,12 +228,12 @@ function ring(card, rgb, n, dur) {
 /* Rainbow Developer's own Attillion: the creature grows from tiny until it fills
    the screen, then vanishes. */
 function devTakeover(card, id) {
-  const gold = id === "gdev", plain = id === "dev";
+  const gold = id === "gdev", plain = id === "dev", perf = id === "pdev";
   const { x, y } = gaugePoint(card);
   const el = document.createElement("div");
-  el.className = "dev-takeover" + (gold ? " gold" : plain ? " plain" : "");
+  el.className = "dev-takeover" + (gold ? " gold" : plain ? " plain" : perf ? " perfect" : "");
   el.style.setProperty("--ox", x + "px"); el.style.setProperty("--oy", y + "px");
-  el.innerHTML = `<span class="dev-giant avg av-${gold ? "gdev" : plain ? "dev" : "rdev"}">👾</span><p class="dev-label">1 in Attillion</p>`;
+  el.innerHTML = `<span class="dev-giant avg av-${gold ? "gdev" : plain ? "dev" : perf ? "pdev" : "rdev"}">👾</span><p class="dev-label">1 in Attillion</p>`;
   document.body.appendChild(el);
   const end = () => el.remove();
   const t = setTimeout(end, 2900);
@@ -241,7 +241,7 @@ function devTakeover(card, id) {
   for (let i = 0; i < 3; i++) parts.push({
     x, y, life: 1.6, max: 1.6, delay: i * 0.2, hue: i * 120,
     update(p, dt) { if (p.delay > 0) { p.delay -= dt; p.life += dt; } },
-    draw(c, p) { if (p.delay > 0) return; const k = 1 - p.life / p.max; c.strokeStyle = plain ? `hsla(${265 + p.hue / 20},90%,68%,${(1 - k) * 0.9})` : gold ? `hsla(${40 + p.hue / 30},100%,62%,${(1 - k) * 0.9})` : `hsla(${(p.hue + k * 360) % 360},90%,65%,${(1 - k) * 0.9})`; c.lineWidth = 5 * (1 - k) + 1; c.beginPath(); c.arc(p.x, p.y, 20 + k * Math.max(W, H) * 0.7, 0, TAU); c.stroke(); }
+    draw(c, p) { if (p.delay > 0) return; const k = 1 - p.life / p.max; c.strokeStyle = perf ? `hsla(${[275, 165, 210][Math.round(p.hue / 120) % 3]},90%,66%,${(1 - k) * 0.9})` : plain ? `hsla(${265 + p.hue / 20},90%,68%,${(1 - k) * 0.9})` : gold ? `hsla(${40 + p.hue / 30},100%,62%,${(1 - k) * 0.9})` : `hsla(${(p.hue + k * 360) % 360},90%,65%,${(1 - k) * 0.9})`; c.lineWidth = 5 * (1 - k) + 1; c.beginPath(); c.arc(p.x, p.y, 20 + k * Math.max(W, H) * 0.7, 0, TAU); c.stroke(); }
   });
 }
 const escH = v => String(v == null ? "" : v).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -551,7 +551,7 @@ window.KrillionFX = {
   // the full 1 in Attillion moment, played when you pick a new avatar
   celebrate(el, avatarId, avatarHtml, label, theme) {
     if (!el || reduce) return;
-    if (avatarId === "dev" || avatarId === "rdev" || avatarId === "gdev") devTakeover(el, avatarId);
+    if (avatarId === "dev" || avatarId === "rdev" || avatarId === "gdev" || avatarId === "pdev") devTakeover(el, avatarId);
     else krillion(el, "", { avatarHtml, label, theme });
     runFx();
   },

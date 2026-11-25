@@ -591,7 +591,7 @@ h2 + .layout-bar { justify-content: flex-start; margin-top: 10px; }
 .say-xl { width: 96px; height: 96px; font-size: 46px; }
 .seg-pick .say-btn { margin: 0 0 0 8px; }
 .sub-h { font-size: 15px; margin: 16px 0 8px; }
-.av-perfect { display: inline-block; animation: nebulaShift 6s ease-in-out infinite; }
+.av-perfect, .av-pdev { display: inline-block; animation: nebulaShift 6s ease-in-out infinite; }
 @keyframes nebulaShift {
   0%, 100% { filter: hue-rotate(15deg) saturate(1.8) drop-shadow(0 0 7px rgba(180,90,255,.95)) drop-shadow(0 0 16px rgba(150,70,255,.6)); }
   33%      { filter: hue-rotate(-140deg) saturate(1.8) drop-shadow(0 0 7px rgba(60,230,120,.95)) drop-shadow(0 0 16px rgba(40,210,110,.6)); }
@@ -1011,3 +1011,6 @@ body.gkb-on{padding-bottom:250px !important}
 .av-more{position:absolute;top:6px;left:6px;z-index:2;min-width:30px;height:26px;padding:0 8px;border-radius:13px;display:inline-flex;align-items:center;justify-content:center;font:700 13px/1 var(--mono, monospace);background:var(--accent, #ff8a4c);color:#1a1030;box-shadow:0 2px 6px rgba(0,0,0,.35);cursor:pointer}
 .av-more:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .avatar.av-fold{border-style:dashed}
+.dev-takeover.perfect { background: radial-gradient(circle at var(--ox) var(--oy), rgba(150,120,255,.18), rgba(3,4,14,.55) 70%); }
+.dev-takeover.perfect .dev-giant { animation: devgrow 2.9s cubic-bezier(.5,0,.3,1) forwards, nebulaShift 3s ease-in-out infinite; }
+.dev-takeover.perfect .dev-label { color: #c9b6ff; text-shadow: 0 0 22px rgba(120,220,200,.7), 0 4px 0 rgba(0,0,0,.4); }
