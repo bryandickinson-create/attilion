@@ -228,7 +228,7 @@ function ring(card, rgb, n, dur) {
 /* Rainbow Developer's own Attillion: the creature grows from tiny until it fills
    the screen, then vanishes. */
 function devTakeover(card, id) {
-  const gold = id === "gdev", plain = id === "dev", perf = id === "pdev", sea = id.startsWith("sdev-") ? id.slice(5) : "";
+  const gold = id === "gdev", plain = id === "dev", perf = id === "pdev", sea = id.startsWith("sdev-") ? id.slice(5) : id === "ddev" ? "diamond" : "";
   const { x, y } = gaugePoint(card);
   const el = document.createElement("div");
   el.className = "dev-takeover" + (gold ? " gold" : plain ? " plain" : perf ? " perfect" : sea ? " seasonal" : "");
@@ -551,7 +551,7 @@ window.KrillionFX = {
   // the full 1 in Attillion moment, played when you pick a new avatar
   celebrate(el, avatarId, avatarHtml, label, theme) {
     if (!el || reduce) return;
-    if (avatarId === "dev" || avatarId === "rdev" || avatarId === "gdev" || avatarId === "pdev" || String(avatarId).startsWith("sdev-")) devTakeover(el, avatarId);
+    if (avatarId === "dev" || avatarId === "rdev" || avatarId === "gdev" || avatarId === "pdev" || avatarId === "ddev" || String(avatarId).startsWith("sdev-")) devTakeover(el, avatarId);
     else krillion(el, "", { avatarHtml, label, theme });
     runFx();
   },

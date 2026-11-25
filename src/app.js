@@ -95,6 +95,7 @@ const AVATARS = [
   { id: "dev",      e: "👾", name: "Developer",      code: 4277053133, dev: true },
   { id: "gdev",     e: "👾", name: "Gold Developer", code: 2110502093, dev: true, mut: "gold" },
   { id: "rdev",     e: "👾", name: "Rainbow Developer", code: 207743465, dev: true, mut: "rainbow" },
+  { id: "ddev",     e: "👾", name: "Diamond Developer", dev: true, mut: "diamond", variant: "diamond", ddev: true },
   { id: "pdev",     e: "👾", name: "Perfect Developer", shop5: 5, code: 3104168595, dev: true, mut: "perfect" }
 ];
 
@@ -175,6 +176,7 @@ const AV_DESC = {
   dev: "The original builder's badge, with a full-screen takeover animation.",
   gdev: "Dipped in gold, with a golden takeover animation.",
   rdev: "Cycles through the rainbow, with a rainbow takeover animation.",
+  ddev: "Sparkles like a diamond, with a diamond takeover animation.",
   pdev: "Shifts through nebula colours, with a nebula takeover animation."
 };
 function avDesc(a) {
@@ -193,6 +195,7 @@ function avHow(a, open) {
     : a.bestAv ? "Find a question's hidden BEST answer (or use its secret code)."
     : a.ev ? `Collect ${EVENT_GOAL} ${ev ? ev.tokenName + " " + ev.token : "tokens"} by playing the event bots while ${ev ? ev.name : "the event"} is on.`
     : a.shop5 ? `Buy ${a.shop5} avatars from the Avatar Shop, then enter its secret code.`
+    : a.ddev ? "Own the Developer, then watch the Shop: there's a 1% chance it shows up in a new set, and then it's free."
     : a.seasonDev ? `Type in its secret developer code during ${AV_SEASONS[a.seasonDev].name} season.`
     : a.code ? (a.dev ? "Typed in a secret developer code." : "Typed in a secret code.")
     : a.season ? `Buy it in the Avatar Shop for ${a.shop} 💠 during ${AV_SEASONS[a.season].name} season.`
@@ -476,6 +479,7 @@ function isOpen(a, u) {
   if (a.perfect) return perfectDone(u) || redeemed(u).includes("perfect");
   if (a.bestAv) return bestDone(u) || redeemed(u).includes("bestans");
   if (a.code) return redeemed(u).includes(a.id);
+  if (a.ddev) return shopOwned(u).includes(a.id);
   if (a.shop5) return shopOwned(u).length >= a.shop5 && redeemed(u).includes(a.id);   // buy 5 shop avatars, then enter its code
   if (a.shop) return shopOwned(u).includes(a.id);
   if (a.sb) return false;
@@ -1603,7 +1607,7 @@ function playReveal() {
   requestAnimationFrame(() => requestAnimationFrame(() => { if (dMe) dMe.classList.add("go"); }));
   if (mineCard) {
     FX.countUp(mineCard.querySelector(".pts b"), S.lastMine.points, 900);
-    FX.reveal(mineCard, S.lastMine.valid ? S.lastMine.zone.key : null, "you", { devTakeover: (["dev", "rdev", "gdev", "pdev"].includes(myAvatarObj().id) || myAvatarObj().id.startsWith("sdev-")) && !eventMatch() && !S.lastMine.best ? myAvatarObj().id : null, theme: myTheme(), best: !!S.lastMine.best, odds: S.lastMine.share > 0 && !S.lastMine.best ? oneIn(S.lastMine.share).replace("about ", "") : "" });
+    FX.reveal(mineCard, S.lastMine.valid ? S.lastMine.zone.key : null, "you", { devTakeover: (["dev", "rdev", "gdev", "pdev", "ddev"].includes(myAvatarObj().id) || myAvatarObj().id.startsWith("sdev-")) && !eventMatch() && !S.lastMine.best ? myAvatarObj().id : null, theme: myTheme(), best: !!S.lastMine.best, odds: S.lastMine.share > 0 && !S.lastMine.best ? oneIn(S.lastMine.share).replace("about ", "") : "" });
     SFX(S.lastMine.valid ? S.lastMine.zone.key : "miss");
     FX.countUp(document.getElementById("pod-me"), total(S.scores), 900);
   }
@@ -2196,8 +2200,11 @@ function shopPick() {
   const pick = all => { const fresh = all.filter(a => !owned.includes(a.id)); const pool = fresh.length ? fresh : all; return pool[Math.floor(r() * pool.length)]; };
   // only mutations of avatars already in the game (no brand-new kinds), except seasonal ones (Bryan: those may be new),
   // so the avatar list doesn't fill up with lots of different things
-  const out = ["gold", "diamond", "rainbow"].map(k => pick(AVATARS.filter(a => a.variant === k && !a.season && !a.newBase)));
+  const out = ["gold", "diamond", "rainbow"].map(k => pick(AVATARS.filter(a => a.variant === k && !a.season && !a.newBase && !a.dev)));
   const sea = seasonNow(); if (sea) out.push(pick(AVATARS.filter(a => a.season === sea && !a.newBase)));
+  // Diamond Developer: only for players who own the Developer, a 1 in 100 chance in each new set, and free
+  const dd = avatarById("ddev"), u = me();
+  if (dd && isOpen(avatarById("dev"), u) && !owned.includes("ddev") && rng(hashStr("ddev:" + (u ? u.name : "guest") + ":" + shopPeriod() + ":" + shopRoll()))() < 0.01) out.push(dd);
   return out;
 }
 /* Avatars that stay hidden everywhere until you unlock them: secret and code avatars,
@@ -2234,9 +2241,9 @@ function viewShop() {
     <p class="hint shop-how">Earn 💠 Gems with 1 in Attillions: 1 in a game = 1, 2 = 4, 3 = 6, 4 = 8, 5 = 12, 6 = 20, 7 = 50.</p>
     ${seasonNow() ? `<p class="shop-season">🎉 ${AV_SEASONS[seasonNow()].name} avatar for sale this month!</p>` : ""}
     <div class="shop-grid">${shopOffers().map(a => {
-      const have = owned.includes(a.id), can = g >= a.shop;
-      return `<div class="shop-card ${have ? "owned" : ""} ${a.season ? "seasonal" : "sv-" + a.variant}"><i class="shop-kind">${mutName(a.mut)} mutation</i><span class="shop-e">${avMarkup(a)}</span><b>${esc(a.name)}</b>
-        ${have ? `<span class="shop-owned">✓ Yours</span>` : `<button class="btn ${can ? "primary" : "ghost"} small" data-act="shop-buy" data-id="${a.id}" ${can ? "" : "disabled"}>💠 ${a.shop}</button>`}</div>`;
+      const have = owned.includes(a.id), can = g >= (a.shop || 0);
+      return `<div class="shop-card ${have ? "owned" : ""} ${a.season ? "seasonal" : "sv-" + a.variant}${a.ddev ? " sv-ddev" : ""}"><i class="shop-kind">${mutName(a.mut)} mutation</i><span class="shop-e">${avMarkup(a)}</span><b>${esc(a.name)}</b>
+        ${have ? `<span class="shop-owned">✓ Yours</span>` : `<button class="btn ${can ? "primary" : "ghost"} small" data-act="shop-buy" data-id="${a.id}" ${can ? "" : "disabled"}>${a.ddev ? "FREE" : "💠 " + a.shop}</button>`}</div>`;
     }).join("")}</div>
     <p class="shop-msg" role="status">${esc(S.shopMsg || "")}</p>
     <button class="btn ghost shop-refresh" data-act="shop-refresh" ${g >= SHOP_REFRESH ? "" : "disabled"}>🔄 New avatars now · 💠 ${SHOP_REFRESH}</button>
@@ -3642,10 +3649,10 @@ document.addEventListener("click", async e => {
   else if (act === "tour") { go("home"); setTimeout(tourStart, 200); }
   else if (act === "shop-buy") {
     const a = avatarById(t.dataset.id);
-    if (!a || !a.shop || !shopOffers().some(x => x.id === a.id) || shopOwned(me()).includes(a.id)) return;
-    if (gems() < a.shop) { go("shop", { shopMsg: `You need ${a.shop - gems()} more 💠.` }); return; }
+    if (!a || !(a.shop || a.ddev) || !shopOffers().some(x => x.id === a.id) || shopOwned(me()).includes(a.id)) return;
+    if (gems() < (a.shop || 0)) { go("shop", { shopMsg: `You need ${a.shop - gems()} more 💠.` }); return; }
     const pdev = avatarById("pdev"), hadP = shopOwned(me()).length >= pdev.shop5;
-    ugSet("gems", n => n - a.shop, 0); ugSet("shopOwned", l => (l || []).concat(a.id), []);
+    ugSet("gems", n => n - (a.shop || 0), 0); ugSet("shopOwned", l => (l || []).concat(a.id), []);
     if (me()) updateUser(x => { x.avatar = a.id; }); else store.set("guestAvatar", a.id);
     const gotP = !hadP && shopOwned(me()).length >= pdev.shop5;
     go("shop", { shopMsg: `You bought the ${a.name}! It's your avatar now.` + (gotP ? ` 🔓 That's ${pdev.shop5} shop avatars! A secret Developer code will now work for you.` : "") });

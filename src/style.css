@@ -1062,3 +1062,5 @@ body.gkb-on{padding-bottom:250px !important}
 .dev-takeover.seasonal .dev-giant { animation: devgrow 2.9s cubic-bezier(.5,0,.3,1) forwards; }
 .dev-takeover.seasonal .dev-giant .avg { display:inline-block; }
 .dev-takeover.seasonal .dev-label { color: #ffe1a8; text-shadow: 0 0 22px rgba(255,180,80,.7), 0 4px 0 rgba(0,0,0,.4); }
+
+.shop-card.sv-ddev{border-color:rgba(140,230,255,.9);box-shadow:0 0 18px rgba(120,220,255,.55)}
