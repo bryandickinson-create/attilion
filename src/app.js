@@ -3834,6 +3834,21 @@ function kbEl() {
     kbSugPaint(); b.classList.add("hit"); setTimeout(() => b.classList.remove("hit"), 120);
   };
   k.addEventListener("pointerdown", press);
+  // hold ⌫ to keep deleting: starts after a short pause, then speeds up
+  let held = null;
+  const stopHold = () => { if (held) { clearTimeout(held.t); held = null; } };
+  const backOnce = () => {
+    const inp = KB_INPUT; if (!inp || !inp.value) { stopHold(); return; }
+    inp.value = inp.value.slice(0, -1); inp.dispatchEvent(new Event("input", { bubbles: true })); kbSugPaint();
+  };
+  k.addEventListener("pointerdown", e => {
+    const b = e.target.closest('[data-k="back"]'); if (!b) return;
+    stopHold(); held = { n: 0 };
+    const tick = () => { if (!held) return; backOnce(); if (!held) return; held.n++; held.t = setTimeout(tick, held.n < 6 ? 110 : 55); };
+    held.t = setTimeout(tick, 420);
+  });
+  ["pointerup", "pointercancel", "pointerleave"].forEach(ev => k.addEventListener(ev, stopHold));
+  k.addEventListener("contextmenu", e => e.preventDefault());
   return k;
 }
 let KB_LAST = null;

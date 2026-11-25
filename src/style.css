@@ -919,6 +919,7 @@ html[data-device="phone"] body { padding-bottom: 6px; }
 .gkb-sug span{flex:1;text-align:center;font-size:13px;color:var(--kelp)}
 .gkb-row{display:flex;gap:5px;justify-content:center;margin-bottom:6px}
 .gkb-k{flex:1;max-width:44px;height:44px;border-radius:9px;border:1px solid rgba(140,160,255,.25);background:rgba(60,72,150,.55);color:#fff;font:600 19px var(--font-body);box-shadow:0 2px 0 rgba(0,0,0,.45);padding:0}
+.gkb-k{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
 .gkb-k.hit{background:var(--krill);transform:translateY(1px)}
 .gkb-sm{max-width:34px}
 .gkb-wide{max-width:58px;flex:1.4;background:rgba(90,60,140,.6)}
