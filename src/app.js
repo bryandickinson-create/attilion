@@ -136,6 +136,9 @@ function avGrouped(list) {
 }
 function mutName(m) { return m === "perfect" ? "Perfect" : AV_VARIANTS[m] ? AV_VARIANTS[m].name : AV_SEASONS[m] ? AV_SEASONS[m].name : ""; }
 function mutTag(a) { return a && a.mut ? ` <i class="mut mut-${a.mut}">${mutName(a.mut)}</i>` : ""; }
+// Seasonal Developers: a 👾 in each season's colours, from a secret code that only works in that season
+const SEASON_DEV_CODES = { xmas: 3133342220, halloween: 2671172934, thanks: 2538180855, valentine: 926746456, spring: 820806958, summer: 275872246 };
+Object.entries(SEASON_DEV_CODES).forEach(([sk, code]) => AVATARS.push({ id: "sdev-" + sk, e: "👾", name: AV_SEASONS[sk].name + " Developer", code, dev: true, mut: sk, variant: sk, seasonDev: sk }));
 function seasonNow() { const m = new Date().getMonth() + 1; return Object.keys(AV_SEASONS).find(k => AV_SEASONS[k].months.includes(m)) || null; }
 
 // A short description for every avatar, shown on the avatar page
@@ -190,6 +193,7 @@ function avHow(a, open) {
     : a.bestAv ? "Find a question's hidden BEST answer (or use its secret code)."
     : a.ev ? `Collect ${EVENT_GOAL} ${ev ? ev.tokenName + " " + ev.token : "tokens"} by playing the event bots while ${ev ? ev.name : "the event"} is on.`
     : a.shop5 ? `Buy ${a.shop5} avatars from the Avatar Shop, then enter its secret code.`
+    : a.seasonDev ? `Type in its secret developer code during ${AV_SEASONS[a.seasonDev].name} season.`
     : a.code ? (a.dev ? "Typed in a secret developer code." : "Typed in a secret code.")
     : a.season ? `Buy it in the Avatar Shop for ${a.shop} 💠 during ${AV_SEASONS[a.season].name} season.`
     : a.shop ? `Buy it in the Avatar Shop for ${a.shop} 💠 Attillion Gems when it's for sale.`
@@ -390,6 +394,12 @@ const ADMIN_CODES = [
   { h: 812187123, c: "VEVOQUxQSFRYSVM=", what: "Unlocks the 🪐 Saturn avatar." },
   { h: 4277053133, c: "MjRQUkFXTEVYSVA=", what: "Unlocks the 👾 Developer avatar." },
   { h: 2110502093, c: "OTFIQ1RJTEdERURMSUc=", what: "Unlocks the 👾 Gold Developer avatar." },
+  { h: 3133342220, c: "TEVYSVBTQU1Y", what: "Unlocks the 👾 Christmas Developer. Only works during Christmas season." },
+  { h: 2671172934, c: "TEVYSVBZS09PUFM=", what: "Unlocks the 👾 Halloween Developer. Only works during Halloween season." },
+  { h: 2538180855, c: "TEVYSVBZRUtSVVQ=", what: "Unlocks the 👾 Thanksgiving Developer. Only works during Thanksgiving season." },
+  { h: 926746456, c: "TEVYSVBESVBVQw==", what: "Unlocks the 👾 Valentine Developer. Only works during Valentine season." },
+  { h: 820806958, c: "TEVYSVBNT09MQg==", what: "Unlocks the 👾 Spring Developer. Only works during Spring season." },
+  { h: 275872246, c: "TEVYSVBZTk5VUw==", what: "Unlocks the 👾 Summer Developer. Only works during Summer season." },
   { h: 3104168595, c: "NUxFWElQQUxVQkVO", what: "Unlocks the 👾 Perfect Developer, but only after buying 5 shop avatars." },
   { h: 207743465, c: "ODhSRURPQ01TSVJQ", what: "Unlocks the 👾 Rainbow Developer avatar." },
   { h: 1175683394, c: "Uk9UQ0VMTE9DUkFUUw==", what: "Unlocks every 1 in Attillion trophy avatar." },
@@ -408,7 +418,7 @@ const ADMIN_CODES = [
   { h: 953241660, c: "MDAwMVNNRUdBR0VN", what: "+1000 💠 once per player each time you turn it on (Off = nobody)." }
 ];
 function codeText(x) { return [...atob(x.c)].reverse().join(""); }
-const DEV_CODE_HASHES = [4277053133, 2110502093, 207743465, 3104168595];
+const DEV_CODE_HASHES = [4277053133, 2110502093, 207743465, 3104168595, 3133342220, 2671172934, 2538180855, 926746456, 820806958, 275872246];
 // is this code switched off for everyone except the owner?
 function codeOff(h, f) {
   f = f || {};
@@ -1593,7 +1603,7 @@ function playReveal() {
   requestAnimationFrame(() => requestAnimationFrame(() => { if (dMe) dMe.classList.add("go"); }));
   if (mineCard) {
     FX.countUp(mineCard.querySelector(".pts b"), S.lastMine.points, 900);
-    FX.reveal(mineCard, S.lastMine.valid ? S.lastMine.zone.key : null, "you", { devTakeover: ["dev", "rdev", "gdev", "pdev"].includes(myAvatarObj().id) && !eventMatch() && !S.lastMine.best ? myAvatarObj().id : null, theme: myTheme(), best: !!S.lastMine.best, odds: S.lastMine.share > 0 && !S.lastMine.best ? oneIn(S.lastMine.share).replace("about ", "") : "" });
+    FX.reveal(mineCard, S.lastMine.valid ? S.lastMine.zone.key : null, "you", { devTakeover: (["dev", "rdev", "gdev", "pdev"].includes(myAvatarObj().id) || myAvatarObj().id.startsWith("sdev-")) && !eventMatch() && !S.lastMine.best ? myAvatarObj().id : null, theme: myTheme(), best: !!S.lastMine.best, odds: S.lastMine.share > 0 && !S.lastMine.best ? oneIn(S.lastMine.share).replace("about ", "") : "" });
     SFX(S.lastMine.valid ? S.lastMine.zone.key : "miss");
     FX.countUp(document.getElementById("pod-me"), total(S.scores), 900);
   }
@@ -3856,6 +3866,7 @@ document.addEventListener("submit", async e => {
     }
     const a = AVATARS.find(x => x.code === h);
     if (!a) { SFX("error"); go("avatar", { codeMsg: "That code doesn't unlock anything." }); return; }
+    if (a.seasonDev && seasonNow() !== a.seasonDev && !isOwner()) { SFX("error"); go("avatar", { codeMsg: `🗓️ That code only works during ${AV_SEASONS[a.seasonDev].name} season.` }); return; }
     if (a.shop5 && shopOwned(me()).length < a.shop5) { SFX("error"); go("avatar", { codeMsg: `🔒 That code only works after you buy ${a.shop5} avatars from the Shop. You've bought ${shopOwned(me()).length}.` }); return; }
     const u = me();
     if (redeemed(u).includes(a.id)) { go("avatar", { codeMsg: `You already have the ${a.name}.` }); return; }

@@ -1058,3 +1058,7 @@ body.gkb-on{padding-bottom:250px !important}
 .shop-all>summary span{font:600 13px var(--font-data);color:var(--muted,#aab3d6)}
 .shop-all .avatars{margin-top:8px}
 .shop-filter{margin:6px 0 4px;flex-wrap:wrap}
+.dev-takeover.seasonal { background: radial-gradient(circle at var(--ox) var(--oy), rgba(255,200,120,.16), rgba(3,4,14,.55) 70%); }
+.dev-takeover.seasonal .dev-giant { animation: devgrow 2.9s cubic-bezier(.5,0,.3,1) forwards; }
+.dev-takeover.seasonal .dev-giant .avg { display:inline-block; }
+.dev-takeover.seasonal .dev-label { color: #ffe1a8; text-shadow: 0 0 22px rgba(255,180,80,.7), 0 4px 0 rgba(0,0,0,.4); }

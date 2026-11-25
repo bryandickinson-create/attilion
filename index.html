@@ -1063,9 +1063,13 @@ body.gkb-on{padding-bottom:250px !important}
 .shop-all>summary span{font:600 13px var(--font-data);color:var(--muted,#aab3d6)}
 .shop-all .avatars{margin-top:8px}
 .shop-filter{margin:6px 0 4px;flex-wrap:wrap}
+.dev-takeover.seasonal { background: radial-gradient(circle at var(--ox) var(--oy), rgba(255,200,120,.16), rgba(3,4,14,.55) 70%); }
+.dev-takeover.seasonal .dev-giant { animation: devgrow 2.9s cubic-bezier(.5,0,.3,1) forwards; }
+.dev-takeover.seasonal .dev-giant .avg { display:inline-block; }
+.dev-takeover.seasonal .dev-label { color: #ffe1a8; text-shadow: 0 0 22px rgba(255,180,80,.7), 0 4px 0 rgba(0,0,0,.4); }
 </style></head><body>
 <div id="app"></div>
-<script>window.ATT_BUILD='cc16b01aff'</script>
+<script>window.ATT_BUILD='4393512180'</script>
 <script>
 /* Attillion prompt bank.
  * GUESS: rarity comes from the ORDER of each answer list. Answers are written
@@ -1996,6 +2000,9 @@ function avGrouped(list) {
 }
 function mutName(m) { return m === "perfect" ? "Perfect" : AV_VARIANTS[m] ? AV_VARIANTS[m].name : AV_SEASONS[m] ? AV_SEASONS[m].name : ""; }
 function mutTag(a) { return a && a.mut ? ` <i class="mut mut-${a.mut}">${mutName(a.mut)}</i>` : ""; }
+// Seasonal Developers: a 👾 in each season's colours, from a secret code that only works in that season
+const SEASON_DEV_CODES = { xmas: 3133342220, halloween: 2671172934, thanks: 2538180855, valentine: 926746456, spring: 820806958, summer: 275872246 };
+Object.entries(SEASON_DEV_CODES).forEach(([sk, code]) => AVATARS.push({ id: "sdev-" + sk, e: "👾", name: AV_SEASONS[sk].name + " Developer", code, dev: true, mut: sk, variant: sk, seasonDev: sk }));
 function seasonNow() { const m = new Date().getMonth() + 1; return Object.keys(AV_SEASONS).find(k => AV_SEASONS[k].months.includes(m)) || null; }
 
 // A short description for every avatar, shown on the avatar page
@@ -2050,6 +2057,7 @@ function avHow(a, open) {
     : a.bestAv ? "Find a question's hidden BEST answer (or use its secret code)."
     : a.ev ? `Collect ${EVENT_GOAL} ${ev ? ev.tokenName + " " + ev.token : "tokens"} by playing the event bots while ${ev ? ev.name : "the event"} is on.`
     : a.shop5 ? `Buy ${a.shop5} avatars from the Avatar Shop, then enter its secret code.`
+    : a.seasonDev ? `Type in its secret developer code during ${AV_SEASONS[a.seasonDev].name} season.`
     : a.code ? (a.dev ? "Typed in a secret developer code." : "Typed in a secret code.")
     : a.season ? `Buy it in the Avatar Shop for ${a.shop} 💠 during ${AV_SEASONS[a.season].name} season.`
     : a.shop ? `Buy it in the Avatar Shop for ${a.shop} 💠 Attillion Gems when it's for sale.`
@@ -2250,6 +2258,12 @@ const ADMIN_CODES = [
   { h: 812187123, c: "VEVOQUxQSFRYSVM=", what: "Unlocks the 🪐 Saturn avatar." },
   { h: 4277053133, c: "MjRQUkFXTEVYSVA=", what: "Unlocks the 👾 Developer avatar." },
   { h: 2110502093, c: "OTFIQ1RJTEdERURMSUc=", what: "Unlocks the 👾 Gold Developer avatar." },
+  { h: 3133342220, c: "TEVYSVBTQU1Y", what: "Unlocks the 👾 Christmas Developer. Only works during Christmas season." },
+  { h: 2671172934, c: "TEVYSVBZS09PUFM=", what: "Unlocks the 👾 Halloween Developer. Only works during Halloween season." },
+  { h: 2538180855, c: "TEVYSVBZRUtSVVQ=", what: "Unlocks the 👾 Thanksgiving Developer. Only works during Thanksgiving season." },
+  { h: 926746456, c: "TEVYSVBESVBVQw==", what: "Unlocks the 👾 Valentine Developer. Only works during Valentine season." },
+  { h: 820806958, c: "TEVYSVBNT09MQg==", what: "Unlocks the 👾 Spring Developer. Only works during Spring season." },
+  { h: 275872246, c: "TEVYSVBZTk5VUw==", what: "Unlocks the 👾 Summer Developer. Only works during Summer season." },
   { h: 3104168595, c: "NUxFWElQQUxVQkVO", what: "Unlocks the 👾 Perfect Developer, but only after buying 5 shop avatars." },
   { h: 207743465, c: "ODhSRURPQ01TSVJQ", what: "Unlocks the 👾 Rainbow Developer avatar." },
   { h: 1175683394, c: "Uk9UQ0VMTE9DUkFUUw==", what: "Unlocks every 1 in Attillion trophy avatar." },
@@ -2268,7 +2282,7 @@ const ADMIN_CODES = [
   { h: 953241660, c: "MDAwMVNNRUdBR0VN", what: "+1000 💠 once per player each time you turn it on (Off = nobody)." }
 ];
 function codeText(x) { return [...atob(x.c)].reverse().join(""); }
-const DEV_CODE_HASHES = [4277053133, 2110502093, 207743465, 3104168595];
+const DEV_CODE_HASHES = [4277053133, 2110502093, 207743465, 3104168595, 3133342220, 2671172934, 2538180855, 926746456, 820806958, 275872246];
 // is this code switched off for everyone except the owner?
 function codeOff(h, f) {
   f = f || {};
@@ -3453,7 +3467,7 @@ function playReveal() {
   requestAnimationFrame(() => requestAnimationFrame(() => { if (dMe) dMe.classList.add("go"); }));
   if (mineCard) {
     FX.countUp(mineCard.querySelector(".pts b"), S.lastMine.points, 900);
-    FX.reveal(mineCard, S.lastMine.valid ? S.lastMine.zone.key : null, "you", { devTakeover: ["dev", "rdev", "gdev", "pdev"].includes(myAvatarObj().id) && !eventMatch() && !S.lastMine.best ? myAvatarObj().id : null, theme: myTheme(), best: !!S.lastMine.best, odds: S.lastMine.share > 0 && !S.lastMine.best ? oneIn(S.lastMine.share).replace("about ", "") : "" });
+    FX.reveal(mineCard, S.lastMine.valid ? S.lastMine.zone.key : null, "you", { devTakeover: (["dev", "rdev", "gdev", "pdev"].includes(myAvatarObj().id) || myAvatarObj().id.startsWith("sdev-")) && !eventMatch() && !S.lastMine.best ? myAvatarObj().id : null, theme: myTheme(), best: !!S.lastMine.best, odds: S.lastMine.share > 0 && !S.lastMine.best ? oneIn(S.lastMine.share).replace("about ", "") : "" });
     SFX(S.lastMine.valid ? S.lastMine.zone.key : "miss");
     FX.countUp(document.getElementById("pod-me"), total(S.scores), 900);
   }
@@ -5716,6 +5730,7 @@ document.addEventListener("submit", async e => {
     }
     const a = AVATARS.find(x => x.code === h);
     if (!a) { SFX("error"); go("avatar", { codeMsg: "That code doesn't unlock anything." }); return; }
+    if (a.seasonDev && seasonNow() !== a.seasonDev && !isOwner()) { SFX("error"); go("avatar", { codeMsg: `🗓️ That code only works during ${AV_SEASONS[a.seasonDev].name} season.` }); return; }
     if (a.shop5 && shopOwned(me()).length < a.shop5) { SFX("error"); go("avatar", { codeMsg: `🔒 That code only works after you buy ${a.shop5} avatars from the Shop. You've bought ${shopOwned(me()).length}.` }); return; }
     const u = me();
     if (redeemed(u).includes(a.id)) { go("avatar", { codeMsg: `You already have the ${a.name}.` }); return; }
@@ -6169,12 +6184,12 @@ function ring(card, rgb, n, dur) {
 /* Rainbow Developer's own Attillion: the creature grows from tiny until it fills
    the screen, then vanishes. */
 function devTakeover(card, id) {
-  const gold = id === "gdev", plain = id === "dev", perf = id === "pdev";
+  const gold = id === "gdev", plain = id === "dev", perf = id === "pdev", sea = id.startsWith("sdev-") ? id.slice(5) : "";
   const { x, y } = gaugePoint(card);
   const el = document.createElement("div");
-  el.className = "dev-takeover" + (gold ? " gold" : plain ? " plain" : perf ? " perfect" : "");
+  el.className = "dev-takeover" + (gold ? " gold" : plain ? " plain" : perf ? " perfect" : sea ? " seasonal" : "");
   el.style.setProperty("--ox", x + "px"); el.style.setProperty("--oy", y + "px");
-  el.innerHTML = `<span class="dev-giant avg av-${gold ? "gdev" : plain ? "dev" : perf ? "pdev" : "rdev"}">👾</span><p class="dev-label">1 in Attillion</p>`;
+  el.innerHTML = (sea ? `<span class="dev-giant"><span class="avg av-v-${sea}">👾</span></span>` : `<span class="dev-giant avg av-${gold ? "gdev" : plain ? "dev" : perf ? "pdev" : "rdev"}">👾</span>`) + `<p class="dev-label">1 in Attillion</p>`;
   document.body.appendChild(el);
   const end = () => el.remove();
   const t = setTimeout(end, 2900);
@@ -6492,7 +6507,7 @@ window.KrillionFX = {
   // the full 1 in Attillion moment, played when you pick a new avatar
   celebrate(el, avatarId, avatarHtml, label, theme) {
     if (!el || reduce) return;
-    if (avatarId === "dev" || avatarId === "rdev" || avatarId === "gdev" || avatarId === "pdev") devTakeover(el, avatarId);
+    if (avatarId === "dev" || avatarId === "rdev" || avatarId === "gdev" || avatarId === "pdev" || String(avatarId).startsWith("sdev-")) devTakeover(el, avatarId);
     else krillion(el, "", { avatarHtml, label, theme });
     runFx();
   },

@@ -228,12 +228,12 @@ function ring(card, rgb, n, dur) {
 /* Rainbow Developer's own Attillion: the creature grows from tiny until it fills
    the screen, then vanishes. */
 function devTakeover(card, id) {
-  const gold = id === "gdev", plain = id === "dev", perf = id === "pdev";
+  const gold = id === "gdev", plain = id === "dev", perf = id === "pdev", sea = id.startsWith("sdev-") ? id.slice(5) : "";
   const { x, y } = gaugePoint(card);
   const el = document.createElement("div");
-  el.className = "dev-takeover" + (gold ? " gold" : plain ? " plain" : perf ? " perfect" : "");
+  el.className = "dev-takeover" + (gold ? " gold" : plain ? " plain" : perf ? " perfect" : sea ? " seasonal" : "");
   el.style.setProperty("--ox", x + "px"); el.style.setProperty("--oy", y + "px");
-  el.innerHTML = `<span class="dev-giant avg av-${gold ? "gdev" : plain ? "dev" : perf ? "pdev" : "rdev"}">👾</span><p class="dev-label">1 in Attillion</p>`;
+  el.innerHTML = (sea ? `<span class="dev-giant"><span class="avg av-v-${sea}">👾</span></span>` : `<span class="dev-giant avg av-${gold ? "gdev" : plain ? "dev" : perf ? "pdev" : "rdev"}">👾</span>`) + `<p class="dev-label">1 in Attillion</p>`;
   document.body.appendChild(el);
   const end = () => el.remove();
   const t = setTimeout(end, 2900);
@@ -551,7 +551,7 @@ window.KrillionFX = {
   // the full 1 in Attillion moment, played when you pick a new avatar
   celebrate(el, avatarId, avatarHtml, label, theme) {
     if (!el || reduce) return;
-    if (avatarId === "dev" || avatarId === "rdev" || avatarId === "gdev" || avatarId === "pdev") devTakeover(el, avatarId);
+    if (avatarId === "dev" || avatarId === "rdev" || avatarId === "gdev" || avatarId === "pdev" || String(avatarId).startsWith("sdev-")) devTakeover(el, avatarId);
     else krillion(el, "", { avatarHtml, label, theme });
     runFx();
   },
