@@ -1041,9 +1041,17 @@ body.gkb-on{padding-bottom:250px !important}
 }
 
 .adm-online{margin:8px 0 0;font-weight:600;font-size:14px}
+
+.adm-codes{margin:10px 0 4px}
+.adm-codes>summary{cursor:pointer;font-weight:700;padding:6px 0}
+.adm-code{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid rgba(255,255,255,.08)}
+.adm-c{display:block;font:700 13px var(--font-data);letter-spacing:.04em;color:#ffe9a8;word-break:break-all}
+.adm-w{display:block;font-size:12px;color:var(--muted,#aab3d6);line-height:1.35}
+.adm-only{font-style:normal;font-size:12px;font-weight:700;color:#ffc93c;white-space:nowrap}
+.adm-code .seg-pick{flex-wrap:nowrap;flex-shrink:0}.adm-code .seg-pick button{padding:6px 10px}
 </style></head><body>
 <div id="app"></div>
-<script>window.ATT_BUILD='b02fe0530f'</script>
+<script>window.ATT_BUILD='5dc65de2c2'</script>
 <script>
 /* Attillion prompt bank.
  * GUESS: rarity comes from the ORDER of each answer list. Answers are written
@@ -2216,6 +2224,40 @@ function roverBoostOn() { return !!S.roverBoost && S.mode === "bot" && S.level =
 const POWER_HOUR_CODE = 1478332066;  // POWERHOUR: only in the first 15 minutes of an hour, 2 in 3 answers vs any bot are a 1 in Attillion, until :15
 const STOP_CODE = 2464494451;        // STOP: turns off ROVERJACKPOT and POWERHOUR
 const GEM_CODE = 135985295;          // GEMDROP: +10 gems, once per player each time the owner switches it on
+/* Every code in the game, for the owner's Settings › Admin › All codes list.
+ * The code text is lightly scrambled here so it isn't plain to read in the page. */
+const ADMIN_CODES = [
+  { h: 32697793, c: "UkVEQUVMUlVPWU9URU1FS0FU", what: "Unlocks the 👽 Alien avatar." },
+  { h: 477561382, c: "UkVUTlVPQ05FRVNPTEM=", what: "Unlocks the 🛸 Flying saucer avatar." },
+  { h: 1213739381, c: "VElCUk9OSVlPQkRPT0c=", what: "Unlocks the 🐕 Space dog avatar." },
+  { h: 190172967, c: "RVNFRUhDTk9PTQ==", what: "Unlocks the 🧀 Moon cheese avatar." },
+  { h: 812187123, c: "VEVOQUxQSFRYSVM=", what: "Unlocks the 🪐 Saturn avatar." },
+  { h: 4277053133, c: "MjRQUkFXTEVYSVA=", what: "Unlocks the 👾 Developer avatar." },
+  { h: 2110502093, c: "OTFIQ1RJTEdERURMSUc=", what: "Unlocks the 👾 Gold Developer avatar." },
+  { h: 207743465, c: "ODhSRURPQ01TSVJQ", what: "Unlocks the 👾 Rainbow Developer avatar." },
+  { h: 1175683394, c: "Uk9UQ0VMTE9DUkFUUw==", what: "Unlocks every 1 in Attillion trophy avatar." },
+  { h: 2284514118, c: "RFJBT0hOT0dBUkQ=", what: "Old code: also unlocks every 1 in Attillion trophy avatar." },
+  { h: 1553214958, c: "SzFURU1PQ0xBWU9S", what: "Unlocks the 👑 Attillion Crown." },
+  { h: 1753198704, c: "NzdLUkFQU0RSQUhT", what: "Unlocks the 💎 Best Answer Diamond." },
+  { h: 3629488017, c: "N0FMVUJFTkdBWkdJWg==", what: "Unlocks the 🌌 Perfect Nebula." },
+  { h: 3522492995, c: "ODVFSENBQ1RMT0I=", what: "+3 of every power-up, once a day." },
+  { h: 2919067109, c: "NjJUTE9WRUdSQUhDRVI=", what: "Lets BOLTCACHE58 be used again today." },
+  { h: 3265732527, c: "NDEzRUdSVVNURU1PQw==", what: "+100 Elo (stops at 2000). Only works for you." },
+  { h: 1033073137, c: "VE9QS0NBSlJFVk9S", what: "20 minutes: half of all answers vs Rover are a 1 in Attillion." },
+  { h: 1478332066, c: "UlVPSFJFV09Q", what: "First 15 min of an hour (or any time with your switch): 2 in 3 answers vs bots are a 1 in Attillion." },
+  { h: 2464494451, c: "UE9UUw==", what: "Turns off ROVERJACKPOT and POWERHOUR." },
+  { h: 135985295, c: "UE9SRE1FRw==", what: "+10 💠 once per player each time you turn it on." }
+];
+function codeText(x) { return [...atob(x.c)].reverse().join(""); }
+const DEV_CODE_HASHES = [4277053133, 2110502093, 207743465];
+// is this code switched off for everyone except the owner?
+function codeOff(h, f) {
+  f = f || {};
+  if (h === ROVER_CODE) return !f.rjAll;
+  if (h === GEM_CODE) return !f.gemDrop;
+  if (h === ELO_BOOST_CODE) return false;
+  return (f.codesOff || []).includes(h) || (!!f.devOff && DEV_CODE_HASHES.includes(h));
+}
 function isOwner(u) { u = u === undefined ? me() : u; return !!(u && u.name.toLowerCase() === OWNER_NAME.toLowerCase()); }
 const BOOST_FOREVER = 8.64e15;       // a switch in Settings keeps a boost on until it's switched off
 /* The owner's "POWERHOUR any time" switch is saved on the owner's account (adminFlags),
@@ -4652,7 +4694,7 @@ async function admOnlineCheck() {
   const u = me(); if (!isOwner(u)) return;
   if (!u.cloud) { el.innerHTML = "⚠️ This account isn't saved online here, so other players can't see these switches. Log in to AdminAtticus on the website to change them."; return; }
   const on = await ownerFlagsFetch(true), here = u.adminFlags || {};
-  const keys = ["gemDrop", "rjAll", "phAnyTime", "stack", "devOff"], same = keys.every(k => !!on[k] === !!here[k]);
+  const keys = ["gemDrop", "rjAll", "phAnyTime", "stack", "devOff"], same = keys.every(k => !!on[k] === !!here[k]) && JSON.stringify((on.codesOff || []).slice().sort()) === JSON.stringify((here.codesOff || []).slice().sort());
   if (!document.getElementById("adm-online")) return;
   document.getElementById("adm-online").innerHTML = same ? "✅ Other players see these switches." : "⏳ Saving your switches online… (if this stays, tap a switch again)";
   if (!same) { cloudPush(); setTimeout(admOnlineCheck, 4000); }
@@ -4707,17 +4749,8 @@ function viewSettings() {
     <div class="set-row"><span class="set-l">Rover jackpot</span><div class="seg-pick" role="group" aria-label="Rover jackpot">
       ${[["on", "On"], ["off", "Off"]].map(([v, l]) => `<button data-act="adm-rover" data-v="${v}" aria-pressed="${(roverBoostLeft() > 0) === (v === "on")}">${l}</button>`).join("")}
     </div></div>
-    <div class="set-row"><span class="set-l">ROVERJACKPOT for everyone</span><div class="seg-pick" role="group" aria-label="ROVERJACKPOT for everyone">
-      ${[["on", "On"], ["off", "Off"]].map(([v, l]) => `<button data-act="adm-rjall" data-v="${v}" aria-pressed="${!!(u.adminFlags || {}).rjAll === (v === "on")}">${l}</button>`).join("")}
-    </div></div>
     <div class="set-row"><span class="set-l">Stack Rover jackpot + Power hour</span><div class="seg-pick" role="group" aria-label="Stack Rover jackpot and Power hour">
       ${[["on", "On"], ["off", "Off"]].map(([v, l]) => `<button data-act="adm-stack" data-v="${v}" aria-pressed="${!!(u.adminFlags || {}).stack === (v === "on")}">${l}</button>`).join("")}
-    </div></div>
-    <div class="set-row"><span class="set-l">Developer codes</span><div class="seg-pick" role="group" aria-label="Developer codes">
-      ${[["on", "On"], ["off", "Off"]].map(([v, l]) => `<button data-act="adm-dev" data-v="${v}" aria-pressed="${!(u.adminFlags || {}).devOff === (v === "on")}">${l}</button>`).join("")}
-    </div></div>
-    <div class="set-row"><span class="set-l">GEMDROP code (+10 💠)</span><div class="seg-pick" role="group" aria-label="GEMDROP code">
-      ${[["on", "On"], ["off", "Off"]].map(([v, l]) => `<button data-act="adm-gem" data-v="${v}" aria-pressed="${!!(u.adminFlags || {}).gemDrop === (v === "on")}">${l}</button>`).join("")}
     </div></div>
     <div class="set-row"><span class="set-l">Power hour</span><div class="seg-pick" role="group" aria-label="Power hour">
       ${[["on", "On"], ["off", "Off"]].map(([v, l]) => `<button data-act="adm-ph" data-v="${v}" aria-pressed="${(powerHourLeft() > 0) === (v === "on")}">${l}</button>`).join("")}
@@ -4725,8 +4758,13 @@ function viewSettings() {
     <div class="set-row"><span class="set-l">POWERHOUR any time for everyone</span><div class="seg-pick" role="group" aria-label="POWERHOUR any time for everyone">
       ${[["on", "On"], ["off", "Off"]].map(([v, l]) => `<button data-act="adm-phall" data-v="${v}" aria-pressed="${!!(u.adminFlags || {}).phAnyTime === (v === "on")}">${l}</button>`).join("")}
     </div></div>
+    <details class="adm-codes"${store.get("setOpen-codes", false) ? " open" : ""} data-key="setOpen-codes"><summary>🔑 All codes (${ADMIN_CODES.length})</summary>
+    <p class="hint">On = anyone can use it. Off = it only works for you.</p>
+    ${ADMIN_CODES.map(x => { const off = codeOff(x.h, u.adminFlags), fixed = x.h === ELO_BOOST_CODE;
+      return `<div class="adm-code"><div><b class="adm-c">${codeText(x)}</b><span class="adm-w">${x.what}</span></div>${fixed ? `<i class="adm-only">Only you</i>` : `<div class="seg-pick" role="group" aria-label="${codeText(x)}">${[["on", "On"], ["off", "Off"]].map(([v, l]) => `<button data-act="adm-code" data-h="${x.h}" data-v="${v}" aria-pressed="${off === (v === "off")}">${l}</button>`).join("")}</div>`}</div>`; }).join("")}
+    </details>
     <p class="adm-online" id="adm-online">Checking what other players see…</p>
-    <p class="hint">Your boosts stay on until you switch them off. Developer codes off: nobody else can unlock the Developer avatars with a code (anyone who has one keeps it). GEMDROP gives every player +10 💠 once each time you switch it on. Stack: with both on against Rover, 5 in 6 answers are a 1 in Attillion (off: 2 in 3). The "for everyone" switches let every player use ROVERJACKPOT (20 minutes) and POWERHOUR at any time (15 minutes).${u.cloud ? "" : " Save this account online first."}</p>
+    <p class="hint">Your boosts stay on until you switch them off. Stack: with both on against Rover, 5 in 6 answers are a 1 in Attillion (off: 2 in 3). "POWERHOUR any time" lets every player use POWERHOUR at any minute.${u.cloud ? "" : " Save this account online first."}</p>
     </details>` : ""}
 
     <details class="set-group"${store.get("setOpen-screen", false) ? " open" : ""} data-key="setOpen-screen"><summary>📱 Screen layout</summary>
@@ -5379,6 +5417,20 @@ document.addEventListener("click", async e => {
     ugSet("gems", n => n - SHOP_REFRESH, 0); const n = shopRoll() + 1; ugSet("shopRoll", () => ({ p: shopPeriod(), n }), null);
     go("shop", { shopMsg: "Here are 3 new avatars!" });
   }
+  else if (act === "adm-code") {
+    if (!isOwner()) return;
+    const h = +t.dataset.h, on = t.dataset.v === "on";
+    updateUser(x => {
+      const f = x.adminFlags = Object.assign({}, x.adminFlags);
+      let off = new Set(f.codesOff || []);
+      if (f.devOff) { DEV_CODE_HASHES.forEach(d => off.add(d)); f.devOff = false; }
+      if (h === ROVER_CODE) f.rjAll = on;
+      else if (h === GEM_CODE) f.gemDrop = on ? Date.now() : 0;
+      else if (on) off.delete(h); else off.add(h);
+      f.codesOff = [...off];
+    });
+    const y = window.scrollY; render(); window.scrollTo(0, y);
+  }
   else if (act === "adm-rover" || act === "adm-ph" || act === "adm-phall" || act === "adm-rjall" || act === "adm-stack" || act === "adm-gem" || act === "adm-dev") {
     if (!isOwner()) return;
     const on = t.dataset.v === "on";
@@ -5472,6 +5524,7 @@ document.addEventListener("submit", async e => {
   else if (e.target.id === "code-form") {
     const input = document.getElementById("unlock-code");
     const h = codeHash(input.value);
+    if (!isOwner() && h !== GEM_CODE && h !== ROVER_CODE && ADMIN_CODES.some(x => x.h === h) && codeOff(h, await ownerFlags())) { SFX("error"); go("avatar", { codeMsg: "That code is switched off right now." }); return; }
     // Elo boost: admin account only, +100 each time, never above 2000
     if (h === ELO_BOOST_CODE) {
       const u = me();
@@ -5552,7 +5605,7 @@ document.addEventListener("submit", async e => {
       return;
     }
     const a = AVATARS.find(x => x.code === h);
-    if (!a || (a.dev && !isOwner() && (await ownerFlags()).devOff)) { SFX("error"); go("avatar", { codeMsg: "That code doesn't unlock anything." }); return; }
+    if (!a) { SFX("error"); go("avatar", { codeMsg: "That code doesn't unlock anything." }); return; }
     const u = me();
     if (redeemed(u).includes(a.id)) { go("avatar", { codeMsg: `You already have the ${a.name}.` }); return; }
     if (u) updateUser(x => { x.codes = (x.codes || []).concat(a.id); x.avatar = a.id; });
