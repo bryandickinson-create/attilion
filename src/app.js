@@ -377,6 +377,7 @@ function roverBoostLeft() { return Math.max(0, store.get("roverBoostUntil", 0) -
 function roverBoostOn() { return !!S.roverBoost && S.mode === "bot" && S.level === "rover"; }   // set when the match starts, so it lasts the whole game
 const POWER_HOUR_CODE = 1478332066;  // POWERHOUR: only in the first 15 minutes of an hour, 2 in 3 answers vs any bot are a 1 in Attillion, until :15
 const STOP_CODE = 2464494451;        // STOP: turns off ROVERJACKPOT and POWERHOUR
+const GEM_CODE = 135985295;          // GEMDROP: +10 gems, once per player each time the owner switches it on
 function isOwner(u) { u = u === undefined ? me() : u; return !!(u && u.name.toLowerCase() === OWNER_NAME.toLowerCase()); }
 const BOOST_FOREVER = 8.64e15;       // a switch in Settings keeps a boost on until it's switched off
 /* The owner's "POWERHOUR any time" switch is saved on the owner's account (adminFlags),
@@ -2853,13 +2854,19 @@ function viewSettings() {
     <div class="set-row"><span class="set-l">Stack Rover jackpot + Power hour</span><div class="seg-pick" role="group" aria-label="Stack Rover jackpot and Power hour">
       ${[["on", "On"], ["off", "Off"]].map(([v, l]) => `<button data-act="adm-stack" data-v="${v}" aria-pressed="${!!(u.adminFlags || {}).stack === (v === "on")}">${l}</button>`).join("")}
     </div></div>
+    <div class="set-row"><span class="set-l">Developer codes</span><div class="seg-pick" role="group" aria-label="Developer codes">
+      ${[["on", "On"], ["off", "Off"]].map(([v, l]) => `<button data-act="adm-dev" data-v="${v}" aria-pressed="${!(u.adminFlags || {}).devOff === (v === "on")}">${l}</button>`).join("")}
+    </div></div>
+    <div class="set-row"><span class="set-l">GEMDROP code (+10 💠)</span><div class="seg-pick" role="group" aria-label="GEMDROP code">
+      ${[["on", "On"], ["off", "Off"]].map(([v, l]) => `<button data-act="adm-gem" data-v="${v}" aria-pressed="${!!(u.adminFlags || {}).gemDrop === (v === "on")}">${l}</button>`).join("")}
+    </div></div>
     <div class="set-row"><span class="set-l">Power hour</span><div class="seg-pick" role="group" aria-label="Power hour">
       ${[["on", "On"], ["off", "Off"]].map(([v, l]) => `<button data-act="adm-ph" data-v="${v}" aria-pressed="${(powerHourLeft() > 0) === (v === "on")}">${l}</button>`).join("")}
     </div></div>
     <div class="set-row"><span class="set-l">POWERHOUR any time for everyone</span><div class="seg-pick" role="group" aria-label="POWERHOUR any time for everyone">
       ${[["on", "On"], ["off", "Off"]].map(([v, l]) => `<button data-act="adm-phall" data-v="${v}" aria-pressed="${!!(u.adminFlags || {}).phAnyTime === (v === "on")}">${l}</button>`).join("")}
     </div></div>
-    <p class="hint">Your boosts stay on until you switch them off. Stack: with both on against Rover, 5 in 6 answers are a 1 in Attillion (off: 2 in 3). The "for everyone" switches let every player use ROVERJACKPOT (20 minutes) and POWERHOUR at any time (15 minutes).${u.cloud ? "" : " Save this account online first."}</p>
+    <p class="hint">Your boosts stay on until you switch them off. Developer codes off: nobody else can unlock the Developer avatars with a code (anyone who has one keeps it). GEMDROP gives every player +10 💠 once each time you switch it on. Stack: with both on against Rover, 5 in 6 answers are a 1 in Attillion (off: 2 in 3). The "for everyone" switches let every player use ROVERJACKPOT (20 minutes) and POWERHOUR at any time (15 minutes).${u.cloud ? "" : " Save this account online first."}</p>
     </details>` : ""}
 
     <details class="set-group"${store.get("setOpen-screen", false) ? " open" : ""} data-key="setOpen-screen"><summary>📱 Screen layout</summary>
@@ -3506,11 +3513,13 @@ document.addEventListener("click", async e => {
     ugSet("gems", n => n - SHOP_REFRESH, 0); const n = shopRoll() + 1; ugSet("shopRoll", () => ({ p: shopPeriod(), n }), null);
     go("shop", { shopMsg: "Here are 3 new avatars!" });
   }
-  else if (act === "adm-rover" || act === "adm-ph" || act === "adm-phall" || act === "adm-rjall" || act === "adm-stack") {
+  else if (act === "adm-rover" || act === "adm-ph" || act === "adm-phall" || act === "adm-rjall" || act === "adm-stack" || act === "adm-gem" || act === "adm-dev") {
     if (!isOwner()) return;
     const on = t.dataset.v === "on";
     if (act === "adm-rover") store.set("roverBoostUntil", on ? BOOST_FOREVER : 0);
     else if (act === "adm-ph") store.set("powerHourUntil", on ? BOOST_FOREVER : 0);
+    else if (act === "adm-dev") updateUser(x => { x.adminFlags = Object.assign({}, x.adminFlags, { devOff: !on }); });
+    else if (act === "adm-gem") updateUser(x => { x.adminFlags = Object.assign({}, x.adminFlags, { gemDrop: on ? Date.now() : 0 }); });
     else updateUser(x => { x.adminFlags = Object.assign({}, x.adminFlags, act === "adm-rjall" ? { rjAll: on } : act === "adm-stack" ? { stack: on } : { phAnyTime: on }); });
     const y = window.scrollY; render(); window.scrollTo(0, y);
   }
@@ -3612,6 +3621,15 @@ document.addEventListener("submit", async e => {
       go("avatar", { codeMsg: `+Elo boost! Your ${k === "kid" ? "Kid " : k === "big" ? "Big kid " : ""}Elo is now ${myElo()} (it stops at ${ELO_BOOST_CAP}).` });
       return;
     }
+    if (h === GEM_CODE) {
+      const drop = (await ownerFlags()).gemDrop;   // the time the owner last switched it on
+      if (!drop) { SFX("error"); go("avatar", { codeMsg: "The gem code is switched off right now. Try again later!" }); return; }
+      if (ugGet("gemDropUsed", 0) === drop) { go("avatar", { codeMsg: "You already got your 💠 10 from this gem drop." }); return; }
+      ugSet("gemDropUsed", () => drop, 0); ugSet("gems", n => n + 10, 0);
+      SFX("win");
+      go("avatar", { codeMsg: `💠 +10 Attillion Gems! You have ${gems()}. Spend them in the Shop.` });
+      return;
+    }
     if (h === STOP_CODE) {
       const was = roverBoostLeft() || powerHourLeft();
       store.set("roverBoostUntil", 0); store.set("powerHourUntil", 0);
@@ -3668,7 +3686,7 @@ document.addEventListener("submit", async e => {
       return;
     }
     const a = AVATARS.find(x => x.code === h);
-    if (!a) { SFX("error"); go("avatar", { codeMsg: "That code doesn't unlock anything." }); return; }
+    if (!a || (a.dev && !isOwner() && (await ownerFlags()).devOff)) { SFX("error"); go("avatar", { codeMsg: "That code doesn't unlock anything." }); return; }
     const u = me();
     if (redeemed(u).includes(a.id)) { go("avatar", { codeMsg: `You already have the ${a.name}.` }); return; }
     if (u) updateUser(x => { x.codes = (x.codes || []).concat(a.id); x.avatar = a.id; });
