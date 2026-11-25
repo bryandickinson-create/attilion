@@ -378,6 +378,7 @@ function roverBoostOn() { return !!S.roverBoost && S.mode === "bot" && S.level =
 const POWER_HOUR_CODE = 1478332066;  // POWERHOUR: only in the first 15 minutes of an hour, 2 in 3 answers vs any bot are a 1 in Attillion, until :15
 const STOP_CODE = 2464494451;        // STOP: turns off ROVERJACKPOT and POWERHOUR
 const GEM100_CODE = 3247717741;        // GEMVAULT100: +100 gems, once per player each time the owner switches it on
+const GEM1000_CODE = 953241660;      // MEGAGEMS1000: +1000 gems, once per player each time the owner switches it on
 const GEM_CODE = 135985295;          // GEMDROP: +10 gems, once per player each time the owner switches it on
 /* Every code in the game, for the owner's Settings › Admin › All codes list.
  * The code text is lightly scrambled here so it isn't plain to read in the page. */
@@ -403,7 +404,8 @@ const ADMIN_CODES = [
   { h: 1478332066, c: "UlVPSFJFV09Q", what: "First 15 min of an hour (or any time with your switch): 2 in 3 answers vs bots are a 1 in Attillion." },
   { h: 2464494451, c: "UE9UUw==", what: "Turns off ROVERJACKPOT and POWERHOUR." },
   { h: 135985295, c: "UE9SRE1FRw==", what: "+10 💠 once per player each time you turn it on (Off = nobody)." },
-  { h: 3247717741, c: "MDAxVExVQVZNRUc=", what: "+100 💠 once per player each time you turn it on (Off = nobody)." }
+  { h: 3247717741, c: "MDAxVExVQVZNRUc=", what: "+100 💠 once per player each time you turn it on (Off = nobody)." },
+  { h: 953241660, c: "MDAwMVNNRUdBR0VN", what: "+1000 💠 once per player each time you turn it on (Off = nobody)." }
 ];
 function codeText(x) { return [...atob(x.c)].reverse().join(""); }
 const DEV_CODE_HASHES = [4277053133, 2110502093, 207743465, 3104168595];
@@ -413,6 +415,7 @@ function codeOff(h, f) {
   if (h === ROVER_CODE) return !f.rjAll;
   if (h === GEM_CODE) return !f.gemDrop;
   if (h === GEM100_CODE) return !f.gem100;
+  if (h === GEM1000_CODE) return !f.gem1000;
   if (h === ELO_BOOST_CODE) return false;
   return (f.codesOff || []).includes(h) || (!!f.devOff && DEV_CODE_HASHES.includes(h));
 }
@@ -2917,7 +2920,7 @@ async function admOnlineCheck() {
   const u = me(); if (!isOwner(u)) return;
   if (!u.cloud) { el.innerHTML = "⚠️ This account isn't saved online here, so other players can't see these switches. Log in to AdminAtticus on the website to change them."; return; }
   const on = await ownerFlagsFetch(true), here = u.adminFlags || {};
-  const keys = ["gemDrop", "gem100", "rjAll", "phAnyTime", "stack", "devOff"], same = keys.every(k => !!on[k] === !!here[k]) && JSON.stringify((on.codesOff || []).slice().sort()) === JSON.stringify((here.codesOff || []).slice().sort());
+  const keys = ["gemDrop", "gem100", "gem1000", "rjAll", "phAnyTime", "stack", "devOff"], same = keys.every(k => !!on[k] === !!here[k]) && JSON.stringify((on.codesOff || []).slice().sort()) === JSON.stringify((here.codesOff || []).slice().sort());
   if (!document.getElementById("adm-online")) return;
   document.getElementById("adm-online").innerHTML = same ? "✅ Other players see these switches." : "⏳ Saving your switches online… (if this stays, tap a switch again)";
   if (!same) { cloudPush(); setTimeout(admOnlineCheck, 4000); }
@@ -3650,6 +3653,7 @@ document.addEventListener("click", async e => {
       if (h === ROVER_CODE) f.rjAll = on;
       else if (h === GEM_CODE) f.gemDrop = on ? Date.now() : 0;
       else if (h === GEM100_CODE) f.gem100 = on ? Date.now() : 0;
+      else if (h === GEM1000_CODE) f.gem1000 = on ? Date.now() : 0;
       else if (on) off.delete(h); else off.add(h);
       f.codesOff = [...off];
     });
@@ -3748,7 +3752,7 @@ document.addEventListener("submit", async e => {
   else if (e.target.id === "code-form") {
     const input = document.getElementById("unlock-code");
     const h = codeHash(input.value);
-    if (!isOwner() && h !== GEM_CODE && h !== GEM100_CODE && h !== ROVER_CODE && ADMIN_CODES.some(x => x.h === h) && codeOff(h, await ownerFlags())) { SFX("error"); go("avatar", { codeMsg: "That code is switched off right now." }); return; }
+    if (!isOwner() && h !== GEM_CODE && h !== GEM100_CODE && h !== GEM1000_CODE && h !== ROVER_CODE && ADMIN_CODES.some(x => x.h === h) && codeOff(h, await ownerFlags())) { SFX("error"); go("avatar", { codeMsg: "That code is switched off right now." }); return; }
     // Elo boost: admin account only, +100 each time, never above 2000
     if (h === ELO_BOOST_CODE) {
       const u = me();
@@ -3762,6 +3766,15 @@ document.addEventListener("submit", async e => {
       });
       SFX("win");
       go("avatar", { codeMsg: `+Elo boost! Your ${k === "kid" ? "Kid " : k === "big" ? "Big kid " : ""}Elo is now ${myElo()} (it stops at ${ELO_BOOST_CAP}).` });
+      return;
+    }
+    if (h === GEM1000_CODE) {
+      const drop = (await ownerFlags()).gem1000;
+      if (!drop) { SFX("error"); go("avatar", { codeMsg: "That gem code is switched off right now. Try again later!" }); return; }
+      if (ugGet("gem1000Used", 0) === drop) { go("avatar", { codeMsg: "You already got your 💠 1000 from this gem code." }); return; }
+      ugSet("gem1000Used", () => drop, 0); ugSet("gems", n => n + 1000, 0);
+      SFX("win");
+      go("avatar", { codeMsg: `💠 +1000 Attillion Gems! You have ${gems()}. Spend them in the Shop.` });
       return;
     }
     if (h === GEM100_CODE) {
