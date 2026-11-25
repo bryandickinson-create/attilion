@@ -3819,14 +3819,18 @@ let KB_INPUT = null;
 function kbEl() {
   let k = document.getElementById("gkb"); if (k) return k;
   k = document.createElement("div"); k.id = "gkb"; k.setAttribute("aria-hidden", "true"); k.hidden = true;
-  const rows = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
-  k.innerHTML = `<div class="gkb-sug" id="gkb-sug"></div>` + rows.map((r, i) => `<div class="gkb-row">${i === 2 ? `<button type="button" data-k="'" class="gkb-k gkb-sm">'</button>` : ""}${[...r].map(c => `<button type="button" data-k="${c}" class="gkb-k">${c}</button>`).join("")}${i === 2 ? `<button type="button" data-k="back" class="gkb-k gkb-wide" aria-label="Delete">⌫</button>` : ""}</div>`).join("")
-    + `<div class="gkb-row"><button type="button" data-k="-" class="gkb-k gkb-sm">-</button><button type="button" data-k=" " class="gkb-k gkb-space">space</button><button type="button" data-k="enter" class="gkb-k gkb-go">Lock in 🚀</button></div>`;
+  const rows = ["qwertyuiop", "asdfghjkl", "zxcvbnm"], nums = ["1234567890", "-/&.,!?:", "#+%$*\""];
+  const key = c => `<button type="button" data-k="${esc(c)}" class="gkb-k">${esc(c)}</button>`, back = `<button type="button" data-k="back" class="gkb-k gkb-wide" aria-label="Delete">⌫</button>`;
+  k.innerHTML = `<div class="gkb-sug" id="gkb-sug"></div>`
+    + rows.map((r, i) => `<div class="gkb-row gkb-abc">${i === 2 ? `<button type="button" data-k="'" class="gkb-k gkb-sm">'</button>` : ""}${[...r].map(key).join("")}${i === 2 ? back : ""}</div>`).join("")
+    + nums.map((r, i) => `<div class="gkb-row gkb-num">${[...r].map(key).join("")}${i === 2 ? back : ""}</div>`).join("")
+    + `<div class="gkb-row"><button type="button" data-k="mode" class="gkb-k gkb-mode" aria-label="Numbers">123</button><button type="button" data-k="-" class="gkb-k gkb-sm">-</button><button type="button" data-k=" " class="gkb-k gkb-space">space</button><button type="button" data-k="enter" class="gkb-k gkb-go">Lock in 🚀</button></div>`;
   document.body.appendChild(k);
   const press = e => {
     const b = e.target.closest("button"); if (!b || !KB_INPUT) return; e.preventDefault();
     const inp = KB_INPUT, k2 = b.dataset.k, s = b.dataset.s;
     if (s !== undefined) inp.value = s + " ";
+    else if (k2 === "mode") { const on = k.classList.toggle("num"); b.textContent = on ? "ABC" : "123"; b.setAttribute("aria-label", on ? "Letters" : "Numbers"); return; }
     else if (k2 === "back") inp.value = inp.value.slice(0, -1);
     else if (k2 === "enter") { inp.value = inp.value.trim(); const f = inp.form; if (f) (f.requestSubmit ? f.requestSubmit() : f.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }))); KB_LAST = null; kbSugPaint(); return; }
     else if (inp.value.length < (+inp.maxLength > 0 ? +inp.maxLength : 60)) inp.value += k2;
