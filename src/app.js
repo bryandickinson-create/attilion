@@ -2689,16 +2689,17 @@ function viewAvatar() {
   const u = me();
   const peak = u ? u.peak : 0;
   const current = myAvatarObj().e + myAvatarObj().id;
-  return `${header()}${tabsBar("avatar")}<main class="narrow av-page">
+  return `${header()}${tabsBar("avatar")}<main class="narrow av-page${store.get("avLayout", "swipe") === "grid" ? " grid-mode" : ""}">
     <p class="eyebrow">Avatar</p>
     <h1>Your avatar</h1>
     <p class="lede small">This is you on the launch tower. Rarer answers send it higher. New avatars unlock as your best Elo climbs.${u ? ` Your best so far is <b>${peak}</b>.` : ""}</p>
     ${u ? "" : `<p class="hint"><button class="link" data-go="login">Log in</button> to earn Elo and unlock more avatars.</p>`}
     <div class="av-search"><input id="av-search" type="search" placeholder="🔍 Search avatars" autocomplete="off" aria-label="Search avatars"></div>
+    <div class="seg-pick av-layout" role="group" aria-label="How to show avatars">${[["swipe", "👆 Swipe"], ["grid", "▦ Grid"]].map(([v, l]) => `<button data-act="avlayout" data-v="${v}" aria-pressed="${store.get("avLayout", "swipe") === v}">${l}</button>`).join("")}</div>
     <p class="av-swipe-hint">Swipe to see every avatar · tap one to learn how to get it</p>
     <p class="hint av-none" id="av-none" hidden>No avatars match that search.</p>
     <button class="btn ghost small av-collapse-all" data-act="avcollapse" aria-expanded="${!store.get("avCollapsed", false)}">${store.get("avCollapsed", false) ? "▸ Show all avatars" : "▾ Collapse all but my avatar"}</button>
-    <div class="avatars${store.get("avCollapsed", false) ? " all-collapsed" : ""}">
+    <div class="avatars${store.get("avCollapsed", false) ? " all-collapsed" : ""}${store.get("avLayout", "swipe") === "grid" ? " av-grid" : ""}">
       ${(() => { const list = avGrouped(AVATARS.filter(a => a.ev ? (isOpen(a, u) || a.ev === EVENT.key) : ((!a.code && !a.perfect && !a.bestAv && !a.shop && !a.sb && !a.shop5) || isOpen(a, u))));
         // look-alike avatars fold into the first one; its +N button opens the group
         const size = {}, selG = {}; list.forEach(a => { size[a.e] = (size[a.e] || 0) + 1; if (a.e + a.id === current) selG[a.e] = true; });
@@ -3487,6 +3488,7 @@ document.addEventListener("click", async e => {
   else if (act === "device") { setDeviceMode(t.dataset.v); render(); }
   else if (act === "tab") { S.tab = t.dataset.tab; render(); }
   else if (act === "auth-mode") go("login", { mode: t.dataset.m });
+  else if (act === "avlayout") { store.set("avLayout", t.dataset.v); render(); }
   else if (act === "avcollapse") {
     const on = !store.get("avCollapsed", false); store.set("avCollapsed", on);
     const box = document.querySelector(".avatars"); if (box) box.classList.toggle("all-collapsed", on);

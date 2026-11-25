@@ -694,14 +694,14 @@ h2 small.sub { font-size: 13px; font-weight: 500; color: var(--kelp); margin-lef
 .avs-sel, .avs-lock { font: 700 14px var(--font-data); color: var(--kelp); margin: 6px 0 0; }
 @media (max-width: 600px) {
   .av-swipe-hint { display: block; text-align: center; font-size: 13px; color: var(--muted, #aab3d6); margin: 0 0 8px; }
-  .avatars { display: flex !important; grid-template-columns: none !important; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px; padding: 4px 0 12px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-  .avatars::-webkit-scrollbar { display: none; }
-  .avatars .avatar { flex: 0 0 100%; min-height: calc(100vh - 230px); min-height: calc(100svh - 230px); scroll-snap-align: center; justify-content: center; gap: 10px; border-radius: 22px; }
-  .avatars .avatar .ae { font-size: 150px; }
-  .avatars .avatar .an { font-size: 24px; }
-  .avatars .avatar .al { font-size: 15px; }
-  .avatars .avatar .asub { font-size: 14px; }
-  .avatars .avatar .av-stars { font-size: 14px; top: 12px; right: 12px; }
+  .avatars:not(.av-grid) { display: flex !important; grid-template-columns: none !important; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px; padding: 4px 0 12px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .avatars:not(.av-grid)::-webkit-scrollbar { display: none; }
+  .avatars:not(.av-grid) .avatar { flex: 0 0 100%; min-height: calc(100vh - 230px); min-height: calc(100svh - 230px); scroll-snap-align: center; justify-content: center; gap: 10px; border-radius: 22px; }
+  .avatars:not(.av-grid) .avatar .ae { font-size: 150px; }
+  .avatars:not(.av-grid) .avatar .an { font-size: 24px; }
+  .avatars:not(.av-grid) .avatar .al { font-size: 15px; }
+  .avatars:not(.av-grid) .avatar .asub { font-size: 14px; }
+  .avatars:not(.av-grid) .avatar .av-stars { font-size: 14px; top: 12px; right: 12px; }
 }
 .avs-anim { margin-top: 12px; }
 /* Thirty-Day Sun: a blazing sun with a gold ring, so it doesn't look like the plain Sun */
@@ -869,9 +869,9 @@ html[data-device="phone"] body { padding-bottom: 10px; }
   .av-page .av-search{margin:2px 0 6px}
   .av-page .av-search input{padding:9px 12px}
   .av-page .av-swipe-hint{margin:0 0 4px;font-size:12px}
-  .av-page .avatars{padding-bottom:6px}
-  .av-page .avatars .avatar{min-height:calc(100svh - 250px)}
-  .av-page .avatars .avatar .ae{font-size:110px}
+  .av-page .avatars:not(.av-grid){padding-bottom:6px}
+  .av-page .avatars:not(.av-grid) .avatar{min-height:calc(100svh - 250px)}
+  .av-page .avatars:not(.av-grid) .avatar .ae{font-size:110px}
   .av-page .code-row{display:flex;align-items:center;gap:8px;margin:4px 0 0}
   .av-page .code-row label{font-size:13px;white-space:nowrap}
   .av-page .code-row input{flex:1;min-width:0;padding:8px 10px}
@@ -1024,9 +1024,24 @@ body.gkb-on{padding-bottom:250px !important}
 .av-collapse-all{margin-top:14px}
 @media (min-width:601px){.avatars.all-collapsed:not(.searching) .avatar:not(.on){display:none}.avatars.all-collapsed:not(.searching) .avatar.on .av-more{display:none}}
 @media (max-width:600px){.av-collapse-all{display:none}}
+
+/* phone: Swipe (one big avatar at a time) or Grid (all at once, like a computer) */
+.av-layout{display:none}
+@media (max-width:600px){
+  .av-layout{display:flex;justify-content:center;margin:0 0 8px}
+  .av-layout + .av-swipe-hint{margin-top:0}
+  .av-page.grid-mode .av-swipe-hint{display:none}
+  .avatars.av-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
+  .avatars.av-grid .avatar{padding:10px 4px}
+  .avatars.av-grid .avatar .ae{font-size:34px}
+  .avatars.av-grid .avatar .an{font-size:12px}
+  .avatars.av-grid .avatar .al{font-size:10px}
+  .avatars.av-grid .avatar .av-stars{display:none}
+  .avatars.av-grid .av-more{top:4px;left:4px;min-width:24px;height:20px;font-size:11px;padding:0 6px}
+}
 </style></head><body>
 <div id="app"></div>
-<script>window.ATT_BUILD='610dbc7ad0'</script>
+<script>window.ATT_BUILD='1ada7a5f96'</script>
 <script>
 /* Attillion prompt bank.
  * GUESS: rarity comes from the ORDER of each answer list. Answers are written
@@ -4510,16 +4525,17 @@ function viewAvatar() {
   const u = me();
   const peak = u ? u.peak : 0;
   const current = myAvatarObj().e + myAvatarObj().id;
-  return `${header()}${tabsBar("avatar")}<main class="narrow av-page">
+  return `${header()}${tabsBar("avatar")}<main class="narrow av-page${store.get("avLayout", "swipe") === "grid" ? " grid-mode" : ""}">
     <p class="eyebrow">Avatar</p>
     <h1>Your avatar</h1>
     <p class="lede small">This is you on the launch tower. Rarer answers send it higher. New avatars unlock as your best Elo climbs.${u ? ` Your best so far is <b>${peak}</b>.` : ""}</p>
     ${u ? "" : `<p class="hint"><button class="link" data-go="login">Log in</button> to earn Elo and unlock more avatars.</p>`}
     <div class="av-search"><input id="av-search" type="search" placeholder="🔍 Search avatars" autocomplete="off" aria-label="Search avatars"></div>
+    <div class="seg-pick av-layout" role="group" aria-label="How to show avatars">${[["swipe", "👆 Swipe"], ["grid", "▦ Grid"]].map(([v, l]) => `<button data-act="avlayout" data-v="${v}" aria-pressed="${store.get("avLayout", "swipe") === v}">${l}</button>`).join("")}</div>
     <p class="av-swipe-hint">Swipe to see every avatar · tap one to learn how to get it</p>
     <p class="hint av-none" id="av-none" hidden>No avatars match that search.</p>
     <button class="btn ghost small av-collapse-all" data-act="avcollapse" aria-expanded="${!store.get("avCollapsed", false)}">${store.get("avCollapsed", false) ? "▸ Show all avatars" : "▾ Collapse all but my avatar"}</button>
-    <div class="avatars${store.get("avCollapsed", false) ? " all-collapsed" : ""}">
+    <div class="avatars${store.get("avCollapsed", false) ? " all-collapsed" : ""}${store.get("avLayout", "swipe") === "grid" ? " av-grid" : ""}">
       ${(() => { const list = avGrouped(AVATARS.filter(a => a.ev ? (isOpen(a, u) || a.ev === EVENT.key) : ((!a.code && !a.perfect && !a.bestAv && !a.shop && !a.sb && !a.shop5) || isOpen(a, u))));
         // look-alike avatars fold into the first one; its +N button opens the group
         const size = {}, selG = {}; list.forEach(a => { size[a.e] = (size[a.e] || 0) + 1; if (a.e + a.id === current) selG[a.e] = true; });
@@ -5308,6 +5324,7 @@ document.addEventListener("click", async e => {
   else if (act === "device") { setDeviceMode(t.dataset.v); render(); }
   else if (act === "tab") { S.tab = t.dataset.tab; render(); }
   else if (act === "auth-mode") go("login", { mode: t.dataset.m });
+  else if (act === "avlayout") { store.set("avLayout", t.dataset.v); render(); }
   else if (act === "avcollapse") {
     const on = !store.get("avCollapsed", false); store.set("avCollapsed", on);
     const box = document.querySelector(".avatars"); if (box) box.classList.toggle("all-collapsed", on);
