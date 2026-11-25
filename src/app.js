@@ -2261,7 +2261,17 @@ function frToast(fid, f, text) {
   const t = document.createElement("button");
   t.type = "button"; t.className = "fr-toast";
   t.innerHTML = `<span class="frt-av">${f.av ? avMarkup(avatarById(f.av)) : "💬"}</span><span class="frt-body"><b>${esc(f.name)}</b><span>${esc(text.length > 80 ? text.slice(0, 78) + "…" : text)}</span></span>`;
-  t.addEventListener("click", () => { t.remove(); FR.chat = fid; frMarkSeen(fid); go("friends"); });
+  // swipe up to dismiss; a plain tap opens the chat
+  let y0 = null, dy = 0, swiped = false;
+  t.addEventListener("pointerdown", e => { y0 = e.clientY; dy = 0; swiped = false; t.setPointerCapture && t.setPointerCapture(e.pointerId); t.style.transition = "none"; });
+  t.addEventListener("pointermove", e => { if (y0 === null) return; dy = Math.min(0, e.clientY - y0); t.style.transform = `translateY(${dy}px)`; t.style.opacity = String(Math.max(0.2, 1 + dy / 80)); });
+  const end = () => {
+    if (y0 === null) return; y0 = null; t.style.transition = "";
+    if (dy < -30) { swiped = true; t.classList.add("out"); t.style.transform = "translateY(-60px)"; t.style.opacity = "0"; setTimeout(() => t.remove(), 300); }
+    else { t.style.transform = ""; t.style.opacity = ""; }
+  };
+  t.addEventListener("pointerup", end); t.addEventListener("pointercancel", end);
+  t.addEventListener("click", () => { if (swiped || Math.abs(dy) > 8) return; t.remove(); FR.chat = fid; frMarkSeen(fid); go("friends"); });
   box.appendChild(t);
   SFX("tick");
   setTimeout(() => { t.classList.add("out"); setTimeout(() => t.remove(), 400); }, 6000);
