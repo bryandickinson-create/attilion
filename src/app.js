@@ -1802,7 +1802,13 @@ function cloudPush() {
   }, 1500);
 }
 // On load: pick up progress made on another device.
+// Until the first pull finishes, nothing should change the account on its own
+// (that would make this device look newer and overwrite the other device's progress).
+let CLOUD_SYNCED = false;
 async function cloudPull() {
+  try { await cloudPullInner(); } finally { if (!CLOUD_SYNCED) { CLOUD_SYNCED = true; if (S.view === "home" || S.view === "shop") render(); } }
+}
+async function cloudPullInner() {
   const u = me(); if (!u || !u.cloud) return;
   const c = await cloud(); if (!c) return;
   const id = await cloudUserId(c); if (!id) return;
@@ -2105,7 +2111,8 @@ const SHOP_START = Date.UTC(2026, 10, 21);       // a Saturday; the shop changes
 const SHOP_DAYS = 7;
 const START_GEMS = 10;                            // every player (new and old) gets these once
 function gems() {
-  if (!ugGet("gemStart", false)) { ugSet("gems", n => n + START_GEMS, 0); ugSet("gemStart", () => true, false); }
+  const u = me();
+  if (!ugGet("gemStart", false) && (!u || !u.cloud || CLOUD_SYNCED)) { ugSet("gems", n => n + START_GEMS, 0); ugSet("gemStart", () => true, false); }
   return ugGet("gems", 0);
 }
 function gemsFor(scores) { const k = (scores || []).filter(x => x && x.points >= 100).length; return GEM_TABLE[Math.min(k, GEM_TABLE.length - 1)]; }
@@ -3909,6 +3916,7 @@ window.Krillion = { promptById: id => PROMPT_BY_ID[id], isKrill, kbSuggest, go: 
 
 if (!fromHash()) render();
 setTimeout(cloudPull, 500);
+document.addEventListener("visibilitychange", () => { if (!document.hidden && S.view !== "play") cloudPull(); });
 setTimeout(ownerFlags, 1500);
 // opened from a move link: bring the account in, then ask for its password
 function fromMoveLink() { if (/^#move=/.test(location.hash)) { const code = decodeURIComponent(location.hash.slice(6)); try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {} importMove(code); } }
