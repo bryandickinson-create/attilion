@@ -1071,7 +1071,7 @@ body.gkb-on{padding-bottom:250px !important}
 .shop-card.sv-ddev{border-color:rgba(140,230,255,.9);box-shadow:0 0 18px rgba(120,220,255,.55)}
 </style></head><body>
 <div id="app"></div>
-<script>window.ATT_BUILD='94573925cf'</script>
+<script>window.ATT_BUILD='5ab12ba311'</script>
 <script>
 /* Attillion prompt bank.
  * GUESS: rarity comes from the ORDER of each answer list. Answers are written
@@ -2006,6 +2006,12 @@ function mutTag(a) { return a && a.mut ? ` <i class="mut mut-${a.mut}">${mutName
 // Seasonal Developers: a 👾 in each season's colours, from a secret code that only works in that season
 const SEASON_DEV_CODES = { xmas: 3133342220, halloween: 2671172934, thanks: 2538180855, valentine: 926746456, spring: 820806958, summer: 275872246 };
 Object.entries(SEASON_DEV_CODES).forEach(([sk, code]) => AVATARS.push({ id: "sdev-" + sk, e: "👾", name: AV_SEASONS[sk].name + " Developer", code, dev: true, mut: sk, variant: sk, seasonDev: sk }));
+// seasons whose avatars the shop can sell right now: the current month's season, plus any the owner
+// switched On in Settings › Admin boosts › Seasonal shop (and minus any switched Off)
+function shopSeasons() {
+  const set = (ownerFlagsNow().seasons) || {}, m = new Date().getMonth() + 1;
+  return Object.keys(AV_SEASONS).filter(k => set[k] === "on" || (set[k] !== "off" && AV_SEASONS[k].months.includes(m)));
+}
 function seasonNow() { const m = new Date().getMonth() + 1; return Object.keys(AV_SEASONS).find(k => AV_SEASONS[k].months.includes(m)) || null; }
 
 // A short description for every avatar, shown on the avatar page
@@ -4067,7 +4073,7 @@ function shopPick() {
   // only mutations of avatars already in the game (no brand-new kinds), except seasonal ones (Bryan: those may be new),
   // so the avatar list doesn't fill up with lots of different things
   const out = ["gold", "diamond", "rainbow"].map(k => pick(AVATARS.filter(a => a.variant === k && !a.season && !a.newBase && !a.dev)));
-  const sea = seasonNow(); if (sea) out.push(pick(AVATARS.filter(a => a.season === sea && !a.newBase)));
+  const ss = shopSeasons(); if (ss.length) { const sea = ss[Math.floor(r() * ss.length)]; out.push(pick(AVATARS.filter(a => a.season === sea && !a.newBase))); }
   // Diamond Developer: only for players who own the Developer, a 1 in 100 chance in each new set, and free
   const dd = avatarById("ddev"), u = me();
   if (dd && isOpen(avatarById("dev"), u) && !owned.includes("ddev") && rng(hashStr("ddev:" + (u ? u.name : "guest") + ":" + shopPeriod() + ":" + shopRoll()))() < 0.01) out.push(dd);
@@ -4105,7 +4111,7 @@ function viewShop() {
   <main class="narrow shop">
     <div class="shop-top"><h1>Avatar Shop</h1><span class="gem-bal">💠 ${g}</span></div>
     <p class="hint shop-how">Earn 💠 Gems with 1 in Attillions: 1 in a game = 1, 2 = 4, 3 = 6, 4 = 8, 5 = 12, 6 = 20, 7 = 50.</p>
-    ${seasonNow() ? `<p class="shop-season">🎉 ${AV_SEASONS[seasonNow()].name} avatar for sale this month!</p>` : ""}
+    ${shopSeasons().length ? `<p class="shop-season">🎉 ${shopSeasons().map(k => AV_SEASONS[k].name).join(" and ")} avatars can be in the shop now!</p>` : ""}
     <div class="shop-grid">${shopOffers().map(a => {
       const have = owned.includes(a.id), can = g >= (a.shop || 0);
       return `<div class="shop-card ${have ? "owned" : ""} ${a.season ? "seasonal" : "sv-" + a.variant}${a.ddev ? " sv-ddev" : ""}"><i class="shop-kind">${mutName(a.mut)} mutation</i><span class="shop-e">${avMarkup(a)}</span><b>${esc(a.name)}</b>
@@ -4806,7 +4812,7 @@ async function admOnlineCheck() {
   const u = me(); if (!isOwner(u)) return;
   if (!u.cloud) { el.innerHTML = "⚠️ This account isn't saved online here, so other players can't see these switches. Log in to AdminAtticus on the website to change them."; return; }
   const on = await ownerFlagsFetch(true), here = u.adminFlags || {};
-  const keys = ["gemDrop", "gem100", "gem1000", "rjAll", "phAnyTime", "stack", "devOff"], same = keys.every(k => !!on[k] === !!here[k]) && JSON.stringify((on.codesOff || []).slice().sort()) === JSON.stringify((here.codesOff || []).slice().sort());
+  const keys = ["gemDrop", "gem100", "gem1000", "rjAll", "phAnyTime", "stack", "devOff"], same = keys.every(k => !!on[k] === !!here[k]) && JSON.stringify((on.codesOff || []).slice().sort()) === JSON.stringify((here.codesOff || []).slice().sort()) && JSON.stringify(on.seasons || {}) === JSON.stringify(here.seasons || {});
   if (!document.getElementById("adm-online")) return;
   document.getElementById("adm-online").innerHTML = same ? "✅ Other players see these switches." : "⏳ Saving your switches online… (if this stays, tap a switch again)";
   if (!same) { cloudPush(); setTimeout(admOnlineCheck, 4000); }
@@ -4870,6 +4876,11 @@ function viewSettings() {
     <div class="set-row"><span class="set-l">POWERHOUR any time for everyone</span><div class="seg-pick" role="group" aria-label="POWERHOUR any time for everyone">
       ${[["on", "On"], ["off", "Off"]].map(([v, l]) => `<button data-act="adm-phall" data-v="${v}" aria-pressed="${!!(u.adminFlags || {}).phAnyTime === (v === "on")}">${l}</button>`).join("")}
     </div></div>
+    <details class="adm-codes"${store.get("setOpen-seasons", false) ? " open" : ""} data-key="setOpen-seasons"><summary>🎄 Seasonal shop</summary>
+    <p class="hint">Auto = only in its own months. On = its avatars can show up in the shop now. Off = never. New shop sets use this (Saturday or "New avatars now").</p>
+    ${Object.entries(AV_SEASONS).map(([k, se]) => { const v0 = ((u.adminFlags || {}).seasons || {})[k] || "auto";
+      return `<div class="adm-code"><div><b class="adm-c">${esc(se.name)}</b><span class="adm-w">Normally: ${se.months.map(m => new Date(2000, m - 1, 1).toLocaleString("en-US", { month: "short" })).join(", ")}</span></div><div class="seg-pick" role="group" aria-label="${esc(se.name)}">${[["auto", "Auto"], ["on", "On"], ["off", "Off"]].map(([v, l]) => `<button data-act="adm-season" data-k="${k}" data-v="${v}" aria-pressed="${v0 === v}">${l}</button>`).join("")}</div></div>`; }).join("")}
+    </details>
     <details class="adm-codes"${store.get("setOpen-codes", false) ? " open" : ""} data-key="setOpen-codes"><summary>🔑 All codes (${ADMIN_CODES.length})</summary>
     <p class="hint">On = anyone can use it. Off = it only works for you.</p>
     ${ADMIN_CODES.map(x => { const off = codeOff(x.h, u.adminFlags), fixed = x.h === ELO_BOOST_CODE;
@@ -5529,6 +5540,11 @@ document.addEventListener("click", async e => {
     if (gems() < SHOP_REFRESH) return;
     ugSet("gems", n => n - SHOP_REFRESH, 0); const n = shopRoll() + 1; ugSet("shopRoll", () => ({ p: shopPeriod(), n }), null);
     go("shop", { shopMsg: "Here are 3 new avatars!" });
+  }
+  else if (act === "adm-season") {
+    if (!isOwner()) return;
+    updateUser(x => { const f = x.adminFlags = Object.assign({}, x.adminFlags); f.seasons = Object.assign({}, f.seasons, { [t.dataset.k]: t.dataset.v }); });
+    const y = window.scrollY; render(); window.scrollTo(0, y);
   }
   else if (act === "adm-code") {
     if (!isOwner()) return;
