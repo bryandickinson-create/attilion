@@ -1049,9 +1049,18 @@ body.gkb-on{padding-bottom:250px !important}
 .adm-w{display:block;font-size:12px;color:var(--muted,#aab3d6);line-height:1.35}
 .adm-only{font-style:normal;font-size:12px;font-weight:700;color:#ffc93c;white-space:nowrap}
 .adm-code .seg-pick{flex-wrap:nowrap;flex-shrink:0}.adm-code .seg-pick button{padding:6px 10px}
+
+/* friend message pop-ups */
+#fr-toasts{position:fixed;top:calc(8px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:90;display:flex;flex-direction:column;gap:6px;width:min(420px,calc(100vw - 24px));pointer-events:none}
+.fr-toast{pointer-events:auto;display:flex;align-items:center;gap:10px;text-align:left;padding:10px 14px;border-radius:14px;border:1px solid rgba(255,201,60,.45);background:rgba(18,24,64,.96);color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.5);font:500 14px var(--font-body);cursor:pointer;animation:frtIn .3s ease-out}
+.fr-toast.out{opacity:0;transform:translateY(-12px);transition:.35s}
+.frt-av{font-size:26px;line-height:1}
+.frt-body{display:flex;flex-direction:column;min-width:0}
+.frt-body span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#dfe5ff}
+@keyframes frtIn{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}
 </style></head><body>
 <div id="app"></div>
-<script>window.ATT_BUILD='5dc65de2c2'</script>
+<script>window.ATT_BUILD='c0404945a9'</script>
 <script>
 /* Attillion prompt bank.
  * GUESS: rarity comes from the ORDER of each answer list. Answers are written
@@ -4078,9 +4087,39 @@ async function frLoad() {
     const seen = frSeen(); FR.unread = {};
     FR.msgs.forEach(x => { if (x.recipient === id && x.id > (seen[x.sender] || 0)) FR.unread[x.sender] = (FR.unread[x.sender] || 0) + 1; });
     if (FR.chat) frMarkSeen(FR.chat);
+    frToastNew(id);
     FR.err = ""; FR.ready = true;
   } catch (e) { FR.err = "Can't reach the server right now."; }
   finally { frBusy = false; frPaint(); frBadge(); }
+}
+/* A small pop-up at the top of the screen for every new message from a friend.
+ * The first load after opening the game only remembers where it is, so old messages don't pop up. */
+let FR_TOAST_FROM = null;
+function frToastNew(id) {
+  const mine = FR.msgs.filter(x => x.recipient === id);
+  const top = mine.reduce((a, x) => Math.max(a, x.id), 0);
+  if (FR_TOAST_FROM === null) { FR_TOAST_FROM = Math.max(top, store.get("frToastMax", 0)); store.set("frToastMax", FR_TOAST_FROM); return; }
+  const fresh = mine.filter(x => x.id > FR_TOAST_FROM).sort((a, b) => a.id - b.id);
+  if (!fresh.length) return;
+  FR_TOAST_FROM = top; store.set("frToastMax", top);
+  fresh.forEach(x => {
+    if (S.view === "friends" && FR.chat === x.sender) return;   // already looking at this chat
+    const f = FR.list.find(y => y.id === x.sender) || { name: "A friend" };
+    const inv = INVITE_RE.exec(x.body);
+    frToast(x.sender, f, inv ? "🎉 invited you to a party game!" : x.body);
+  });
+}
+function frToast(fid, f, text) {
+  let box = document.getElementById("fr-toasts");
+  if (!box) { box = document.createElement("div"); box.id = "fr-toasts"; box.setAttribute("aria-live", "polite"); document.body.appendChild(box); }
+  while (box.children.length >= 3) box.firstChild.remove();
+  const t = document.createElement("button");
+  t.type = "button"; t.className = "fr-toast";
+  t.innerHTML = `<span class="frt-av">${f.av ? avMarkup(avatarById(f.av)) : "💬"}</span><span class="frt-body"><b>${esc(f.name)}</b><span>${esc(text.length > 80 ? text.slice(0, 78) + "…" : text)}</span></span>`;
+  t.addEventListener("click", () => { t.remove(); FR.chat = fid; frMarkSeen(fid); go("friends"); });
+  box.appendChild(t);
+  SFX("tick");
+  setTimeout(() => { t.classList.add("out"); setTimeout(() => t.remove(), 400); }, 6000);
 }
 function frMarkSeen(fid) {
   const last = FR.msgs.filter(x => x.sender === fid).reduce((a, x) => Math.max(a, x.id), 0);
@@ -4093,7 +4132,7 @@ function frStartPolling() {
   clearInterval(frPoll);
   if (!frCan()) { frOnlineLeave(); return; }
   frOnlineJoin(); frLoad();
-  frPoll = setInterval(() => { if (document.hidden) return; if (S.view === "friends" || Date.now() % 4 === 0) frLoad(); }, 8000);
+  let n = 0; frPoll = setInterval(() => { if (document.hidden) return; n++; if (S.view === "friends" || n % 2 === 0) frLoad(); }, 8000);   // every 8s on Friends, every 16s elsewhere (for message pop-ups)
 }
 const INVITE_RE = /^\[\[party:([A-Z0-9]{5})\]\]$/;
 function frMsgHtml(x, f) {

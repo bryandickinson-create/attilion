@@ -2232,9 +2232,39 @@ async function frLoad() {
     const seen = frSeen(); FR.unread = {};
     FR.msgs.forEach(x => { if (x.recipient === id && x.id > (seen[x.sender] || 0)) FR.unread[x.sender] = (FR.unread[x.sender] || 0) + 1; });
     if (FR.chat) frMarkSeen(FR.chat);
+    frToastNew(id);
     FR.err = ""; FR.ready = true;
   } catch (e) { FR.err = "Can't reach the server right now."; }
   finally { frBusy = false; frPaint(); frBadge(); }
+}
+/* A small pop-up at the top of the screen for every new message from a friend.
+ * The first load after opening the game only remembers where it is, so old messages don't pop up. */
+let FR_TOAST_FROM = null;
+function frToastNew(id) {
+  const mine = FR.msgs.filter(x => x.recipient === id);
+  const top = mine.reduce((a, x) => Math.max(a, x.id), 0);
+  if (FR_TOAST_FROM === null) { FR_TOAST_FROM = Math.max(top, store.get("frToastMax", 0)); store.set("frToastMax", FR_TOAST_FROM); return; }
+  const fresh = mine.filter(x => x.id > FR_TOAST_FROM).sort((a, b) => a.id - b.id);
+  if (!fresh.length) return;
+  FR_TOAST_FROM = top; store.set("frToastMax", top);
+  fresh.forEach(x => {
+    if (S.view === "friends" && FR.chat === x.sender) return;   // already looking at this chat
+    const f = FR.list.find(y => y.id === x.sender) || { name: "A friend" };
+    const inv = INVITE_RE.exec(x.body);
+    frToast(x.sender, f, inv ? "🎉 invited you to a party game!" : x.body);
+  });
+}
+function frToast(fid, f, text) {
+  let box = document.getElementById("fr-toasts");
+  if (!box) { box = document.createElement("div"); box.id = "fr-toasts"; box.setAttribute("aria-live", "polite"); document.body.appendChild(box); }
+  while (box.children.length >= 3) box.firstChild.remove();
+  const t = document.createElement("button");
+  t.type = "button"; t.className = "fr-toast";
+  t.innerHTML = `<span class="frt-av">${f.av ? avMarkup(avatarById(f.av)) : "💬"}</span><span class="frt-body"><b>${esc(f.name)}</b><span>${esc(text.length > 80 ? text.slice(0, 78) + "…" : text)}</span></span>`;
+  t.addEventListener("click", () => { t.remove(); FR.chat = fid; frMarkSeen(fid); go("friends"); });
+  box.appendChild(t);
+  SFX("tick");
+  setTimeout(() => { t.classList.add("out"); setTimeout(() => t.remove(), 400); }, 6000);
 }
 function frMarkSeen(fid) {
   const last = FR.msgs.filter(x => x.sender === fid).reduce((a, x) => Math.max(a, x.id), 0);
@@ -2247,7 +2277,7 @@ function frStartPolling() {
   clearInterval(frPoll);
   if (!frCan()) { frOnlineLeave(); return; }
   frOnlineJoin(); frLoad();
-  frPoll = setInterval(() => { if (document.hidden) return; if (S.view === "friends" || Date.now() % 4 === 0) frLoad(); }, 8000);
+  let n = 0; frPoll = setInterval(() => { if (document.hidden) return; n++; if (S.view === "friends" || n % 2 === 0) frLoad(); }, 8000);   // every 8s on Friends, every 16s elsewhere (for message pop-ups)
 }
 const INVITE_RE = /^\[\[party:([A-Z0-9]{5})\]\]$/;
 function frMsgHtml(x, f) {
