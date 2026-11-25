@@ -2231,9 +2231,12 @@ function viewShop() {
     <p class="shop-msg" role="status">${esc(S.shopMsg || "")}</p>
     <button class="btn ghost shop-refresh" data-act="shop-refresh" ${g >= SHOP_REFRESH ? "" : "disabled"}>🔄 New avatars now · 💠 ${SHOP_REFRESH}</button>
     <p class="hint">New avatars ${nx.days === 1 ? "tomorrow" : "in " + nx.days + " days"} (${nx.date}).</p>
-    ${(() => { const u = me(), list = avCatalogList(u), have = list.filter(a => isOpen(a, u)).length;
+    ${(() => { const u = me(), all = avCatalogList(u), have = all.filter(a => isOpen(a, u)).length, fl = store.get("shopAllFilter", "not");
+      const list = fl === "not" ? all.filter(a => !isOpen(a, u)) : fl === "own" ? all.filter(a => isOpen(a, u)) : all;
       return `<details class="shop-all"${store.get("shopAllOpen", false) ? " open" : ""} data-key="shopAllOpen"><summary>👀 All avatars <span>${have} / ${list.length} unlocked</span></summary>
-      <p class="hint">Every avatar you can get right now. Tap one to see how to get it. Some secret ones only show up once you unlock them.</p>
+      <div class="seg-pick shop-filter" role="group" aria-label="Which avatars">${[["not", `🔒 Not owned (${all.length - have})`], ["own", `✓ Owned (${have})`], ["all", "All"]].map(([v, l]) => `<button data-act="shopfilter" data-v="${v}" aria-pressed="${fl === v}">${l}</button>`).join("")}</div>
+      <p class="hint">Tap one to see how to get it. Some secret ones only show up once you unlock them.</p>
+      ${list.length ? "" : `<p class="hint">${fl === "not" ? "🎉 You own every avatar you can get right now!" : "You don't own any yet."}</p>`}
       <div class="avatars av-grid av-cat">${avCards(list, u, myAvatarObj().e + myAvatarObj().id)}</div></details>`; })()}
   </main>`;
 }
@@ -3610,6 +3613,7 @@ document.addEventListener("click", async e => {
   else if (act === "device") { setDeviceMode(t.dataset.v); render(); }
   else if (act === "tab") { S.tab = t.dataset.tab; render(); }
   else if (act === "auth-mode") go("login", { mode: t.dataset.m });
+  else if (act === "shopfilter") { store.set("shopAllFilter", t.dataset.v); const y = window.scrollY; render(); window.scrollTo(0, y); }
   else if (act === "avlayout") { store.set("avLayout", t.dataset.v); render(); }
   else if (act === "avcollapse") {
     const on = !store.get("avCollapsed", false); store.set("avCollapsed", on);

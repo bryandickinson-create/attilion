@@ -1057,3 +1057,4 @@ body.gkb-on{padding-bottom:250px !important}
 .shop-all>summary{cursor:pointer;font-weight:800;font-size:17px;padding:6px 0;display:flex;justify-content:space-between;align-items:center;gap:10px}
 .shop-all>summary span{font:600 13px var(--font-data);color:var(--muted,#aab3d6)}
 .shop-all .avatars{margin-top:8px}
+.shop-filter{margin:6px 0 4px;flex-wrap:wrap}
