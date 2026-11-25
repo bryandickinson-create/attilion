@@ -113,10 +113,10 @@ const SEASON_PRICE = 40;
   const bases = AVATARS.filter(a => (a.elo === 0 || (a.elo && !a.krill && !a.ev)) || a.sb);
   const taken = new Set(AVATARS.filter(a => a.mut).map(a => a.mut + ":" + a.e));
   bases.forEach(b => Object.entries(AV_VARIANTS).forEach(([k, v]) => { if (taken.has(k + ":" + b.e)) return; AVATARS.splice(AVATARS.findIndex(x => x.dev), 0,
-    { id: `v-${k}-${b.id}`, e: b.e, name: `${v.name} ${b.name.replace(/^(Gold|Golden|Rainbow) /, "")}`, shop: v.price, variant: k, mut: k }); }));
+    { id: `v-${k}-${b.id}`, e: b.e, name: `${v.name} ${b.name.replace(/^(Gold|Golden|Rainbow) /, "")}`, shop: v.price, variant: k, mut: k, newBase: !!b.sb }); }));
   Object.entries(AV_SEASONS).forEach(([sk, se]) => {
     // the season's own avatars, plus a few classics in the season's colors
-    const own = se.bases.map(([id, e, name]) => ({ id: `s-${sk}-${id}`, e, name, shop: SEASON_PRICE, variant: sk, season: sk, mut: sk }));
+    const own = se.bases.map(([id, e, name]) => ({ id: `s-${sk}-${id}`, e, name, shop: SEASON_PRICE, variant: sk, season: sk, mut: sk, newBase: true }));
     const classic = ["earth", "rocket", "fullmoon", "planet"].map(id => AVATARS.find(a => a.id === id)).filter(Boolean)
       .map(b => ({ id: `s-${sk}-${b.id}`, e: b.e, name: `${se.name} ${b.name}`, shop: SEASON_PRICE, variant: sk, season: sk, mut: sk }));
     own.concat(classic).forEach(a => AVATARS.splice(AVATARS.findIndex(x => x.dev), 0, a));
@@ -2172,8 +2172,10 @@ function shopPick() {
   const r = rng(hashStr("shop:" + shopPeriod() + ":" + shopRoll()));
   const owned = shopOwned(me());
   const pick = all => { const fresh = all.filter(a => !owned.includes(a.id)); const pool = fresh.length ? fresh : all; return pool[Math.floor(r() * pool.length)]; };
-  const out = ["gold", "diamond", "rainbow"].map(k => pick(AVATARS.filter(a => a.variant === k && !a.season)));
-  const sea = seasonNow(); if (sea) out.push(pick(AVATARS.filter(a => a.season === sea)));
+  // only mutations of avatars that are already in the game (no brand-new kinds of avatar),
+  // so the avatar list doesn't fill up with lots of different things
+  const out = ["gold", "diamond", "rainbow"].map(k => pick(AVATARS.filter(a => a.variant === k && !a.season && !a.newBase)));
+  const sea = seasonNow(); if (sea) out.push(pick(AVATARS.filter(a => a.season === sea && !a.newBase)));
   return out;
 }
 function viewShop() {
