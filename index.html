@@ -1058,9 +1058,13 @@ body.gkb-on{padding-bottom:250px !important}
 .frt-body{display:flex;flex-direction:column;min-width:0}
 .frt-body span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#dfe5ff}
 @keyframes frtIn{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}
+.shop-all{margin:18px 0 4px;border-top:1px solid rgba(255,255,255,.1);padding-top:10px}
+.shop-all>summary{cursor:pointer;font-weight:800;font-size:17px;padding:6px 0;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.shop-all>summary span{font:600 13px var(--font-data);color:var(--muted,#aab3d6)}
+.shop-all .avatars{margin-top:8px}
 </style></head><body>
 <div id="app"></div>
-<script>window.ATT_BUILD='ad092c0fe1'</script>
+<script>window.ATT_BUILD='b12e097e15'</script>
 <script>
 /* Attillion prompt bank.
  * GUESS: rarity comes from the ORDER of each answer list. Answers are written
@@ -1971,7 +1975,7 @@ const SEASON_PRICE = 40;
     { id: `v-${k}-${b.id}`, e: b.e, name: `${v.name} ${b.name.replace(/^(Gold|Golden|Rainbow) /, "")}`, shop: v.price, variant: k, mut: k, newBase: !!b.sb }); }));
   Object.entries(AV_SEASONS).forEach(([sk, se]) => {
     // the season's own avatars, plus a few classics in the season's colors
-    const own = se.bases.map(([id, e, name]) => ({ id: `s-${sk}-${id}`, e, name, shop: SEASON_PRICE, variant: sk, season: sk, mut: sk, newBase: true }));
+    const own = se.bases.map(([id, e, name]) => ({ id: `s-${sk}-${id}`, e, name, shop: SEASON_PRICE, variant: sk, season: sk, mut: sk }));
     const classic = ["earth", "rocket", "fullmoon", "planet"].map(id => AVATARS.find(a => a.id === id)).filter(Boolean)
       .map(b => ({ id: `s-${sk}-${b.id}`, e: b.e, name: `${se.name} ${b.name}`, shop: SEASON_PRICE, variant: sk, season: sk, mut: sk }));
     own.concat(classic).forEach(a => AVATARS.splice(AVATARS.findIndex(x => x.dev), 0, a));
@@ -4027,11 +4031,37 @@ function shopPick() {
   const r = rng(hashStr("shop:" + shopPeriod() + ":" + shopRoll()));
   const owned = shopOwned(me());
   const pick = all => { const fresh = all.filter(a => !owned.includes(a.id)); const pool = fresh.length ? fresh : all; return pool[Math.floor(r() * pool.length)]; };
-  // only mutations of avatars that are already in the game (no brand-new kinds of avatar),
+  // only mutations of avatars already in the game (no brand-new kinds), except seasonal ones (Bryan: those may be new),
   // so the avatar list doesn't fill up with lots of different things
   const out = ["gold", "diamond", "rainbow"].map(k => pick(AVATARS.filter(a => a.variant === k && !a.season && !a.newBase)));
   const sea = seasonNow(); if (sea) out.push(pick(AVATARS.filter(a => a.season === sea && !a.newBase)));
   return out;
+}
+/* Avatars that stay hidden everywhere until you unlock them: secret and code avatars,
+ * developers, trophies like the Crown, streak and badge prizes. */
+function avHidden(a) { return !!(a.code || a.perfect || a.bestAv || a.shop5 || a.dev || a.streak || a.allBadges || a.id === "k1000"); }
+// what the Avatar page lists
+function avPageList(u) { return AVATARS.filter(a => a.ev ? (isOpen(a, u) || a.ev === EVENT.key) : ((!avHidden(a) && !a.shop && !a.sb) || isOpen(a, u))); }
+// what the shop's "All avatars" lists: the same, plus every avatar the shop can sell
+function avCatalogList(u) { return AVATARS.filter(a => isOpen(a, u) || (a.ev ? a.ev === EVENT.key : !avHidden(a) && !a.sb && !(a.shop && a.newBase))); }
+function avCards(all, u, current) {
+  return (() => { const list = avGrouped(all);
+        // look-alike avatars fold into the first one; its +N button opens the group
+        const size = {}, selG = {}; list.forEach(a => { size[a.e] = (size[a.e] || 0) + 1; if (a.e + a.id === current) selG[a.e] = true; });
+        const opened = new Set(store.get("avOpenGroups", [])), seen = {};
+        return list.map(a => ({ a, lead: !seen[a.e] && (seen[a.e] = true), n: size[a.e] - 1, gOpen: opened.has(a.e) || !!selG[a.e] })); })().map(({ a, lead, n, gOpen }) => {
+        const open = isOpen(a, u);
+        const sel = a.e + a.id === current;
+        const grp = n > 0 ? ` data-g="${esc(a.e)}"` : "", cls = n > 0 ? (lead ? " av-lead" : " av-fold") + (gOpen ? " g-open" : "") : "";
+        const more = lead && n > 0 ? `<span class="av-more" role="button" tabindex="0" data-act="avgroup" data-g="${esc(a.e)}" aria-expanded="${gOpen}" aria-label="${gOpen ? "Hide" : "Show"} ${n} more like this">${gOpen ? "−" : "+" + n}</span>` : "";
+        const tip = (avDesc(a) ? avDesc(a) + " " : "") + avHow(a, open);
+        return `<button class="avatar${cls} ${sel ? "on" : ""} ${open ? "" : "locked"}"${grp} data-act="avinfo" data-id="${a.id}" aria-pressed="${sel}" data-tip="${esc(tip)}" data-search="${esc((a.name + " " + tip + " " + avLock(a) + (a.ev ? " event" : "") + (a.code || a.perfect || a.bestAv ? " secret" : "")).toLowerCase())}">
+          ${more}${open ? `<span class="av-stars" title="1 in Attillions found wearing this avatar">⭐ ${(avKrill(u)[a.id] || 0).toLocaleString()}</span>` : ""}
+          <span class="ae">${avMarkup(a)}</span><span class="an">${a.name}${mutTag(a)}${a.dev ? ` <i class="devtag">DEV</i>` : a.code || a.perfect || a.bestAv || a.shop5 ? ` <i class="secrettag">secret</i>` : ""}</span>
+          ${a.ev ? `<span class="asub" title="${esc((findEvent(a.ev) || {}).name || "")}">Event avatar</span>` : ""}
+          <span class="al">${open ? (sel ? "Selected" : "Tap for info") : avLock(a)}</span>
+        </button>`;
+      }).join("");
 }
 function viewShop() {
   const owned = shopOwned(me()), g = gems(), nx = shopNext();
@@ -4048,6 +4078,10 @@ function viewShop() {
     <p class="shop-msg" role="status">${esc(S.shopMsg || "")}</p>
     <button class="btn ghost shop-refresh" data-act="shop-refresh" ${g >= SHOP_REFRESH ? "" : "disabled"}>🔄 New avatars now · 💠 ${SHOP_REFRESH}</button>
     <p class="hint">New avatars ${nx.days === 1 ? "tomorrow" : "in " + nx.days + " days"} (${nx.date}).</p>
+    ${(() => { const u = me(), list = avCatalogList(u), have = list.filter(a => isOpen(a, u)).length;
+      return `<details class="shop-all"${store.get("shopAllOpen", false) ? " open" : ""} data-key="shopAllOpen"><summary>👀 All avatars <span>${have} / ${list.length} unlocked</span></summary>
+      <p class="hint">Every avatar you can get right now. Tap one to see how to get it. Some secret ones only show up once you unlock them.</p>
+      <div class="avatars av-grid av-cat">${avCards(list, u, myAvatarObj().e + myAvatarObj().id)}</div></details>`; })()}
   </main>`;
 }
 
@@ -4642,23 +4676,7 @@ function viewAvatar() {
     <p class="hint av-none" id="av-none" hidden>No avatars match that search.</p>
     <button class="btn ghost small av-collapse-all" data-act="avcollapse" aria-expanded="${!store.get("avCollapsed", false)}">${store.get("avCollapsed", false) ? "▸ Show all avatars" : "▾ Collapse all but my avatar"}</button>
     <div class="avatars${store.get("avCollapsed", false) ? " all-collapsed" : ""}${store.get("avLayout", "swipe") === "grid" ? " av-grid" : ""}">
-      ${(() => { const list = avGrouped(AVATARS.filter(a => a.ev ? (isOpen(a, u) || a.ev === EVENT.key) : ((!a.code && !a.perfect && !a.bestAv && !a.shop && !a.sb && !a.shop5) || isOpen(a, u))));
-        // look-alike avatars fold into the first one; its +N button opens the group
-        const size = {}, selG = {}; list.forEach(a => { size[a.e] = (size[a.e] || 0) + 1; if (a.e + a.id === current) selG[a.e] = true; });
-        const opened = new Set(store.get("avOpenGroups", [])), seen = {};
-        return list.map(a => ({ a, lead: !seen[a.e] && (seen[a.e] = true), n: size[a.e] - 1, gOpen: opened.has(a.e) || !!selG[a.e] })); })().map(({ a, lead, n, gOpen }) => {
-        const open = isOpen(a, u);
-        const sel = a.e + a.id === current;
-        const grp = n > 0 ? ` data-g="${esc(a.e)}"` : "", cls = n > 0 ? (lead ? " av-lead" : " av-fold") + (gOpen ? " g-open" : "") : "";
-        const more = lead && n > 0 ? `<span class="av-more" role="button" tabindex="0" data-act="avgroup" data-g="${esc(a.e)}" aria-expanded="${gOpen}" aria-label="${gOpen ? "Hide" : "Show"} ${n} more like this">${gOpen ? "−" : "+" + n}</span>` : "";
-        const tip = (avDesc(a) ? avDesc(a) + " " : "") + avHow(a, open);
-        return `<button class="avatar${cls} ${sel ? "on" : ""} ${open ? "" : "locked"}"${grp} data-act="avinfo" data-id="${a.id}" aria-pressed="${sel}" data-tip="${esc(tip)}" data-search="${esc((a.name + " " + tip + " " + avLock(a) + (a.ev ? " event" : "") + (a.code || a.perfect || a.bestAv ? " secret" : "")).toLowerCase())}">
-          ${more}${open ? `<span class="av-stars" title="1 in Attillions found wearing this avatar">⭐ ${(avKrill(u)[a.id] || 0).toLocaleString()}</span>` : ""}
-          <span class="ae">${avMarkup(a)}</span><span class="an">${a.name}${mutTag(a)}${a.dev ? ` <i class="devtag">DEV</i>` : a.code || a.perfect || a.bestAv || a.shop5 ? ` <i class="secrettag">secret</i>` : ""}</span>
-          ${a.ev ? `<span class="asub" title="${esc((findEvent(a.ev) || {}).name || "")}">Event avatar</span>` : ""}
-          <span class="al">${open ? (sel ? "Selected" : "Tap for info") : avLock(a)}</span>
-        </button>`;
-      }).join("")}
+      ${avCards(avPageList(u), u, current)}
     </div>
     <form id="code-form" class="code-row">
       <label for="unlock-code">Have a code?</label>
