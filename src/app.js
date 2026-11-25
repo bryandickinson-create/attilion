@@ -1075,12 +1075,12 @@ const AVATAR_THEMES = {
 };
 // seasonal avatars get their season's own 1 in Attillion: its emojis burst out and rain down in its colours
 const SEASON_THEMES = {
-  valentine: { name: "Valentine", rgb: "255,90,150", emojis: ["💝", "💘", "💖", "💕", "🌹"] },
-  spring:    { name: "Spring", rgb: "140,230,120", emojis: ["🌷", "🌸", "🐣", "🐰", "🌼"] },
-  summer:    { name: "Summer", rgb: "255,200,60", emojis: ["☀️", "🎆", "🏖️", "🍉", "🌊"] },
-  halloween: { name: "Halloween", rgb: "255,130,30", emojis: ["🎃", "👻", "🦇", "🕸️", "🍬"] },
-  thanks:    { name: "Thanksgiving", rgb: "230,140,50", emojis: ["🦃", "🍁", "🥧", "🍂", "🌽"] },
-  xmas:      { name: "Christmas", rgb: "80,210,110", emojis: ["🎄", "❄️", "🎁", "⛄", "🎅"] }
+  valentine: { name: "Valentine", rgb: "255,90,150", emojis: ["💝", "💘", "💖", "💕", "🌹"], style: "hearts" },
+  spring:    { name: "Spring", rgb: "140,230,120", emojis: ["🌷", "🌸", "🐣", "🐰", "🌼"], style: "bloom" },
+  summer:    { name: "Summer", rgb: "255,200,60", emojis: ["☀️", "🎆", "🏖️", "🍉", "🌊"], style: "fireworks" },
+  halloween: { name: "Halloween", rgb: "255,130,30", emojis: ["🎃", "👻", "🦇", "🕸️", "🍬"], style: "spooky" },
+  thanks:    { name: "Thanksgiving", rgb: "230,140,50", emojis: ["🦃", "🍁", "🥧", "🍂", "🌽"], style: "leaves" },
+  xmas:      { name: "Christmas", rgb: "80,210,110", emojis: ["🎄", "❄️", "🎁", "⛄", "🎅"], style: "snow" }
 };
 function myTheme() { const a = myAvatarObj(); if (AVATAR_THEMES[a.id]) return AVATAR_THEMES[a.id]; if (a.season && SEASON_THEMES[a.season]) return SEASON_THEMES[a.season]; if (eventMatch()) return eventTheme(EVENT); return a.ev ? eventTheme(findEvent(a.ev)) : null; }
 function curOppName() {
@@ -2220,19 +2220,23 @@ function avHidden(a) { return !!(a.code || a.perfect || a.bestAv || a.shop5 || a
 function avPageList(u) { return AVATARS.filter(a => a.ev ? (isOpen(a, u) || a.ev === EVENT.key) : ((!avHidden(a) && !a.shop && !a.sb) || isOpen(a, u))); }
 // what the shop's "All avatars" lists: the same, plus every avatar the shop can sell
 function avCatalogList(u) { return AVATARS.filter(a => isOpen(a, u) || (a.ev ? a.ev === EVENT.key : !avHidden(a) && !a.sb && !(a.shop && a.newBase))); }
-function avCards(all, u, current) {
-  return (() => { const list = avGrouped(all);
-        // look-alike avatars fold into the first one; its +N button opens the group
-        const size = {}, selG = {}; list.forEach(a => { size[a.e] = (size[a.e] || 0) + 1; if (a.e + a.id === current) selG[a.e] = true; });
+function avCards(all, u, current, byMut) {
+  return (() => { let list = avGrouped(all);
+        // look-alike avatars fold into the first one; its +N button opens the group.
+        // Sorted by mutation instead, every avatar with the same mutation folds together.
+        const key = byMut ? (a => "m:" + (a.mut || "normal")) : (a => a.e);
+        if (byMut) list = list.map((a, i) => ({ a, i, r: a.mut ? mutRank(a) || 50 : 0 })).sort((x, y) => x.r - y.r || (x.a.mut || "").localeCompare(y.a.mut || "") || x.i - y.i).map(x => x.a);
+        const size = {}, selG = {}; list.forEach(a => { size[key(a)] = (size[key(a)] || 0) + 1; if (a.e + a.id === current) selG[key(a)] = true; });
         const opened = new Set(store.get("avOpenGroups", [])), seen = {};
-        return list.map(a => ({ a, lead: !seen[a.e] && (seen[a.e] = true), n: size[a.e] - 1, gOpen: opened.has(a.e) || !!selG[a.e] })); })().map(({ a, lead, n, gOpen }) => {
+        return list.map(a => { const k = key(a); return { a, k, lead: !seen[k] && (seen[k] = true), n: size[k] - 1, gOpen: opened.has(k) || !!selG[k] }; }); })().map(({ a, k, lead, n, gOpen }) => {
         const open = isOpen(a, u);
         const sel = a.e + a.id === current;
-        const grp = n > 0 ? ` data-g="${esc(a.e)}"` : "", cls = n > 0 ? (lead ? " av-lead" : " av-fold") + (gOpen ? " g-open" : "") : "";
-        const more = lead && n > 0 ? `<span class="av-more" role="button" tabindex="0" data-act="avgroup" data-g="${esc(a.e)}" aria-expanded="${gOpen}" aria-label="${gOpen ? "Hide" : "Show"} ${n} more like this">${gOpen ? "−" : "+" + n}</span>` : "";
+        const grp = n > 0 ? ` data-g="${esc(k)}"` : "", cls = n > 0 ? (lead ? " av-lead" : " av-fold") + (gOpen ? " g-open" : "") : "";
+        const more = lead && n > 0 ? `<span class="av-more" role="button" tabindex="0" data-act="avgroup" data-g="${esc(k)}" aria-expanded="${gOpen}" aria-label="${gOpen ? "Hide" : "Show"} ${n} more like this">${gOpen ? "−" : "+" + n}</span>` : "";
+        const mhead = byMut && lead ? `<span class="av-mhead">${esc(mutName(a.mut) || "Normal")} · ${n + 1}</span>` : "";
         const tip = (avDesc(a) ? avDesc(a) + " " : "") + avHow(a, open);
         return `<button class="avatar${cls} ${sel ? "on" : ""} ${open ? "" : "locked"}"${grp} data-act="avinfo" data-id="${a.id}" aria-pressed="${sel}" data-tip="${esc(tip)}" data-search="${esc((a.name + " " + tip + " " + avLock(a) + (a.ev ? " event" : "") + (a.code || a.perfect || a.bestAv ? " secret" : "")).toLowerCase())}">
-          ${more}${open ? `<span class="av-stars" title="1 in Attillions found wearing this avatar">⭐ ${(avKrill(u)[a.id] || 0).toLocaleString()}</span>` : ""}
+          ${more}${mhead}${open ? `<span class="av-stars" title="1 in Attillions found wearing this avatar">⭐ ${(avKrill(u)[a.id] || 0).toLocaleString()}</span>` : ""}
           <span class="ae">${avMarkup(a)}</span><span class="an">${a.name}${mutTag(a)}${a.dev ? ` <i class="devtag">DEV</i>` : a.code || a.perfect || a.bestAv || a.shop5 ? ` <i class="secrettag">secret</i>` : ""}</span>
           ${a.ev ? `<span class="asub" title="${esc((findEvent(a.ev) || {}).name || "")}">Event avatar</span>` : ""}
           <span class="al">${open ? (sel ? "Selected" : "Tap for info") : avLock(a)}</span>
@@ -2853,9 +2857,12 @@ function viewAvatar() {
     <div class="seg-pick av-layout" role="group" aria-label="How to show avatars">${[["swipe", "👆 Swipe"], ["grid", "▦ Grid"]].map(([v, l]) => `<button data-act="avlayout" data-v="${v}" aria-pressed="${store.get("avLayout", "swipe") === v}">${l}</button>`).join("")}</div>
     <p class="av-swipe-hint">Swipe to see every avatar · tap one to learn how to get it</p>
     <p class="hint av-none" id="av-none" hidden>No avatars match that search.</p>
-    <button class="btn ghost small av-collapse-all" data-act="avcollapse" aria-expanded="${!store.get("avCollapsed", false)}">${store.get("avCollapsed", false) ? "▸ Show all avatars" : "▾ Collapse all but my avatar"}</button>
+    <div class="av-tools">
+      <div class="seg-pick av-sort" role="group" aria-label="Sort avatars">${[["look", "👯 Look-alikes"], ["mut", "🧬 Mutation"]].map(([v, l]) => `<button data-act="avsort" data-v="${v}" aria-pressed="${store.get("avSort", "look") === v}">${l}</button>`).join("")}</div>
+      <button class="btn ghost small av-collapse-all" data-act="avcollapse" aria-expanded="${!store.get("avCollapsed", false)}">${store.get("avCollapsed", false) ? "▸ Show all avatars" : "▾ Collapse all but my avatar"}</button>
+    </div>
     <div class="avatars${store.get("avCollapsed", false) ? " all-collapsed" : ""}${store.get("avLayout", "swipe") === "grid" ? " av-grid" : ""}">
-      ${avCards(avPageList(u), u, current)}
+      ${avCards(avPageList(u), u, current, store.get("avSort", "look") === "mut")}
     </div>
     <form id="code-form" class="code-row">
       <label for="unlock-code">Have a code?</label>
@@ -3643,8 +3650,10 @@ document.addEventListener("click", async e => {
   else if (act === "auth-mode") go("login", { mode: t.dataset.m });
   else if (act === "shopfilter") { store.set("shopAllFilter", t.dataset.v); const y = window.scrollY; render(); window.scrollTo(0, y); }
   else if (act === "avlayout") { store.set("avLayout", t.dataset.v); render(); }
+  else if (act === "avsort") { store.set("avSort", t.dataset.v); render(); }
   else if (act === "avcollapse") {
     const on = !store.get("avCollapsed", false); store.set("avCollapsed", on);
+    if (on) { store.set("avOpenGroups", []); document.querySelectorAll(".avatars .avatar.g-open:not(.on)").forEach(c => c.classList.remove("g-open")); }
     const box = document.querySelector(".avatars"); if (box) box.classList.toggle("all-collapsed", on);
     t.textContent = on ? "▸ Show all avatars" : "▾ Collapse all but my avatar"; t.setAttribute("aria-expanded", !on);
   }

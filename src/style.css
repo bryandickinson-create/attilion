@@ -1017,8 +1017,10 @@ body.gkb-on{padding-bottom:250px !important}
 
 /* computer only: fold the whole avatar grid down to the equipped one */
 .av-collapse-all{margin-top:14px}
-@media (min-width:601px){.avatars.all-collapsed:not(.searching) .avatar:not(.on){display:none}.avatars.all-collapsed:not(.searching) .avatar.on .av-more{display:none}}
-@media (max-width:600px){.av-collapse-all{display:none}}
+.avatars.all-collapsed:not(.searching) .avatar:not(.on){display:none!important}.avatars.all-collapsed:not(.searching) .avatar.on .av-more{display:none}
+.av-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;margin:10px 0 4px}
+.av-tools .av-collapse-all{margin-top:0}
+.av-mhead{display:block;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;opacity:.75;margin-bottom:2px}
 
 /* phone: Swipe (one big avatar at a time) or Grid (all at once, like a computer) */
 .av-layout{display:none}
@@ -1064,3 +1066,4 @@ body.gkb-on{padding-bottom:250px !important}
 .dev-takeover.seasonal .dev-label { color: #ffe1a8; text-shadow: 0 0 22px rgba(255,180,80,.7), 0 4px 0 rgba(0,0,0,.4); }
 
 .shop-card.sv-ddev{border-color:rgba(140,230,255,.9);box-shadow:0 0 18px rgba(120,220,255,.55)}
+.av-more + .av-mhead{margin-top:16px}

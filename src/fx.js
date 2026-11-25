@@ -265,6 +265,7 @@ function krillion(card, who, opts) {
   if (th && th.style === "crown") { crownBurst(x, y, th); return; }
   if (th && th.style === "flame") { flameBurst(x, y, th); return; }
   if (th && th.style === "trophy") { trophyBurst(x, y, th); return; }
+  if (th && SEASON_FX[th.style]) { SEASON_FX[th.style](x, y, th); return; }
   if (th) { themedBurst(x, y, th); return; }
   // a burst of gold stars shoots out from the altitude marker and swirls
   for (let i = 0; i < 200; i++) {
@@ -294,6 +295,80 @@ function emoji(c, ch, x, y, size, alpha, rot) {
   c.font = size + "px system-ui, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif"; c.textAlign = "center"; c.textBaseline = "middle";
   c.fillText(ch, 0, 0); c.restore();
 }
+/* Seasonal mutations: each season has its own kind of 1 in Attillion. */
+function seasonWash(rgba, life) {   // a soft colour glow over the whole screen that fades in and out
+  parts.push({ life, max: life, update() {}, draw(c, p) { const k = 1 - p.life / p.max, a = Math.sin(Math.PI * k); c.fillStyle = rgba.replace("A", (0.28 * a).toFixed(3)); c.fillRect(0, 0, W, H); } });
+}
+function seasonRing(x, y, colA, colB) {
+  for (let i = 0; i < 3; i++) parts.push({ x, y, life: 1.5, max: 1.5, delay: i * 0.2,
+    update(p, dt) { if (p.delay > 0) { p.delay -= dt; p.life += dt; } },
+    draw(c, p) { if (p.delay > 0) return; const k = 1 - p.life / p.max; c.strokeStyle = (i % 2 ? colB : colA).replace("A", ((1 - k) * 0.9).toFixed(3)); c.lineWidth = 5 * (1 - k) + 1; c.beginPath(); c.arc(p.x, p.y, 20 + k * Math.max(W, H) * 0.6, 0, TAU); c.stroke(); } });
+}
+const SEASON_FX = {
+  // Christmas: a snowstorm drifts down, ornaments pop out of the marker in red and green
+  snow(x, y, th) {
+    seasonWash("rgba(120,180,255,A)", 3.4); seasonRing(x, y, "rgba(255,70,70,A)", "rgba(70,210,110,A)");
+    for (let i = 0; i < 130; i++) parts.push({ x: rand(0, W), y: rand(-H, -10), vy: rand(60, 170), sway: rand(0, TAU), size: rand(2, 6), life: 3.6, delay: rand(0, 0.8), flake: i % 6 === 0,
+      update(p, dt) { if (p.delay > 0) { p.delay -= dt; p.life += dt; return; } p.y += p.vy * dt; p.sway += dt * 1.5; p.x += Math.sin(p.sway) * 25 * dt; },
+      draw(c, p) { if (p.delay > 0) return; if (p.flake) emoji(c, "❄️", p.x, p.y, p.size * 6, Math.min(1, p.life), p.sway * 0.3); else { c.globalAlpha = Math.min(1, p.life); c.fillStyle = "#fff"; c.beginPath(); c.arc(p.x, p.y, p.size, 0, TAU); c.fill(); c.globalAlpha = 1; } } });
+    for (let i = 0; i < 40; i++) { const a = rand(0, TAU), sp = rand(200, 600);
+      parts.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 150, size: rand(22, 40), life: rand(1.6, 2.6), ch: th.emojis[i % th.emojis.length], rot: 0,
+        update(p, dt) { p.vx *= 0.97; p.vy = p.vy * 0.97 + 380 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += dt * 2; },
+        draw(c, p) { emoji(c, p.ch, p.x, p.y, p.size, Math.min(1, p.life), Math.sin(p.rot) * 0.3); } }); }
+  },
+  // Halloween: the screen goes dark purple, bats flap across, ghosts float up and fade
+  spooky(x, y, th) {
+    seasonWash("rgba(60,10,90,A)", 3.4); seasonRing(x, y, "rgba(255,130,30,A)", "rgba(160,80,255,A)");
+    for (let i = 0; i < 26; i++) { const left = i % 2 === 0;
+      parts.push({ x: left ? -40 : W + 40, y: rand(H * 0.1, H * 0.8), vx: (left ? 1 : -1) * rand(260, 520), flap: rand(0, TAU), life: 3, delay: rand(0, 1.2),
+        update(p, dt) { if (p.delay > 0) { p.delay -= dt; p.life += dt; return; } p.x += p.vx * dt; p.flap += dt * 14; p.y += Math.sin(p.flap * 0.5) * 60 * dt; },
+        draw(c, p) { if (p.delay > 0) return; emoji(c, "🦇", p.x, p.y, 34 * (0.8 + 0.25 * Math.abs(Math.sin(p.flap))), Math.min(1, p.life), Math.sin(p.flap) * 0.2); } }); }
+    for (let i = 0; i < 18; i++) parts.push({ x: rand(0, W), y: H + 40, vy: -rand(90, 200), wob: rand(0, TAU), life: rand(2.6, 3.4), max: 3.4, delay: rand(0, 0.8), ch: i % 3 ? "👻" : "🎃",
+      update(p, dt) { if (p.delay > 0) { p.delay -= dt; p.life += dt; return; } p.y += p.vy * dt; p.wob += dt * 3; p.x += Math.sin(p.wob) * 50 * dt; },
+      draw(c, p) { if (p.delay > 0) return; emoji(c, p.ch, p.x, p.y, 44, Math.min(0.85, p.life * 0.6), Math.sin(p.wob) * 0.25); } });
+  },
+  // Thanksgiving: a gust of autumn leaves sweeps across the screen, spinning as it goes
+  leaves(x, y, th) {
+    seasonWash("rgba(200,100,20,A)", 3.2); seasonRing(x, y, "rgba(255,150,40,A)", "rgba(170,90,30,A)");
+    const L = ["🍁", "🍂", "🍁", "🍂", "🌽", "🥧", "🦃"];
+    for (let i = 0; i < 90; i++) parts.push({ x: -rand(20, W * 0.8), y: rand(-H * 0.2, H * 0.9), vx: rand(300, 620), vy: rand(-40, 90), spin: rand(-6, 6), rot: rand(0, TAU), wob: rand(0, TAU), size: rand(20, 40), life: 3.4, delay: rand(0, 0.9), ch: L[i % L.length],
+      update(p, dt) { if (p.delay > 0) { p.delay -= dt; p.life += dt; return; } p.wob += dt * 4; p.x += p.vx * dt; p.y += (p.vy + Math.sin(p.wob) * 90) * dt; p.rot += p.spin * dt; },
+      draw(c, p) { if (p.delay > 0) return; emoji(c, p.ch, p.x, p.y, p.size, Math.min(1, p.life), p.rot); } });
+  },
+  // Valentine: hearts bubble up from the bottom and grow, with a pink pulse
+  hearts(x, y, th) {
+    seasonWash("rgba(255,80,150,A)", 3); seasonRing(x, y, "rgba(255,90,150,A)", "rgba(255,180,210,A)");
+    const L = ["💖", "💕", "💘", "💝", "❤️", "🌹"];
+    for (let i = 0; i < 70; i++) parts.push({ x: rand(0, W), y: H + rand(20, 120), vy: -rand(160, 360), wob: rand(0, TAU), size: rand(16, 30), grow: rand(8, 22), life: rand(2.4, 3.4), delay: rand(0, 1), ch: L[i % L.length],
+      update(p, dt) { if (p.delay > 0) { p.delay -= dt; p.life += dt; return; } p.y += p.vy * dt; p.wob += dt * 3; p.x += Math.sin(p.wob) * 40 * dt; p.size += p.grow * dt; },
+      draw(c, p) { if (p.delay > 0) return; emoji(c, p.ch, p.x, p.y, p.size, Math.min(1, p.life), Math.sin(p.wob) * 0.2); } });
+  },
+  // Spring: flowers bloom outward from the marker in a spiral, petals drift down
+  bloom(x, y, th) {
+    seasonWash("rgba(150,230,140,A)", 3); seasonRing(x, y, "rgba(255,150,200,A)", "rgba(140,230,120,A)");
+    const L = ["🌸", "🌷", "🌼", "🌺", "🐣", "🐰"];
+    for (let i = 0; i < 60; i++) { const a = i * 0.55, sp = 120 + i * 9;
+      parts.push({ x, y, a, sp, r: 0, size: rand(20, 36), life: 2.8, ch: L[i % L.length],
+        update(p, dt) { p.r += p.sp * dt; p.a += dt * 1.6; p.sp *= 0.985; },
+        draw(c, p) { emoji(c, p.ch, p.x + Math.cos(p.a) * p.r, p.y + Math.sin(p.a) * p.r, p.size, Math.min(1, p.life), p.a * 0.3); } }); }
+    for (let i = 0; i < 70; i++) parts.push({ x: rand(0, W), y: rand(-H * 0.6, -10), vy: rand(70, 160), sway: rand(0, TAU), life: 3.4, delay: rand(0.3, 1.2),
+      update(p, dt) { if (p.delay > 0) { p.delay -= dt; p.life += dt; return; } p.y += p.vy * dt; p.sway += dt * 2.5; p.x += Math.sin(p.sway) * 45 * dt; },
+      draw(c, p) { if (p.delay > 0) return; c.save(); c.translate(p.x, p.y); c.rotate(p.sway); c.globalAlpha = Math.min(1, p.life); c.fillStyle = "#ffb3d1"; c.beginPath(); c.ellipse(0, 0, 6, 3, 0, 0, TAU); c.fill(); c.restore(); } });
+  },
+  // Summer: fireworks go off all over the sky
+  fireworks(x, y, th) {
+    seasonWash("rgba(20,30,80,A)", 3.4);
+    const cols = ["#ff5a5a", "#ffd23c", "#5ad2ff", "#7dff8a", "#ff7ae0", "#ffffff"];
+    for (let f = 0; f < 9; f++) { const fx_ = f === 0 ? x : rand(W * 0.1, W * 0.9), fy = f === 0 ? y : rand(H * 0.1, H * 0.55), col = cols[f % cols.length], d = f * 0.28;
+      for (let i = 0; i < 46; i++) { const a = (i / 46) * TAU, sp = rand(160, 300);
+        parts.push({ x: fx_, y: fy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: rand(1.2, 1.7), delay: d, col,
+          update(p, dt) { if (p.delay > 0) { p.delay -= dt; p.life += dt; return; } p.vx *= 0.96; p.vy = p.vy * 0.96 + 90 * dt; p.x += p.vx * dt; p.y += p.vy * dt; },
+          draw(c, p) { if (p.delay > 0) return; sparkle(c, p.x, p.y, 4, p.col, Math.min(1, p.life), 0); } }); } }
+    for (let i = 0; i < 12; i++) parts.push({ x: rand(0, W), y: H + 30, vy: -rand(200, 380), size: rand(24, 36), life: 3, delay: rand(0, 1), ch: th.emojis[i % th.emojis.length],
+      update(p, dt) { if (p.delay > 0) { p.delay -= dt; p.life += dt; return; } p.y += p.vy * dt; },
+      draw(c, p) { if (p.delay > 0) return; emoji(c, p.ch, p.x, p.y, p.size, Math.min(1, p.life), 0); } });
+  }
+};
 function themedBurst(x, y, th) {
   const pick = () => th.emojis[Math.floor(Math.random() * th.emojis.length)];
   const col = `rgb(${th.rgb})`;

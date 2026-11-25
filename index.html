@@ -1022,8 +1022,10 @@ body.gkb-on{padding-bottom:250px !important}
 
 /* computer only: fold the whole avatar grid down to the equipped one */
 .av-collapse-all{margin-top:14px}
-@media (min-width:601px){.avatars.all-collapsed:not(.searching) .avatar:not(.on){display:none}.avatars.all-collapsed:not(.searching) .avatar.on .av-more{display:none}}
-@media (max-width:600px){.av-collapse-all{display:none}}
+.avatars.all-collapsed:not(.searching) .avatar:not(.on){display:none!important}.avatars.all-collapsed:not(.searching) .avatar.on .av-more{display:none}
+.av-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;margin:10px 0 4px}
+.av-tools .av-collapse-all{margin-top:0}
+.av-mhead{display:block;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;opacity:.75;margin-bottom:2px}
 
 /* phone: Swipe (one big avatar at a time) or Grid (all at once, like a computer) */
 .av-layout{display:none}
@@ -1069,9 +1071,10 @@ body.gkb-on{padding-bottom:250px !important}
 .dev-takeover.seasonal .dev-label { color: #ffe1a8; text-shadow: 0 0 22px rgba(255,180,80,.7), 0 4px 0 rgba(0,0,0,.4); }
 
 .shop-card.sv-ddev{border-color:rgba(140,230,255,.9);box-shadow:0 0 18px rgba(120,220,255,.55)}
+.av-more + .av-mhead{margin-top:16px}
 </style></head><body>
 <div id="app"></div>
-<script>window.ATT_BUILD='5ab12ba311'</script>
+<script>window.ATT_BUILD='5846e2b7c2'</script>
 <script>
 /* Attillion prompt bank.
  * GUESS: rarity comes from the ORDER of each answer list. Answers are written
@@ -2941,12 +2944,12 @@ const AVATAR_THEMES = {
 };
 // seasonal avatars get their season's own 1 in Attillion: its emojis burst out and rain down in its colours
 const SEASON_THEMES = {
-  valentine: { name: "Valentine", rgb: "255,90,150", emojis: ["💝", "💘", "💖", "💕", "🌹"] },
-  spring:    { name: "Spring", rgb: "140,230,120", emojis: ["🌷", "🌸", "🐣", "🐰", "🌼"] },
-  summer:    { name: "Summer", rgb: "255,200,60", emojis: ["☀️", "🎆", "🏖️", "🍉", "🌊"] },
-  halloween: { name: "Halloween", rgb: "255,130,30", emojis: ["🎃", "👻", "🦇", "🕸️", "🍬"] },
-  thanks:    { name: "Thanksgiving", rgb: "230,140,50", emojis: ["🦃", "🍁", "🥧", "🍂", "🌽"] },
-  xmas:      { name: "Christmas", rgb: "80,210,110", emojis: ["🎄", "❄️", "🎁", "⛄", "🎅"] }
+  valentine: { name: "Valentine", rgb: "255,90,150", emojis: ["💝", "💘", "💖", "💕", "🌹"], style: "hearts" },
+  spring:    { name: "Spring", rgb: "140,230,120", emojis: ["🌷", "🌸", "🐣", "🐰", "🌼"], style: "bloom" },
+  summer:    { name: "Summer", rgb: "255,200,60", emojis: ["☀️", "🎆", "🏖️", "🍉", "🌊"], style: "fireworks" },
+  halloween: { name: "Halloween", rgb: "255,130,30", emojis: ["🎃", "👻", "🦇", "🕸️", "🍬"], style: "spooky" },
+  thanks:    { name: "Thanksgiving", rgb: "230,140,50", emojis: ["🦃", "🍁", "🥧", "🍂", "🌽"], style: "leaves" },
+  xmas:      { name: "Christmas", rgb: "80,210,110", emojis: ["🎄", "❄️", "🎁", "⛄", "🎅"], style: "snow" }
 };
 function myTheme() { const a = myAvatarObj(); if (AVATAR_THEMES[a.id]) return AVATAR_THEMES[a.id]; if (a.season && SEASON_THEMES[a.season]) return SEASON_THEMES[a.season]; if (eventMatch()) return eventTheme(EVENT); return a.ev ? eventTheme(findEvent(a.ev)) : null; }
 function curOppName() {
@@ -4086,19 +4089,23 @@ function avHidden(a) { return !!(a.code || a.perfect || a.bestAv || a.shop5 || a
 function avPageList(u) { return AVATARS.filter(a => a.ev ? (isOpen(a, u) || a.ev === EVENT.key) : ((!avHidden(a) && !a.shop && !a.sb) || isOpen(a, u))); }
 // what the shop's "All avatars" lists: the same, plus every avatar the shop can sell
 function avCatalogList(u) { return AVATARS.filter(a => isOpen(a, u) || (a.ev ? a.ev === EVENT.key : !avHidden(a) && !a.sb && !(a.shop && a.newBase))); }
-function avCards(all, u, current) {
-  return (() => { const list = avGrouped(all);
-        // look-alike avatars fold into the first one; its +N button opens the group
-        const size = {}, selG = {}; list.forEach(a => { size[a.e] = (size[a.e] || 0) + 1; if (a.e + a.id === current) selG[a.e] = true; });
+function avCards(all, u, current, byMut) {
+  return (() => { let list = avGrouped(all);
+        // look-alike avatars fold into the first one; its +N button opens the group.
+        // Sorted by mutation instead, every avatar with the same mutation folds together.
+        const key = byMut ? (a => "m:" + (a.mut || "normal")) : (a => a.e);
+        if (byMut) list = list.map((a, i) => ({ a, i, r: a.mut ? mutRank(a) || 50 : 0 })).sort((x, y) => x.r - y.r || (x.a.mut || "").localeCompare(y.a.mut || "") || x.i - y.i).map(x => x.a);
+        const size = {}, selG = {}; list.forEach(a => { size[key(a)] = (size[key(a)] || 0) + 1; if (a.e + a.id === current) selG[key(a)] = true; });
         const opened = new Set(store.get("avOpenGroups", [])), seen = {};
-        return list.map(a => ({ a, lead: !seen[a.e] && (seen[a.e] = true), n: size[a.e] - 1, gOpen: opened.has(a.e) || !!selG[a.e] })); })().map(({ a, lead, n, gOpen }) => {
+        return list.map(a => { const k = key(a); return { a, k, lead: !seen[k] && (seen[k] = true), n: size[k] - 1, gOpen: opened.has(k) || !!selG[k] }; }); })().map(({ a, k, lead, n, gOpen }) => {
         const open = isOpen(a, u);
         const sel = a.e + a.id === current;
-        const grp = n > 0 ? ` data-g="${esc(a.e)}"` : "", cls = n > 0 ? (lead ? " av-lead" : " av-fold") + (gOpen ? " g-open" : "") : "";
-        const more = lead && n > 0 ? `<span class="av-more" role="button" tabindex="0" data-act="avgroup" data-g="${esc(a.e)}" aria-expanded="${gOpen}" aria-label="${gOpen ? "Hide" : "Show"} ${n} more like this">${gOpen ? "−" : "+" + n}</span>` : "";
+        const grp = n > 0 ? ` data-g="${esc(k)}"` : "", cls = n > 0 ? (lead ? " av-lead" : " av-fold") + (gOpen ? " g-open" : "") : "";
+        const more = lead && n > 0 ? `<span class="av-more" role="button" tabindex="0" data-act="avgroup" data-g="${esc(k)}" aria-expanded="${gOpen}" aria-label="${gOpen ? "Hide" : "Show"} ${n} more like this">${gOpen ? "−" : "+" + n}</span>` : "";
+        const mhead = byMut && lead ? `<span class="av-mhead">${esc(mutName(a.mut) || "Normal")} · ${n + 1}</span>` : "";
         const tip = (avDesc(a) ? avDesc(a) + " " : "") + avHow(a, open);
         return `<button class="avatar${cls} ${sel ? "on" : ""} ${open ? "" : "locked"}"${grp} data-act="avinfo" data-id="${a.id}" aria-pressed="${sel}" data-tip="${esc(tip)}" data-search="${esc((a.name + " " + tip + " " + avLock(a) + (a.ev ? " event" : "") + (a.code || a.perfect || a.bestAv ? " secret" : "")).toLowerCase())}">
-          ${more}${open ? `<span class="av-stars" title="1 in Attillions found wearing this avatar">⭐ ${(avKrill(u)[a.id] || 0).toLocaleString()}</span>` : ""}
+          ${more}${mhead}${open ? `<span class="av-stars" title="1 in Attillions found wearing this avatar">⭐ ${(avKrill(u)[a.id] || 0).toLocaleString()}</span>` : ""}
           <span class="ae">${avMarkup(a)}</span><span class="an">${a.name}${mutTag(a)}${a.dev ? ` <i class="devtag">DEV</i>` : a.code || a.perfect || a.bestAv || a.shop5 ? ` <i class="secrettag">secret</i>` : ""}</span>
           ${a.ev ? `<span class="asub" title="${esc((findEvent(a.ev) || {}).name || "")}">Event avatar</span>` : ""}
           <span class="al">${open ? (sel ? "Selected" : "Tap for info") : avLock(a)}</span>
@@ -4719,9 +4726,12 @@ function viewAvatar() {
     <div class="seg-pick av-layout" role="group" aria-label="How to show avatars">${[["swipe", "👆 Swipe"], ["grid", "▦ Grid"]].map(([v, l]) => `<button data-act="avlayout" data-v="${v}" aria-pressed="${store.get("avLayout", "swipe") === v}">${l}</button>`).join("")}</div>
     <p class="av-swipe-hint">Swipe to see every avatar · tap one to learn how to get it</p>
     <p class="hint av-none" id="av-none" hidden>No avatars match that search.</p>
-    <button class="btn ghost small av-collapse-all" data-act="avcollapse" aria-expanded="${!store.get("avCollapsed", false)}">${store.get("avCollapsed", false) ? "▸ Show all avatars" : "▾ Collapse all but my avatar"}</button>
+    <div class="av-tools">
+      <div class="seg-pick av-sort" role="group" aria-label="Sort avatars">${[["look", "👯 Look-alikes"], ["mut", "🧬 Mutation"]].map(([v, l]) => `<button data-act="avsort" data-v="${v}" aria-pressed="${store.get("avSort", "look") === v}">${l}</button>`).join("")}</div>
+      <button class="btn ghost small av-collapse-all" data-act="avcollapse" aria-expanded="${!store.get("avCollapsed", false)}">${store.get("avCollapsed", false) ? "▸ Show all avatars" : "▾ Collapse all but my avatar"}</button>
+    </div>
     <div class="avatars${store.get("avCollapsed", false) ? " all-collapsed" : ""}${store.get("avLayout", "swipe") === "grid" ? " av-grid" : ""}">
-      ${avCards(avPageList(u), u, current)}
+      ${avCards(avPageList(u), u, current, store.get("avSort", "look") === "mut")}
     </div>
     <form id="code-form" class="code-row">
       <label for="unlock-code">Have a code?</label>
@@ -5509,8 +5519,10 @@ document.addEventListener("click", async e => {
   else if (act === "auth-mode") go("login", { mode: t.dataset.m });
   else if (act === "shopfilter") { store.set("shopAllFilter", t.dataset.v); const y = window.scrollY; render(); window.scrollTo(0, y); }
   else if (act === "avlayout") { store.set("avLayout", t.dataset.v); render(); }
+  else if (act === "avsort") { store.set("avSort", t.dataset.v); render(); }
   else if (act === "avcollapse") {
     const on = !store.get("avCollapsed", false); store.set("avCollapsed", on);
+    if (on) { store.set("avOpenGroups", []); document.querySelectorAll(".avatars .avatar.g-open:not(.on)").forEach(c => c.classList.remove("g-open")); }
     const box = document.querySelector(".avatars"); if (box) box.classList.toggle("all-collapsed", on);
     t.textContent = on ? "▸ Show all avatars" : "▾ Collapse all but my avatar"; t.setAttribute("aria-expanded", !on);
   }
@@ -6246,6 +6258,7 @@ function krillion(card, who, opts) {
   if (th && th.style === "crown") { crownBurst(x, y, th); return; }
   if (th && th.style === "flame") { flameBurst(x, y, th); return; }
   if (th && th.style === "trophy") { trophyBurst(x, y, th); return; }
+  if (th && SEASON_FX[th.style]) { SEASON_FX[th.style](x, y, th); return; }
   if (th) { themedBurst(x, y, th); return; }
   // a burst of gold stars shoots out from the altitude marker and swirls
   for (let i = 0; i < 200; i++) {
@@ -6275,6 +6288,80 @@ function emoji(c, ch, x, y, size, alpha, rot) {
   c.font = size + "px system-ui, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif"; c.textAlign = "center"; c.textBaseline = "middle";
   c.fillText(ch, 0, 0); c.restore();
 }
+/* Seasonal mutations: each season has its own kind of 1 in Attillion. */
+function seasonWash(rgba, life) {   // a soft colour glow over the whole screen that fades in and out
+  parts.push({ life, max: life, update() {}, draw(c, p) { const k = 1 - p.life / p.max, a = Math.sin(Math.PI * k); c.fillStyle = rgba.replace("A", (0.28 * a).toFixed(3)); c.fillRect(0, 0, W, H); } });
+}
+function seasonRing(x, y, colA, colB) {
+  for (let i = 0; i < 3; i++) parts.push({ x, y, life: 1.5, max: 1.5, delay: i * 0.2,
+    update(p, dt) { if (p.delay > 0) { p.delay -= dt; p.life += dt; } },
+    draw(c, p) { if (p.delay > 0) return; const k = 1 - p.life / p.max; c.strokeStyle = (i % 2 ? colB : colA).replace("A", ((1 - k) * 0.9).toFixed(3)); c.lineWidth = 5 * (1 - k) + 1; c.beginPath(); c.arc(p.x, p.y, 20 + k * Math.max(W, H) * 0.6, 0, TAU); c.stroke(); } });
+}
+const SEASON_FX = {
+  // Christmas: a snowstorm drifts down, ornaments pop out of the marker in red and green
+  snow(x, y, th) {
+    seasonWash("rgba(120,180,255,A)", 3.4); seasonRing(x, y, "rgba(255,70,70,A)", "rgba(70,210,110,A)");
+    for (let i = 0; i < 130; i++) parts.push({ x: rand(0, W), y: rand(-H, -10), vy: rand(60, 170), sway: rand(0, TAU), size: rand(2, 6), life: 3.6, delay: rand(0, 0.8), flake: i % 6 === 0,
+      update(p, dt) { if (p.delay > 0) { p.delay -= dt; p.life += dt; return; } p.y += p.vy * dt; p.sway += dt * 1.5; p.x += Math.sin(p.sway) * 25 * dt; },
+      draw(c, p) { if (p.delay > 0) return; if (p.flake) emoji(c, "❄️", p.x, p.y, p.size * 6, Math.min(1, p.life), p.sway * 0.3); else { c.globalAlpha = Math.min(1, p.life); c.fillStyle = "#fff"; c.beginPath(); c.arc(p.x, p.y, p.size, 0, TAU); c.fill(); c.globalAlpha = 1; } } });
+    for (let i = 0; i < 40; i++) { const a = rand(0, TAU), sp = rand(200, 600);
+      parts.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 150, size: rand(22, 40), life: rand(1.6, 2.6), ch: th.emojis[i % th.emojis.length], rot: 0,
+        update(p, dt) { p.vx *= 0.97; p.vy = p.vy * 0.97 + 380 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += dt * 2; },
+        draw(c, p) { emoji(c, p.ch, p.x, p.y, p.size, Math.min(1, p.life), Math.sin(p.rot) * 0.3); } }); }
+  },
+  // Halloween: the screen goes dark purple, bats flap across, ghosts float up and fade
+  spooky(x, y, th) {
+    seasonWash("rgba(60,10,90,A)", 3.4); seasonRing(x, y, "rgba(255,130,30,A)", "rgba(160,80,255,A)");
+    for (let i = 0; i < 26; i++) { const left = i % 2 === 0;
+      parts.push({ x: left ? -40 : W + 40, y: rand(H * 0.1, H * 0.8), vx: (left ? 1 : -1) * rand(260, 520), flap: rand(0, TAU), life: 3, delay: rand(0, 1.2),
+        update(p, dt) { if (p.delay > 0) { p.delay -= dt; p.life += dt; return; } p.x += p.vx * dt; p.flap += dt * 14; p.y += Math.sin(p.flap * 0.5) * 60 * dt; },
+        draw(c, p) { if (p.delay > 0) return; emoji(c, "🦇", p.x, p.y, 34 * (0.8 + 0.25 * Math.abs(Math.sin(p.flap))), Math.min(1, p.life), Math.sin(p.flap) * 0.2); } }); }
+    for (let i = 0; i < 18; i++) parts.push({ x: rand(0, W), y: H + 40, vy: -rand(90, 200), wob: rand(0, TAU), life: rand(2.6, 3.4), max: 3.4, delay: rand(0, 0.8), ch: i % 3 ? "👻" : "🎃",
+      update(p, dt) { if (p.delay > 0) { p.delay -= dt; p.life += dt; return; } p.y += p.vy * dt; p.wob += dt * 3; p.x += Math.sin(p.wob) * 50 * dt; },
+      draw(c, p) { if (p.delay > 0) return; emoji(c, p.ch, p.x, p.y, 44, Math.min(0.85, p.life * 0.6), Math.sin(p.wob) * 0.25); } });
+  },
+  // Thanksgiving: a gust of autumn leaves sweeps across the screen, spinning as it goes
+  leaves(x, y, th) {
+    seasonWash("rgba(200,100,20,A)", 3.2); seasonRing(x, y, "rgba(255,150,40,A)", "rgba(170,90,30,A)");
+    const L = ["🍁", "🍂", "🍁", "🍂", "🌽", "🥧", "🦃"];
+    for (let i = 0; i < 90; i++) parts.push({ x: -rand(20, W * 0.8), y: rand(-H * 0.2, H * 0.9), vx: rand(300, 620), vy: rand(-40, 90), spin: rand(-6, 6), rot: rand(0, TAU), wob: rand(0, TAU), size: rand(20, 40), life: 3.4, delay: rand(0, 0.9), ch: L[i % L.length],
+      update(p, dt) { if (p.delay > 0) { p.delay -= dt; p.life += dt; return; } p.wob += dt * 4; p.x += p.vx * dt; p.y += (p.vy + Math.sin(p.wob) * 90) * dt; p.rot += p.spin * dt; },
+      draw(c, p) { if (p.delay > 0) return; emoji(c, p.ch, p.x, p.y, p.size, Math.min(1, p.life), p.rot); } });
+  },
+  // Valentine: hearts bubble up from the bottom and grow, with a pink pulse
+  hearts(x, y, th) {
+    seasonWash("rgba(255,80,150,A)", 3); seasonRing(x, y, "rgba(255,90,150,A)", "rgba(255,180,210,A)");
+    const L = ["💖", "💕", "💘", "💝", "❤️", "🌹"];
+    for (let i = 0; i < 70; i++) parts.push({ x: rand(0, W), y: H + rand(20, 120), vy: -rand(160, 360), wob: rand(0, TAU), size: rand(16, 30), grow: rand(8, 22), life: rand(2.4, 3.4), delay: rand(0, 1), ch: L[i % L.length],
+      update(p, dt) { if (p.delay > 0) { p.delay -= dt; p.life += dt; return; } p.y += p.vy * dt; p.wob += dt * 3; p.x += Math.sin(p.wob) * 40 * dt; p.size += p.grow * dt; },
+      draw(c, p) { if (p.delay > 0) return; emoji(c, p.ch, p.x, p.y, p.size, Math.min(1, p.life), Math.sin(p.wob) * 0.2); } });
+  },
+  // Spring: flowers bloom outward from the marker in a spiral, petals drift down
+  bloom(x, y, th) {
+    seasonWash("rgba(150,230,140,A)", 3); seasonRing(x, y, "rgba(255,150,200,A)", "rgba(140,230,120,A)");
+    const L = ["🌸", "🌷", "🌼", "🌺", "🐣", "🐰"];
+    for (let i = 0; i < 60; i++) { const a = i * 0.55, sp = 120 + i * 9;
+      parts.push({ x, y, a, sp, r: 0, size: rand(20, 36), life: 2.8, ch: L[i % L.length],
+        update(p, dt) { p.r += p.sp * dt; p.a += dt * 1.6; p.sp *= 0.985; },
+        draw(c, p) { emoji(c, p.ch, p.x + Math.cos(p.a) * p.r, p.y + Math.sin(p.a) * p.r, p.size, Math.min(1, p.life), p.a * 0.3); } }); }
+    for (let i = 0; i < 70; i++) parts.push({ x: rand(0, W), y: rand(-H * 0.6, -10), vy: rand(70, 160), sway: rand(0, TAU), life: 3.4, delay: rand(0.3, 1.2),
+      update(p, dt) { if (p.delay > 0) { p.delay -= dt; p.life += dt; return; } p.y += p.vy * dt; p.sway += dt * 2.5; p.x += Math.sin(p.sway) * 45 * dt; },
+      draw(c, p) { if (p.delay > 0) return; c.save(); c.translate(p.x, p.y); c.rotate(p.sway); c.globalAlpha = Math.min(1, p.life); c.fillStyle = "#ffb3d1"; c.beginPath(); c.ellipse(0, 0, 6, 3, 0, 0, TAU); c.fill(); c.restore(); } });
+  },
+  // Summer: fireworks go off all over the sky
+  fireworks(x, y, th) {
+    seasonWash("rgba(20,30,80,A)", 3.4);
+    const cols = ["#ff5a5a", "#ffd23c", "#5ad2ff", "#7dff8a", "#ff7ae0", "#ffffff"];
+    for (let f = 0; f < 9; f++) { const fx_ = f === 0 ? x : rand(W * 0.1, W * 0.9), fy = f === 0 ? y : rand(H * 0.1, H * 0.55), col = cols[f % cols.length], d = f * 0.28;
+      for (let i = 0; i < 46; i++) { const a = (i / 46) * TAU, sp = rand(160, 300);
+        parts.push({ x: fx_, y: fy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: rand(1.2, 1.7), delay: d, col,
+          update(p, dt) { if (p.delay > 0) { p.delay -= dt; p.life += dt; return; } p.vx *= 0.96; p.vy = p.vy * 0.96 + 90 * dt; p.x += p.vx * dt; p.y += p.vy * dt; },
+          draw(c, p) { if (p.delay > 0) return; sparkle(c, p.x, p.y, 4, p.col, Math.min(1, p.life), 0); } }); } }
+    for (let i = 0; i < 12; i++) parts.push({ x: rand(0, W), y: H + 30, vy: -rand(200, 380), size: rand(24, 36), life: 3, delay: rand(0, 1), ch: th.emojis[i % th.emojis.length],
+      update(p, dt) { if (p.delay > 0) { p.delay -= dt; p.life += dt; return; } p.y += p.vy * dt; },
+      draw(c, p) { if (p.delay > 0) return; emoji(c, p.ch, p.x, p.y, p.size, Math.min(1, p.life), 0); } });
+  }
+};
 function themedBurst(x, y, th) {
   const pick = () => th.emojis[Math.floor(Math.random() * th.emojis.length)];
   const col = `rgb(${th.rgb})`;
