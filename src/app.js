@@ -1050,7 +1050,16 @@ const AVATAR_THEMES = {
   streak30: { name: "Thirty-Day Sun", rgb: "255,120,40", emojis: ["🔥", "🔥", "✨", "💥", "☄️"], style: "flame" },
   allbadges: { name: "Grand Champion", rgb: "255,205,70", emojis: ["🏆", "🏅", "🎖️", "🥇", "⭐", "🌟"], style: "trophy" }
 };
-function myTheme() { const a = myAvatarObj(); if (AVATAR_THEMES[a.id]) return AVATAR_THEMES[a.id]; if (eventMatch()) return eventTheme(EVENT); return a.ev ? eventTheme(findEvent(a.ev)) : null; }
+// seasonal avatars get their season's own 1 in Attillion: its emojis burst out and rain down in its colours
+const SEASON_THEMES = {
+  valentine: { name: "Valentine", rgb: "255,90,150", emojis: ["💝", "💘", "💖", "💕", "🌹"] },
+  spring:    { name: "Spring", rgb: "140,230,120", emojis: ["🌷", "🌸", "🐣", "🐰", "🌼"] },
+  summer:    { name: "Summer", rgb: "255,200,60", emojis: ["☀️", "🎆", "🏖️", "🍉", "🌊"] },
+  halloween: { name: "Halloween", rgb: "255,130,30", emojis: ["🎃", "👻", "🦇", "🕸️", "🍬"] },
+  thanks:    { name: "Thanksgiving", rgb: "230,140,50", emojis: ["🦃", "🍁", "🥧", "🍂", "🌽"] },
+  xmas:      { name: "Christmas", rgb: "80,210,110", emojis: ["🎄", "❄️", "🎁", "⛄", "🎅"] }
+};
+function myTheme() { const a = myAvatarObj(); if (AVATAR_THEMES[a.id]) return AVATAR_THEMES[a.id]; if (a.season && SEASON_THEMES[a.season]) return SEASON_THEMES[a.season]; if (eventMatch()) return eventTheme(EVENT); return a.ev ? eventTheme(findEvent(a.ev)) : null; }
 function curOppName() {
   return S.mode === "bot" ? BOTS[S.level].name : S.mode === "challenge-guest" ? S.challenge.from : S.mode === "live" && S.live ? S.live.opp.name : null;
 }
@@ -3624,7 +3633,7 @@ document.addEventListener("click", async e => {
     const gotP = !hadP && shopOwned(me()).length >= pdev.shop5;
     go("shop", { shopMsg: `You bought the ${a.name}! It's your avatar now.` + (gotP ? ` 🔓 That's ${pdev.shop5} shop avatars! A secret Developer code will now work for you.` : "") });
     const cel = a;
-    setTimeout(() => { const el = document.querySelector(".shop-card.owned .shop-e"); if (el && window.KrillionFX && window.KrillionFX.celebrate) { SFX("hadal"); window.KrillionFX.celebrate(el, cel.id, avMarkup(cel), cel.name); } }, 60);
+    setTimeout(() => { const el = document.querySelector(".shop-card.owned .shop-e"); if (el && window.KrillionFX && window.KrillionFX.celebrate) { SFX("hadal"); window.KrillionFX.celebrate(el, cel.id, avMarkup(cel), cel.name, cel.season ? SEASON_THEMES[cel.season] : undefined); } }, 60);
   }
   else if (act === "shop-refresh") {
     if (gems() < SHOP_REFRESH) return;
